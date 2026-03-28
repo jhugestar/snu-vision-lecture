@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PASCAL VOC — mAP Deep Dive</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,600;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --bg:    #ffffff;
+  --bg2:   #f5f5f3;
+  --bg3:   #eceae6;
+  --border:  rgba(0,0,0,0.08);
+  --border2: rgba(0,0,0,0.15);
+  --text:  #18181a;
+  --text2: #6b6966;
+  --text3: #a8a5a0;
+  --accent:  #2563eb;
+  --accent2: #7c3aed;
+  --green:   #16a34a;
+  --red:     #dc2626;
+  --amber:   #d97706;
+  --teal:    #0d9488;
+  --coral:   #e11d48;
+  --mono: 'DM Mono', monospace;
+  --sans: 'DM Sans', sans-serif;
+  --serif: 'Fraunces', serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--sans); }
+#slides { width: 100vw; height: 100vh; position: relative; }
+.slide { position: absolute; inset: 0; display: flex; flex-direction: column; padding: 44px 64px 56px; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
+.slide.active { opacity: 1; pointer-events: all; }
+#nav { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 14px; z-index: 100; background: rgba(255,255,255,0.94); backdrop-filter: blur(12px); border: 1px solid var(--border2); border-radius: 40px; padding: 7px 18px; box-shadow: 0 2px 20px rgba(0,0,0,0.08); }
+#nav button { background: none; border: none; color: var(--text2); cursor: pointer; font-size: 18px; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: color 0.2s, background 0.2s; }
+#nav button:hover { color: var(--text); background: var(--bg2); }
+#nav button:disabled { opacity: 0.25; cursor: default; }
+#slide-counter { font-family: var(--mono); font-size: 12px; color: var(--text3); min-width: 52px; text-align: center; }
+.dot-row { display: flex; gap: 5px; align-items: center; }
+.dot { width: 5px; height: 5px; border-radius: 50%; background: var(--border2); cursor: pointer; transition: background 0.2s, transform 0.2s; }
+.dot.on { background: var(--accent); transform: scale(1.4); }
+.eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; color: var(--text3); text-transform: uppercase; margin-bottom: 8px; }
+.slide-title { font-family: var(--serif); font-size: clamp(24px, 3vw, 42px); font-weight: 300; line-height: 1.15; color: var(--text); margin-bottom: 6px; }
+.slide-title em { font-style: italic; color: var(--accent); }
+.subtitle { font-size: 14px; color: var(--text2); line-height: 1.65; margin-bottom: 24px; max-width: 720px; }
+.cols2 { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; flex: 1; min-height: 0; }
+.card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; }
+.pill { display: inline-flex; align-items: center; font-size: 11px; font-family: var(--mono); padding: 3px 10px; border-radius: 20px; font-weight: 500; }
+.pill-tp { background: rgba(22,163,74,0.10); color: var(--green); }
+.pill-fp { background: rgba(220,38,38,0.10); color: var(--red); }
+.formula { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 13px 16px; font-family: var(--mono); font-size: 13px; color: var(--text2); margin: 8px 0; line-height: 1.8; }
+.formula .hl  { color: var(--accent);  font-weight: 500; }
+.formula .hl2 { color: var(--amber); }
+.formula .hl3 { color: var(--green); }
+.formula .hl4 { color: var(--coral); }
+.chart-wrap { position: relative; flex: 1; min-height: 0; }
+.full-col { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+/* Cover */
+#s0 { justify-content: center; align-items: flex-start; }
+#s0 .big { font-family: var(--serif); font-size: clamp(42px, 5.5vw, 78px); font-weight: 600; line-height: 1.05; }
+#s0 .big em { font-weight: 300; font-style: italic; color: var(--accent); }
+#s0 .sub { font-size: 15px; color: var(--text2); margin-top: 18px; max-width: 540px; line-height: 1.75; }
+#s0 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 28px; }
+#s0 .chip { font-family: var(--mono); font-size: 11px; padding: 5px 13px; border: 1px solid var(--border2); border-radius: 20px; color: var(--text3); }
+/* Pipeline */
+.pipeline { display: flex; align-items: center; flex: 1; }
+.pipe-step { flex: 1; background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 16px 12px; text-align: center; }
+.pipe-step .num { font-family: var(--mono); font-size: 11px; color: var(--text3); margin-bottom: 5px; }
+.pipe-step .name { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+.pipe-step .desc { font-size: 11px; color: var(--text2); line-height: 1.5; }
+.pipe-arrow { font-size: 16px; color: var(--text3); flex-shrink: 0; margin: 0 6px; }
+/* IoU */
+.iou-canvas-wrap { display: flex; gap: 28px; align-items: center; flex: 1; }
+#iouCanvas { border-radius: 10px; background: var(--bg2); border: 1px solid var(--border); }
+.iou-right { flex: 1; display: flex; flex-direction: column; gap: 12px; }
+.slider-row { display: flex; flex-direction: column; gap: 5px; }
+.slider-label { font-size: 12px; color: var(--text2); display: flex; justify-content: space-between; }
+input[type=range] { width: 100%; accent-color: var(--accent); }
+.iou-result { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 14px; text-align: center; }
+.iou-result .val { font-family: var(--serif); font-size: 48px; font-weight: 300; }
+.iou-result .lbl { font-size: 12px; color: var(--text2); }
+.verdict { font-size: 13px; text-align: center; margin-top: 6px; font-weight: 500; padding: 6px 10px; border-radius: 8px; }
+/* Confusion cells */
+.conf-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
+.conf-cell .big-val { font-family: var(--serif); font-size: 44px; font-weight: 300; }
+.cell-tp { background: rgba(22,163,74,0.07); }
+.cell-fp { background: rgba(220,38,38,0.07); }
+.cell-fn { background: rgba(217,119,6,0.07); }
+.cell-tn { background: rgba(168,165,160,0.07); }
+/* PR */
+.pr-main { display: flex; gap: 22px; flex: 1; min-height: 0; }
+.pr-left { flex: 1; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+.pr-right { width: 200px; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
+.metric-mini { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 13px; }
+.metric-mini .ml { font-family: var(--mono); font-size: 10px; color: var(--text3); text-transform: uppercase; margin-bottom: 3px; }
+.metric-mini .mv { font-size: 21px; font-weight: 300; font-family: var(--serif); }
+/* Table */
+.det-table-wrap { flex: 1; overflow-y: auto; border: 1px solid var(--border); border-radius: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead th { position: sticky; top: 0; background: var(--bg2); padding: 9px 12px; font-family: var(--mono); font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: var(--text3); text-align: left; border-bottom: 1px solid var(--border); }
+tbody td { padding: 8px 12px; border-bottom: 1px solid rgba(0,0,0,0.04); color: var(--text2); }
+tbody tr:hover td { background: rgba(0,0,0,0.015); }
+tr.row-active td { color: var(--text); }
+tr.row-active td:first-child { border-left: 2px solid var(--accent); }
+/* Interp */
+.interp-wrap { display: flex; gap: 18px; flex: 1; min-height: 0; }
+.interp-col { flex: 1; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+.interp-label { font-family: var(--mono); font-size: 11px; letter-spacing: .07em; text-transform: uppercase; padding: 3px 9px; border-radius: 5px; align-self: flex-start; }
+.lbl-11  { background: rgba(124,58,237,0.07); color: var(--accent2); }
+.lbl-all { background: rgba(37,99,235,0.07); color: var(--accent); }
+/* mAP bars */
+.class-bars { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+.class-row { display: flex; align-items: center; gap: 8px; }
+.class-name { font-family: var(--mono); font-size: 11px; color: var(--text2); width: 76px; flex-shrink: 0; }
+.bar-bg { flex: 1; height: 17px; background: var(--bg3); border-radius: 4px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; justify-content: flex-end; padding-right: 5px; }
+.bar-val { font-family: var(--mono); font-size: 10px; color: #fff; }
+/* Summary */
+.summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; flex: 1; }
+.summary-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 7px; }
+.summary-card .sc-num { font-family: var(--mono); font-size: 11px; color: var(--text3); }
+.summary-card .sc-title { font-size: 15px; font-weight: 500; }
+.summary-card .sc-body { font-size: 13px; color: var(--text2); line-height: 1.6; flex: 1; }
+.summary-card .sc-formula { background: var(--bg3); border-radius: 7px; padding: 7px 11px; font-family: var(--mono); font-size: 12px; color: var(--accent2); }
+/* Class bars */
+.class-bars { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+</style>
+</head>
+<body>
+<div id="slides">
+
+<!-- SLIDE 0: Cover -->
+<div class="slide active" id="s0">
+  <div class="big">PASCAL VOC<br><em>mAP</em> Deep Dive</div>
+  <div class="sub">A complete walkthrough of object detection evaluation — from IoU to 11-point interpolation, 20-class mAP, and modern dataset comparisons.</div>
+  <div class="chips">
+    <div class="chip">IoU</div><div class="chip">TP · FP · FN</div><div class="chip">Precision–Recall</div>
+    <div class="chip">Average Precision</div><div class="chip">11-pt vs All-point</div>
+    <div class="chip">mAP @ 20 classes</div><div class="chip">VOC vs COCO</div><div class="chip">Modern Datasets</div>
+  </div>
+</div>
+
+<!-- SLIDE 1: Pipeline -->
+<div class="slide" id="s1">
+  <div class="eyebrow">Overview</div>
+  <div class="slide-title">PASCAL VOC Evaluation <em>Pipeline</em></div>
+  <div class="subtitle">Five stages from raw detections to mAP. We will build each step from the ground up.</div>
+  <div class="pipeline">
+    <div class="pipe-step" style="border-color:rgba(37,99,235,0.3)">
+      <div class="num">01</div><div class="name" style="color:var(--accent)">Compute IoU</div>
+      <div class="desc">Overlap ratio between<br>predicted &amp; GT box</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step">
+      <div class="num">02</div><div class="name">Assign TP / FP</div>
+      <div class="desc">IoU ≥ 0.5 → TP<br>else FP (duplicates too)</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step">
+      <div class="num">03</div><div class="name">Build PR Curve</div>
+      <div class="desc">Sort by confidence desc.<br>Accumulate P / R per row</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step">
+      <div class="num">04</div><div class="name">Compute AP</div>
+      <div class="desc">11-pt interpolation<br>or All-point AUC</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step" style="border-color:rgba(124,58,237,0.3)">
+      <div class="num">05</div><div class="name" style="color:var(--accent2)">mAP</div>
+      <div class="desc">Mean AP across<br>all 20 classes</div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 2: IoU -->
+<div class="slide" id="s2">
+  <div class="eyebrow">Step 01</div>
+  <div class="slide-title"><em>IoU</em> — Intersection over Union</div>
+  <div class="subtitle">Drag the sliders to see how box position and size affect IoU. PASCAL VOC standard: IoU ≥ 0.5 → TP.</div>
+  <div class="iou-canvas-wrap">
+    <canvas id="iouCanvas" width="360" height="290"></canvas>
+    <div class="iou-right">
+      <div class="formula">
+        IoU = <span class="hl">Intersection</span> / <span class="hl2">Union</span><br>
+            = (Pred ∩ GT area) / (Pred ∪ GT area)
+      </div>
+      <div class="slider-row">
+        <div class="slider-label"><span>Pred box X</span><span id="px-val">130</span></div>
+        <input type="range" min="40" max="220" value="130" id="px-slider" oninput="drawIoU()">
+      </div>
+      <div class="slider-row">
+        <div class="slider-label"><span>Pred box Y</span><span id="py-val">100</span></div>
+        <input type="range" min="40" max="190" value="100" id="py-slider" oninput="drawIoU()">
+      </div>
+      <div class="slider-row">
+        <div class="slider-label"><span>Pred box size</span><span id="ps-val">120</span></div>
+        <input type="range" min="60" max="190" value="120" id="ps-slider" oninput="drawIoU()">
+      </div>
+      <div class="iou-result">
+        <div class="val" id="iou-val">0.00</div>
+        <div class="lbl">IoU</div>
+      </div>
+      <div class="verdict" id="iou-verdict"></div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 3: Confusion -->
+<div class="slide" id="s3">
+  <div class="eyebrow">Step 02</div>
+  <div class="slide-title">TP · FP · FN — <em>Assignment Rules</em></div>
+  <div class="subtitle">How each detection is classified. Adjust thresholds to watch TP / FP / FN shift in real time.</div>
+  <div class="cols2" style="gap:28px;align-items:start;flex:1;">
+    <div class="full-col" style="gap:12px;">
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="font-size:13px;color:var(--text2);">Confidence threshold: <span id="conf-thresh-val" style="color:var(--text);font-family:var(--mono)">0.50</span></div>
+        <input type="range" min="0" max="100" value="50" id="conf-thresh" oninput="updateConfusion()">
+        <div style="font-size:13px;color:var(--text2);">IoU threshold: <span id="iou-thresh-val" style="color:var(--text);font-family:var(--mono)">0.50</span></div>
+        <input type="range" min="30" max="75" value="50" step="5" id="iou-thresh" oninput="updateConfusion()">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;border-radius:12px;overflow:hidden;">
+        <div class="conf-cell cell-tp" style="height:128px"><div class="big-val" id="c-tp" style="color:var(--green)">0</div><div style="font-size:12px;font-weight:500;color:var(--green)">TP</div><div style="font-size:11px;color:var(--green);opacity:.7;text-align:center;padding:0 10px">IoU ≥ thr &amp; conf ≥ thr</div></div>
+        <div class="conf-cell cell-fp" style="height:128px"><div class="big-val" id="c-fp" style="color:var(--red)">0</div><div style="font-size:12px;font-weight:500;color:var(--red)">FP</div><div style="font-size:11px;color:var(--red);opacity:.7;text-align:center;padding:0 10px">conf ≥ thr but IoU &lt; thr</div></div>
+        <div class="conf-cell cell-fn" style="height:128px"><div class="big-val" id="c-fn" style="color:var(--amber)">0</div><div style="font-size:12px;font-weight:500;color:var(--amber)">FN</div><div style="font-size:11px;color:var(--amber);opacity:.7;text-align:center;padding:0 10px">GT exists but not detected</div></div>
+        <div class="conf-cell cell-tn" style="height:128px"><div class="big-val" style="color:var(--text3)">—</div><div style="font-size:12px;font-weight:500;color:var(--text3)">TN</div><div style="font-size:11px;color:var(--text3);text-align:center;padding:0 10px">Not defined in detection</div></div>
+      </div>
+    </div>
+    <div class="full-col" style="gap:12px;">
+      <div class="formula">
+        <span class="hl3">Precision</span> = TP / (TP + FP)<br>
+        <span class="hl2">Recall</span>    = TP / (TP + FN)<br>
+        <span class="hl">F1</span>         = 2 × P × R / (P + R)
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+        <div class="metric-mini"><div class="ml">Precision</div><div class="mv" id="c-prec" style="color:var(--green)">—</div></div>
+        <div class="metric-mini"><div class="ml">Recall</div><div class="mv" id="c-rec" style="color:var(--amber)">—</div></div>
+        <div class="metric-mini"><div class="ml">F1</div><div class="mv" id="c-f1" style="color:var(--accent)">—</div></div>
+      </div>
+      <div class="card" style="flex:1;gap:7px;font-size:13px;color:var(--text2);line-height:1.7;">
+        <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:2px;">Key rules</div>
+        <div>• Multiple detections on same GT → only 1st is TP, rest are FP</div>
+        <div>• Unmatched GTs count as FN</div>
+        <div>• No background class → TN is undefined in detection</div>
+        <div>• This is why mAP is used instead of Accuracy</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 4: PR Curve -->
+<div class="slide" id="s4">
+  <div class="eyebrow">Step 03</div>
+  <div class="slide-title"><em>Precision–Recall</em> Curve</div>
+  <div class="subtitle">Sort detections by confidence (descending), then plot (Recall, Precision) at each threshold. The PR Curve emerges.</div>
+  <div class="pr-main">
+    <div class="pr-left">
+      <div style="display:flex;gap:12px;align-items:center;flex-shrink:0;">
+        <div style="flex:1;"><div style="font-size:12px;color:var(--text3);margin-bottom:3px;">Confidence threshold</div><input type="range" min="0" max="100" value="50" id="pr-thresh" oninput="updatePR()" style="width:100%"></div>
+        <span id="pr-thresh-val" style="font-family:var(--mono);font-size:13px;color:var(--text);min-width:38px;text-align:right">0.50</span>
+        <div style="flex:1;"><div style="font-size:12px;color:var(--text3);margin-bottom:3px;">IoU threshold</div><input type="range" min="30" max="75" value="50" step="5" id="pr-iou" oninput="updatePR()" style="width:100%"></div>
+        <span id="pr-iou-val" style="font-family:var(--mono);font-size:13px;color:var(--text);min-width:38px;text-align:right">0.50</span>
+      </div>
+      <div class="chart-wrap"><canvas id="prChart"></canvas></div>
+    </div>
+    <div class="pr-right">
+      <div class="metric-mini"><div class="ml">AP (All-point)</div><div class="mv" id="pr-ap" style="color:var(--accent)">—</div></div>
+      <div class="metric-mini"><div class="ml">AP (11-point)</div><div class="mv" id="pr-ap11" style="color:var(--accent2)">—</div></div>
+      <div class="metric-mini"><div class="ml">Precision</div><div class="mv" id="pr-p" style="color:var(--green)">—</div></div>
+      <div class="metric-mini"><div class="ml">Recall</div><div class="mv" id="pr-r" style="color:var(--amber)">—</div></div>
+      <div class="metric-mini"><div class="ml">TP / FP</div><div class="mv" id="pr-tp" style="font-size:18px;color:var(--text)">— / —</div></div>
+      <div style="font-size:11px;color:var(--text3);line-height:1.7;padding:2px 0;">Red dot = current threshold<br>Blue area = AP (All-point)<br>Purple dots = 11-pt samples</div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 5: Table -->
+<div class="slide" id="s5">
+  <div class="eyebrow">Step 03 — Detail</div>
+  <div class="slide-title">Detection <em>Ranking Table</em></div>
+  <div class="subtitle">Sorted by confidence (descending). Cumulative TP/FP per row yields per-row Precision and Recall. Highlighted rows are above the current threshold.</div>
+  <div style="display:flex;gap:14px;margin-bottom:10px;flex-shrink:0;">
+    <div style="flex:1;"><div style="font-size:12px;color:var(--text3);margin-bottom:3px;">Confidence threshold</div><input type="range" min="0" max="100" value="50" id="tbl-thresh" oninput="updateTable()" style="width:100%"></div>
+    <span id="tbl-thresh-val" style="font-family:var(--mono);font-size:13px;color:var(--text);align-self:flex-end">0.50</span>
+    <div style="flex:1;"><div style="font-size:12px;color:var(--text3);margin-bottom:3px;">IoU threshold</div><input type="range" min="30" max="75" value="50" step="5" id="tbl-iou" oninput="updateTable()" style="width:100%"></div>
+    <span id="tbl-iou-val" style="font-family:var(--mono);font-size:13px;color:var(--text);align-self:flex-end">0.50</span>
+  </div>
+  <div class="det-table-wrap">
+    <table><thead><tr><th>Rank</th><th>Image</th><th>Class</th><th>Conf</th><th>IoU</th><th>Verdict</th><th>Cum TP</th><th>Cum FP</th><th>Precision</th><th>Recall</th></tr></thead><tbody id="tbl-body"></tbody></table>
+  </div>
+</div>
+
+<!-- SLIDE 5b: PR Curve — How Each Point Is Plotted -->
+<div class="slide" id="s5b">
+  <div class="eyebrow">Step 03 — How it works</div>
+  <div class="slide-title">Building the PR Curve <em>step by step</em></div>
+  <div class="subtitle">We lower the confidence threshold one detection at a time. Each new detection adds one (Recall, Precision) point to the curve. Press Play or step through manually.</div>
+  <div style="display:flex;gap:20px;flex:1;min-height:0;">
+
+    <!-- Left: animated PR canvas -->
+    <div style="flex:1;display:flex;flex-direction:column;gap:10px;min-height:0;">
+      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+        <button id="pra-play" onclick="praToggle()" style="font-family:var(--mono);font-size:12px;padding:5px 16px;border:1px solid var(--border2);border-radius:20px;background:var(--accent);color:#fff;cursor:pointer;">▶ Play</button>
+        <button onclick="praStep(-1)" style="font-family:var(--mono);font-size:12px;padding:5px 12px;border:1px solid var(--border2);border-radius:20px;background:none;cursor:pointer;color:var(--text2);">← Prev</button>
+        <button onclick="praStep(1)" style="font-family:var(--mono);font-size:12px;padding:5px 12px;border:1px solid var(--border2);border-radius:20px;background:none;cursor:pointer;color:var(--text2);">Next →</button>
+        <button onclick="praReset()" style="font-family:var(--mono);font-size:12px;padding:5px 12px;border:1px solid var(--border2);border-radius:20px;background:none;cursor:pointer;color:var(--text3);">Reset</button>
+        <span id="pra-step-lbl" style="font-family:var(--mono);font-size:12px;color:var(--text3);margin-left:4px;">Step 0 / 20</span>
+      </div>
+      <div style="position:relative;flex:1;min-height:0;">
+        <canvas id="praCanvas"></canvas>
+      </div>
+    </div>
+
+    <!-- Right: current detection card + running table -->
+    <div style="width:280px;display:flex;flex-direction:column;gap:10px;flex-shrink:0;">
+      <!-- current detection -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Current detection</div>
+        <div id="pra-cur-det" style="font-size:13px;color:var(--text2);line-height:1.8;">—</div>
+      </div>
+      <!-- running metrics -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div class="metric-mini"><div class="ml">Cum TP</div><div class="mv" id="pra-tp" style="color:var(--green)">0</div></div>
+        <div class="metric-mini"><div class="ml">Cum FP</div><div class="mv" id="pra-fp" style="color:var(--red)">0</div></div>
+        <div class="metric-mini"><div class="ml">Precision</div><div class="mv" id="pra-prec" style="color:var(--accent)">—</div></div>
+        <div class="metric-mini"><div class="ml">Recall</div><div class="mv" id="pra-rec" style="color:var(--amber)">—</div></div>
+      </div>
+      <!-- mini scrollable history -->
+      <div style="flex:1;overflow-y:auto;border:1px solid var(--border);border-radius:10px;">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;">
+          <thead><tr>
+            <th style="position:sticky;top:0;background:var(--bg2);padding:7px 10px;font-family:var(--mono);font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);text-align:left;border-bottom:1px solid var(--border);">#</th>
+            <th style="position:sticky;top:0;background:var(--bg2);padding:7px 10px;font-family:var(--mono);font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);text-align:left;border-bottom:1px solid var(--border);">Conf</th>
+            <th style="position:sticky;top:0;background:var(--bg2);padding:7px 10px;font-family:var(--mono);font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);text-align:left;border-bottom:1px solid var(--border);">V</th>
+            <th style="position:sticky;top:0;background:var(--bg2);padding:7px 10px;font-family:var(--mono);font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);text-align:left;border-bottom:1px solid var(--border);">P</th>
+            <th style="position:sticky;top:0;background:var(--bg2);padding:7px 10px;font-family:var(--mono);font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);text-align:left;border-bottom:1px solid var(--border);">R</th>
+          </tr></thead>
+          <tbody id="pra-history"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 5c: PR Curve — Why the Shape Looks Like Stairs -->
+<div class="slide" id="s5c">
+  <div class="eyebrow">Step 03 — Intuition</div>
+  <div class="slide-title">Why the PR Curve <em>looks like stairs</em></div>
+  <div class="subtitle">Three key patterns explain the characteristic shape of every PR Curve — and what they tell you about the model.</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;flex:1;min-height:0;">
+
+    <!-- Left: annotated static curve -->
+    <div style="display:flex;flex-direction:column;gap:10px;min-height:0;">
+      <div style="position:relative;flex:1;min-height:0;"><canvas id="annotCanvas"></canvas></div>
+    </div>
+
+    <!-- Right: 3 explanations -->
+    <div style="display:flex;flex-direction:column;gap:12px;overflow-y:auto;">
+
+      <div class="card" style="gap:7px;border-left:3px solid var(--accent);">
+        <div style="font-size:13px;font-weight:500;color:var(--accent);">① TP hit → step right (Recall ↑)</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.65;">When a new detection is a <strong>TP</strong>, the cumulative TP count goes up. Recall = TP / GT_total, so Recall increases. The curve steps <em>right</em>.</div>
+        <div class="formula" style="margin:0;font-size:11px;">Recall = <span class="hl">TP↑</span> / GT_total → moves right</div>
+      </div>
+
+      <div class="card" style="gap:7px;border-left:3px solid var(--red);">
+        <div style="font-size:13px;font-weight:500;color:var(--red);">② FP hit → step down (Precision ↓)</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.65;">When a new detection is a <strong>FP</strong>, TP stays the same but TP+FP grows. Precision = TP / (TP+FP) drops. The curve steps <em>down</em>.</div>
+        <div class="formula" style="margin:0;font-size:11px;">Precision = TP / (TP + <span class="hl4">FP↑</span>) → moves down</div>
+      </div>
+
+      <div class="card" style="gap:7px;border-left:3px solid var(--amber);">
+        <div style="font-size:13px;font-weight:500;color:var(--amber);">③ High-conf detections are added first</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.65;">Because we sort by <strong>confidence descending</strong>, the model's most certain predictions come first — these tend to be correct, so the curve starts high-precision. It sags as we add lower-confidence (noisier) detections.</div>
+        <div class="formula" style="margin:0;font-size:11px;">Sort: conf 0.97 → 0.93 → … → 0.06</div>
+      </div>
+
+      <div style="background:rgba(37,99,235,0.05);border:1px solid rgba(37,99,235,0.15);border-radius:10px;padding:12px 14px;font-size:12px;color:var(--text2);line-height:1.65;">
+        <strong style="color:var(--accent);">Takeaway:</strong> A curve that stays <em>top-right</em> means the model finds many TPs early (high precision) and continues finding them (high recall). AP is the area under this curve — bigger = better.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 8: 11-pt vs All-point ANIMATED -->
+<div class="slide" id="s6">
+  <div class="eyebrow">Step 04</div>
+  <div class="slide-title"><em>11-point</em> vs <em>All-point</em> — Side by Side</div>
+  <div class="subtitle">Both methods first apply the monotone envelope, then calculate the area differently. Toggle between modes to see exactly where the bars land.</div>
+
+  <div style="display:flex;gap:18px;flex:1;min-height:0;">
+
+    <!-- Shared chart (left, bigger) -->
+    <div style="flex:1.4;display:flex;flex-direction:column;gap:10px;min-height:0;">
+      <!-- mode toggle -->
+      <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
+        <button id="itp-btn-11" onclick="itpSetMode('11')" style="font-family:var(--mono);font-size:12px;padding:5px 18px;border:1.5px solid #7c3aed;border-radius:20px;background:#7c3aed;color:#fff;cursor:pointer;">11-point</button>
+        <button id="itp-btn-all" onclick="itpSetMode('all')" style="font-family:var(--mono);font-size:12px;padding:5px 18px;border:1.5px solid var(--border2);border-radius:20px;background:none;color:var(--text2);cursor:pointer;">All-point</button>
+        <span style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-left:6px;" id="itp-mode-lbl">Showing: 11-point (VOC 2007)</span>
+      </div>
+      <div style="position:relative;flex:1;min-height:0;"><canvas id="itpCanvas"></canvas></div>
+      <div style="display:flex;gap:20px;justify-content:center;flex-shrink:0;">
+        <span style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;"><span style="width:14px;height:3px;background:#2563eb;display:inline-block;border-radius:2px;"></span>PR Curve</span>
+        <span style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;"><span style="width:12px;height:12px;background:rgba(124,58,237,0.25);border:1.5px solid #7c3aed;display:inline-block;border-radius:2px;"></span>11-pt bars</span>
+        <span style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;"><span style="width:12px;height:12px;background:rgba(37,99,235,0.18);border:1.5px solid #2563eb;display:inline-block;border-radius:2px;"></span>All-pt area</span>
+      </div>
+    </div>
+
+    <!-- Right: explanation panel -->
+    <div style="width:260px;display:flex;flex-direction:column;gap:10px;flex-shrink:0;overflow-y:auto;">
+      <div class="metric-mini"><div class="ml">AP (11-point)</div><div class="mv" id="itp-ap11" style="color:#7c3aed;">—</div></div>
+      <div class="metric-mini"><div class="ml">AP (All-point)</div><div class="mv" id="itp-apall" style="color:#2563eb;">—</div></div>
+      <div class="metric-mini"><div class="ml">Difference</div><div class="mv" id="itp-diff" style="color:var(--red);font-size:18px;">—</div></div>
+
+      <div id="itp-explain-11" class="card" style="gap:8px;border-left:3px solid #7c3aed;">
+        <div style="font-size:13px;font-weight:500;color:#7c3aed;">11-point (VOC 2007)</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.65;">Samples recall at <strong>exactly 11 fixed levels</strong>: 0.0, 0.1, …, 1.0. At each level, takes the max precision to the right. Then averages the 11 values.</div>
+        <div class="formula" style="margin:0;font-size:11px;color:#7c3aed;">AP = (1/11) Σ P_max(r)<br>r ∈ {0, 0.1, 0.2 … 1.0}</div>
+        <div style="font-size:11px;color:var(--text3);line-height:1.6;">Problem: if the curve is sparse between two sample points, the area estimate can be wrong — it either over- or under-counts.</div>
+      </div>
+
+      <div id="itp-explain-all" class="card" style="gap:8px;border-left:3px solid #2563eb;display:none;">
+        <div style="font-size:13px;font-weight:500;color:#2563eb;">All-point (VOC 2010+)</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.65;">Uses <strong>every recall point where the curve actually changes</strong>. Computes width × height for each tiny rectangle and sums them — a true Riemann integral.</div>
+        <div class="formula" style="margin:0;font-size:11px;color:#2563eb;">AP = Σ (r_n − r_{n-1}) × P_max(r_n)<br>for all actual change points</div>
+        <div style="font-size:11px;color:var(--text3);line-height:1.6;">Result: exactly the area under the monotone-envelope curve, no information is missed or double-counted.</div>
+      </div>
+
+      <div style="background:rgba(220,38,38,0.05);border:1px solid rgba(220,38,38,0.15);border-radius:10px;padding:11px 13px;font-size:12px;color:var(--text2);line-height:1.65;">
+        <strong style="color:var(--red);">Key insight:</strong> When the PR curve drops sharply between two 11-pt sample points, 11-point <em>misses</em> that drop. All-point catches it. That's why the same model can look better under 11-point.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 8b: Monotone Envelope step-by-step -->
+<div class="slide" id="s6b">
+  <div class="eyebrow">Step 04 — Envelope</div>
+  <div class="slide-title">Raw Curve → <em>Monotone Envelope</em> → Area</div>
+  <div class="subtitle">Before computing AP, both methods apply the same envelope step. Watch the three stages one by one.</div>
+  <div style="display:flex;gap:20px;flex:1;min-height:0;">
+
+    <!-- Chart -->
+    <div style="flex:1.3;display:flex;flex-direction:column;gap:10px;min-height:0;">
+      <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
+        <button onclick="envStep(-1)" style="font-family:var(--mono);font-size:12px;padding:5px 14px;border:1px solid var(--border2);border-radius:20px;background:none;cursor:pointer;color:var(--text2);">← Back</button>
+        <button onclick="envStep(1)"  style="font-family:var(--mono);font-size:12px;padding:5px 14px;border:1px solid var(--accent);border-radius:20px;background:var(--accent);color:#fff;cursor:pointer;">Next →</button>
+        <div style="display:flex;gap:6px;margin-left:8px;" id="env-dots-wrap"></div>
+      </div>
+      <div style="position:relative;flex:1;min-height:0;"><canvas id="envCanvas"></canvas></div>
+    </div>
+
+    <!-- Step explanation -->
+    <div style="width:280px;display:flex;flex-direction:column;gap:12px;flex-shrink:0;justify-content:center;">
+      <div id="env-panel-0" class="card" style="gap:9px;border-left:3px solid var(--accent);">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;">Stage 1 of 3</div>
+        <div style="font-size:15px;font-weight:500;color:var(--text);">Raw PR Curve</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.7;">This is the curve you get by sorting detections by confidence and plotting (Recall, Precision) at each step.<br><br>It has a <strong>staircase shape</strong> — right steps from TP hits, downward steps from FP hits.</div>
+        <div class="formula" style="margin:0;font-size:11px;">Each point = one detection added<br>TP → right &nbsp; FP → down</div>
+      </div>
+      <div id="env-panel-1" class="card" style="gap:9px;border-left:3px solid var(--amber);display:none;">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;">Stage 2 of 3</div>
+        <div style="font-size:15px;font-weight:500;color:var(--text);">Monotone Envelope</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.7;">Scan from <strong>right to left</strong>. At each recall point, replace precision with the <em>maximum precision achievable at that recall or higher</em>.<br><br>This removes the "dips" — a dip just means a slightly higher confidence threshold would recover that precision.</div>
+        <div class="formula" style="margin:0;font-size:11px;color:var(--amber);">P_env(r) = max P(r') where r' ≥ r</div>
+        <div style="font-size:11px;color:var(--text3);">Orange line = envelope. Note how it never dips below the maximum it has seen to its right.</div>
+      </div>
+      <div id="env-panel-2" class="card" style="gap:9px;border-left:3px solid var(--green);display:none;">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;">Stage 3 of 3</div>
+        <div style="font-size:15px;font-weight:500;color:var(--text);">Area = AP</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.7;">AP is the <strong>area under the envelope</strong>, not the raw curve.<br><br>The step-downs in the raw curve are gone — replaced by the envelope. This is why AP doesn't penalise individual FPs harshly; it asks: <em>"what's the best precision this model can achieve at each recall level?"</em></div>
+        <div class="formula" style="margin:0;font-size:11px;color:var(--green);">AP = ∫ P_env(r) dr<br>= area of the green region</div>
+        <div style="background:rgba(22,163,74,0.08);border-radius:8px;padding:8px 10px;font-size:12px;">
+          <strong style="color:var(--green)">AP = <span id="env-ap-val">—</span></strong>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 7: mAP 20 classes -->
+<div class="slide" id="s7">
+  <div class="eyebrow">Step 05</div>
+  <div class="slide-title">PASCAL VOC — <em>20-class mAP</em></div>
+  <div class="subtitle">Compute per-class AP then take the arithmetic mean. Sample YOLOv3-style per-class AP on VOC 2007 test set.</div>
+  <div style="display:flex;gap:22px;flex:1;min-height:0;">
+    <div class="class-bars" id="class-bars" style="flex:1.4;"></div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:12px;">
+      <div class="formula" style="font-size:13px;">
+        mAP = <span class="hl">(1/20)</span> × Σ AP_c<br><br>
+        <span class="hl2">mAP@0.5</span>       : VOC standard<br>
+        <span class="hl3">mAP@0.5:0.95</span>  : COCO standard
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div class="metric-mini"><div class="ml">mAP (avg)</div><div class="mv" id="map-avg" style="color:var(--accent)">—</div></div>
+        <div class="metric-mini"><div class="ml">Best class</div><div class="mv" id="map-best" style="color:var(--green);font-size:13px;">—</div></div>
+        <div class="metric-mini"><div class="ml">Worst class</div><div class="mv" id="map-worst" style="color:var(--red);font-size:13px;">—</div></div>
+        <div class="metric-mini"><div class="ml"># classes</div><div class="mv" style="color:var(--text)">20</div></div>
+      </div>
+      <div class="card" style="flex:1;font-size:12px;color:var(--text2);line-height:1.8;">
+        <div style="font-weight:500;color:var(--text);margin-bottom:5px;font-size:13px;">VOC 20 classes</div>
+        aeroplane · bicycle · bird · boat · bottle · bus · car · cat · chair · cow · diningtable · dog · horse · motorbike · <strong style="color:var(--accent)">person</strong> · pottedplant · sheep · sofa · train · tvmonitor
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 8: Summary -->
+<div class="slide" id="s8">
+  <div class="eyebrow">Summary</div>
+  <div class="slide-title">Key Concepts <em>at a Glance</em></div>
+  <div class="subtitle">The full 5-step pipeline on one slide.</div>
+  <div class="summary-grid">
+    <div class="summary-card">
+      <div class="sc-num">01</div><div class="sc-title" style="color:var(--accent)">IoU</div>
+      <div class="sc-body">Ratio of intersection to union area between two boxes. PASCAL VOC uses 0.5 as the threshold to decide TP vs FP.</div>
+      <div class="sc-formula">IoU = |A ∩ B| / |A ∪ B|</div>
+    </div>
+    <div class="summary-card">
+      <div class="sc-num">02</div><div class="sc-title" style="color:var(--green)">TP / FP / FN</div>
+      <div class="sc-body">IoU ≥ thr → TP. Second match on same GT → FP. Undetected GT → FN. TN is undefined — no background class.</div>
+      <div class="sc-formula">Precision = TP/(TP+FP)   Recall = TP/(TP+FN)</div>
+    </div>
+    <div class="summary-card">
+      <div class="sc-num">03 → 04</div><div class="sc-title" style="color:var(--amber)">PR Curve &amp; AP</div>
+      <div class="sc-body">Sort by confidence descending, accumulate (P, R) per row to trace the PR Curve. Area under that curve = AP.</div>
+      <div class="sc-formula">AP = ∫₀¹ P(r) dr</div>
+    </div>
+    <div class="summary-card">
+      <div class="sc-num">05</div><div class="sc-title" style="color:var(--accent2)">mAP</div>
+      <div class="sc-body">Arithmetic mean of per-class AP over all 20 classes. VOC uses mAP@0.5; COCO uses mAP@0.5:0.95 (10 IoU levels averaged).</div>
+      <div class="sc-formula">mAP = (1/C) × Σ AP_c</div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 9: FP 3 Cases -->
+<div class="slide" id="s9">
+  <div class="eyebrow">FP Deep Dive</div>
+  <div class="slide-title">The <em>3 Types</em> of False Positives</div>
+  <div class="subtitle">Any detection labelled Positive that does not count as TP falls into one of three categories.</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;flex:1;min-height:0;">
+
+    <div class="card" style="gap:10px;align-items:center;">
+      <div style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--red);text-transform:uppercase;">Case 1 — IoU Miss</div>
+      <svg viewBox="0 0 220 165" width="100%" style="max-height:165px;flex-shrink:0;">
+        <rect x="10" y="30" width="110" height="100" rx="4" fill="rgba(37,99,235,0.07)" stroke="#2563eb" stroke-width="2"/>
+        <text x="14" y="46" font-size="11" fill="#2563eb" font-family="DM Mono,monospace">GT</text>
+        <rect x="100" y="60" width="110" height="90" rx="4" fill="rgba(217,119,6,0.07)" stroke="#d97706" stroke-width="2" stroke-dasharray="6,3"/>
+        <text x="104" y="76" font-size="11" fill="#d97706" font-family="DM Mono,monospace">Pred</text>
+        <rect x="100" y="60" width="20" height="70" fill="rgba(220,38,38,0.12)"/>
+        <text x="110" y="158" font-size="10" fill="#dc2626" font-family="DM Mono,monospace" text-anchor="middle">IoU ≈ 0.08  →  FP</text>
+      </svg>
+      <div style="font-size:12px;color:var(--text2);line-height:1.6;text-align:center;">Box was predicted but barely overlaps GT. The location is simply wrong.</div>
+      <div style="font-family:var(--mono);font-size:11px;background:var(--bg3);padding:5px 11px;border-radius:6px;color:var(--red);">IoU &lt; threshold → FP</div>
+    </div>
+
+    <div class="card" style="gap:10px;align-items:center;">
+      <div style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--amber);text-transform:uppercase;">Case 2 — Duplicate Detection</div>
+      <svg viewBox="0 0 220 165" width="100%" style="max-height:165px;flex-shrink:0;">
+        <rect x="30" y="25" width="120" height="110" rx="4" fill="rgba(37,99,235,0.07)" stroke="#2563eb" stroke-width="2"/>
+        <text x="34" y="41" font-size="11" fill="#2563eb" font-family="DM Mono,monospace">GT</text>
+        <rect x="28" y="23" width="118" height="108" rx="4" fill="none" stroke="#16a34a" stroke-width="2"/>
+        <text x="34" y="118" font-size="10" fill="#16a34a" font-family="DM Mono,monospace">Pred1 conf=0.97 ✓TP</text>
+        <rect x="38" y="33" width="108" height="98" rx="4" fill="rgba(217,119,6,0.06)" stroke="#d97706" stroke-width="2" stroke-dasharray="5,3"/>
+        <text x="44" y="48" font-size="10" fill="#d97706" font-family="DM Mono,monospace">Pred2 conf=0.81</text>
+        <text x="110" y="158" font-size="10" fill="#dc2626" font-family="DM Mono,monospace" text-anchor="middle">Same GT → 2nd is FP</text>
+      </svg>
+      <div style="font-size:12px;color:var(--text2);line-height:1.6;text-align:center;">IoU is fine, but another prediction already claimed this GT. NMS prevents this.</div>
+      <div style="font-family:var(--mono);font-size:11px;background:var(--bg3);padding:5px 11px;border-radius:6px;color:var(--amber);">1st match → TP, rest → FP</div>
+    </div>
+
+    <div class="card" style="gap:10px;align-items:center;">
+      <div style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--coral);text-transform:uppercase;">Case 3 — Hallucination</div>
+      <svg viewBox="0 0 220 165" width="100%" style="max-height:165px;flex-shrink:0;">
+        <rect x="10" y="10" width="200" height="140" rx="6" fill="rgba(0,0,0,0.02)" stroke="rgba(0,0,0,0.06)" stroke-width="1"/>
+        <rect x="18" y="18" width="58" height="50" rx="3" fill="rgba(37,99,235,0.07)" stroke="#2563eb" stroke-width="1.5"/>
+        <text x="22" y="32" font-size="9" fill="#2563eb" font-family="DM Mono,monospace">GT (person)</text>
+        <rect x="118" y="68" width="84" height="68" rx="4" fill="rgba(220,38,38,0.07)" stroke="#dc2626" stroke-width="2" stroke-dasharray="5,3"/>
+        <text x="124" y="84" font-size="10" fill="#dc2626" font-family="DM Mono,monospace">Pred conf=0.72</text>
+        <text x="160" y="158" font-size="10" fill="#dc2626" font-family="DM Mono,monospace" text-anchor="middle">Empty region → FP</text>
+        <text x="160" y="124" font-size="20" fill="rgba(220,38,38,0.3)" text-anchor="middle">✕</text>
+      </svg>
+      <div style="font-size:12px;color:var(--text2);line-height:1.6;text-align:center;">A box drawn in empty background with no GT nearby. A model hallucination.</div>
+      <div style="font-family:var(--mono);font-size:11px;background:var(--bg3);padding:5px 11px;border-radius:6px;color:var(--coral);">No GT in region → FP</div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 10: VOC vs COCO -->
+<div class="slide" id="s10">
+  <div class="eyebrow">Dataset Comparison</div>
+  <div class="slide-title">PASCAL VOC <em>vs</em> MS COCO</div>
+  <div class="subtitle">Both are called "mAP" — but they measure different things. Understanding the gap is essential when comparing published results.</div>
+  <div style="flex:1;display:flex;flex-direction:column;gap:12px;min-height:0;">
+    <div style="display:grid;grid-template-columns:180px 1fr 1fr;gap:2px;">
+      <div></div>
+      <div style="background:rgba(37,99,235,0.07);border-radius:10px 10px 0 0;padding:9px 14px;text-align:center;font-weight:500;color:var(--accent);">PASCAL VOC</div>
+      <div style="background:rgba(124,58,237,0.07);border-radius:10px 10px 0 0;padding:9px 14px;text-align:center;font-weight:500;color:var(--accent2);">MS COCO</div>
+    </div>
+    <div style="display:grid;grid-template-columns:180px 1fr 1fr;gap:2px;flex:1;overflow-y:auto;" id="cmp-rows"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <div class="formula" style="font-size:12px;margin:0;"><span style="color:var(--accent)">VOC mAP@0.5</span><br>Single IoU → 1 AP value<br>Relatively <span class="hl3">lenient</span> evaluation</div>
+      <div class="formula" style="font-size:12px;margin:0;"><span style="color:var(--accent2)">COCO mAP@0.5:0.05:0.95</span><br>10 IoU levels → 10 APs averaged<br>Box quality is <span class="hl4">strictly</span> penalised</div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 11: Timeline -->
+<div class="slide" id="s11">
+  <div class="eyebrow">History</div>
+  <div class="slide-title">Object Detection <em>Dataset Timeline</em></div>
+  <div class="subtitle">From VOC to SA-1B — the evolution of scale, class diversity, and annotation richness.</div>
+  <div style="flex:1;overflow-y:auto;padding-bottom:56px;">
+    <div id="timeline-wrap" style="position:relative;padding-left:32px;margin-top:6px;"></div>
+  </div>
+</div>
+
+<!-- SLIDE 12: Modern Datasets -->
+<div class="slide" id="s12">
+  <div class="eyebrow">Modern Datasets</div>
+  <div class="slide-title">Classic <em>vs</em> Modern Dataset Comparison</div>
+  <div class="subtitle">Scale, diversity, and annotation style determine how well a model generalises. Bubble size = number of images. Hover for details.</div>
+  <div style="flex:1;min-height:0;display:flex;flex-direction:column;gap:10px;">
+    <div style="position:relative;height:230px;flex-shrink:0;"><canvas id="datasetChart"></canvas></div>
+    <div id="ds-cards" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;overflow-y:auto;"></div>
+  </div>
+</div>
+
+</div><!-- end slides -->
+
+<div id="nav">
+  <button id="btn-prev" onclick="goSlide(-1)" disabled>‹</button>
+  <div class="dot-row" id="dots"></div>
+  <span id="slide-counter">1 / 16</span>
+  <button id="btn-next" onclick="goSlide(1)">›</button>
+</div>
+
+<script>
+// ── Slide engine ──
+const TOTAL=16; let cur=0;
+const slides=document.querySelectorAll('.slide');
+const dotsWrap=document.getElementById('dots');
+for(let i=0;i<TOTAL;i++){
+  const d=document.createElement('div');
+  d.className='dot'+(i===0?' on':'');
+  d.onclick=(function(idx){return function(){setSlide(idx);};})(i);
+  dotsWrap.appendChild(d);
+}
+function setSlide(n){
+  slides[cur].classList.remove('active');dotsWrap.children[cur].classList.remove('on');
+  cur=n;
+  slides[cur].classList.add('active');dotsWrap.children[cur].classList.add('on');
+  document.getElementById('slide-counter').textContent=(cur+1)+' / '+TOTAL;
+  document.getElementById('btn-prev').disabled=(cur===0);
+  document.getElementById('btn-next').disabled=(cur===TOTAL-1);
+  onSlideEnter(cur);
+}
+function goSlide(d){if(cur+d>=0&&cur+d<TOTAL)setSlide(cur+d);}
+document.addEventListener('keydown',function(e){
+  if(e.key==='ArrowRight'||e.key==='ArrowDown')goSlide(1);
+  if(e.key==='ArrowLeft'||e.key==='ArrowUp')goSlide(-1);
+});
+
+// ── Data ──
+const DETS=[
+  {img:'2007_000032',conf:0.97,iou:0.82},{img:'2007_000032',conf:0.93,iou:0.74},
+  {img:'2007_000033',conf:0.91,iou:0.61},{img:'2007_000042',conf:0.88,iou:0.38},
+  {img:'2007_000061',conf:0.85,iou:0.71},{img:'2007_000068',conf:0.80,iou:0.55},
+  {img:'2007_000068',conf:0.76,iou:0.29},{img:'2007_000032',conf:0.71,iou:0.66},
+  {img:'2007_000121',conf:0.67,iou:0.48},{img:'2007_000121',conf:0.63,iou:0.77},
+  {img:'2007_000170',conf:0.58,iou:0.53},{img:'2007_000170',conf:0.52,iou:0.22},
+  {img:'2007_000187',conf:0.47,iou:0.68},{img:'2007_000187',conf:0.41,iou:0.33},
+  {img:'2007_000220',conf:0.35,iou:0.72},{img:'2007_000220',conf:0.29,iou:0.19},
+  {img:'2007_000250',conf:0.22,iou:0.60},{img:'2007_000250',conf:0.15,iou:0.44},
+  {img:'2007_000323',conf:0.10,iou:0.57},{img:'2007_000323',conf:0.06,iou:0.14},
+];
+const GT_TOTAL=14;
+
+function evalDets(confT,iouT){
+  const usedGT={};let cumTP=0,cumFP=0;
+  return DETS.map(function(d,i){
+    const key=d.img+'_'+Math.floor(i/1.4);let verdict;
+    if(d.iou>=iouT&&!usedGT[key]){usedGT[key]=true;cumTP++;verdict='TP';}
+    else{cumFP++;verdict='FP';}
+    const fn=GT_TOTAL-cumTP;
+    return{img:d.img,conf:d.conf,iou:d.iou,verdict:verdict,cumTP:cumTP,cumFP:cumFP,fn:fn,
+      precision:cumTP/(cumTP+cumFP),recall:cumTP/GT_TOTAL};
+  });
+}
+function buildCurvePts(iouT){
+  const rows=evalDets(0,iouT);
+  const pts=[{conf:1,p:1,r:0}];
+  rows.forEach(function(r){pts.push({conf:r.conf,p:r.precision,r:r.recall});});
+  return pts;
+}
+function calcAPAll(pts){
+  let ap=0,maxP=0;const env=[];
+  for(let i=pts.length-1;i>=0;i--){maxP=Math.max(maxP,pts[i].p);env[i]=maxP;}
+  for(let i=1;i<pts.length;i++)ap+=(pts[i].r-pts[i-1].r)*env[i];
+  return Math.max(0,ap);
+}
+function calcAP11(pts){
+  const R=[0,.1,.2,.3,.4,.5,.6,.7,.8,.9,1];let ap=0;
+  R.forEach(function(r){ap+=pts.filter(function(p){return p.r>=r;}).reduce(function(m,p){return Math.max(m,p.p);},0);});
+  return ap/11;
+}
+
+// Slide 2
+function drawIoU(){
+  var canvas=document.getElementById('iouCanvas');if(!canvas)return;
+  var ctx=canvas.getContext('2d');var W=360,H=290;
+  ctx.clearRect(0,0,W,H);ctx.fillStyle='#f5f5f3';ctx.fillRect(0,0,W,H);
+  var gx=80,gy=70,gw=155,gh=140;
+  var px=parseInt(document.getElementById('px-slider').value);
+  var py=parseInt(document.getElementById('py-slider').value);
+  var ps=parseInt(document.getElementById('ps-slider').value);
+  document.getElementById('px-val').textContent=px;
+  document.getElementById('py-val').textContent=py;
+  document.getElementById('ps-val').textContent=ps;
+  var ix=Math.max(gx,px),iy=Math.max(gy,py),ix2=Math.min(gx+gw,px+ps),iy2=Math.min(gy+gh,py+ps);
+  var iW=Math.max(0,ix2-ix),iH=Math.max(0,iy2-iy),iA=iW*iH,uA=gw*gh+ps*ps-iA;
+  var iou=uA>0?iA/uA:0;
+  ctx.fillStyle='rgba(37,99,235,0.07)';ctx.fillRect(gx,gy,gw,gh);
+  ctx.fillStyle='rgba(217,119,6,0.07)';ctx.fillRect(px,py,ps,ps);
+  if(iA>0){ctx.fillStyle='rgba(22,163,74,0.18)';ctx.fillRect(ix,iy,iW,iH);ctx.strokeStyle='rgba(22,163,74,0.45)';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);ctx.strokeRect(ix,iy,iW,iH);ctx.setLineDash([]);}
+  ctx.strokeStyle='#2563eb';ctx.lineWidth=2.5;ctx.strokeRect(gx,gy,gw,gh);
+  ctx.fillStyle='#2563eb';ctx.font='bold 11px DM Mono,monospace';ctx.fillText('GT',gx+6,gy+15);
+  ctx.strokeStyle='#d97706';ctx.lineWidth=2.5;ctx.strokeRect(px,py,ps,ps);
+  ctx.fillStyle='#d97706';ctx.fillText('Pred',px+6,py+15);
+  document.getElementById('iou-val').textContent=iou.toFixed(3);
+  var isTP=iou>=0.5;var v=document.getElementById('iou-verdict');
+  v.textContent=isTP?'✓  TP — IoU ≥ 0.5':'✗  FP — IoU < 0.5';
+  v.style.background=isTP?'rgba(22,163,74,0.07)':'rgba(220,38,38,0.07)';
+  v.style.color=isTP?'#16a34a':'#dc2626';
+}
+
+// Slide 3
+function updateConfusion(){
+  var confT=parseInt(document.getElementById('conf-thresh').value)/100;
+  var iouT=parseInt(document.getElementById('iou-thresh').value)/100;
+  document.getElementById('conf-thresh-val').textContent=confT.toFixed(2);
+  document.getElementById('iou-thresh-val').textContent=iouT.toFixed(2);
+  var rows=evalDets(confT,iouT);
+  var active=rows.filter(function(r){return r.conf>=confT;});
+  var tp=active.filter(function(r){return r.verdict==='TP';}).length;
+  var fp=active.filter(function(r){return r.verdict==='FP';}).length;
+  var fn=GT_TOTAL-tp;
+  document.getElementById('c-tp').textContent=tp;
+  document.getElementById('c-fp').textContent=fp;
+  document.getElementById('c-fn').textContent=fn;
+  var p=tp+fp>0?tp/(tp+fp):0,r=tp/(tp+fn),f1=p+r>0?2*p*r/(p+r):0;
+  document.getElementById('c-prec').textContent=(p*100).toFixed(1)+'%';
+  document.getElementById('c-rec').textContent=(r*100).toFixed(1)+'%';
+  document.getElementById('c-f1').textContent=f1.toFixed(3);
+}
+
+// Slide 4
+var prChartInst=null;
+function updatePR(){
+  var confT=parseInt(document.getElementById('pr-thresh').value)/100;
+  var iouT=parseInt(document.getElementById('pr-iou').value)/100;
+  document.getElementById('pr-thresh-val').textContent=confT.toFixed(2);
+  document.getElementById('pr-iou-val').textContent=iouT.toFixed(2);
+  var pts=buildCurvePts(iouT);
+  var ap=calcAPAll(pts),ap11=calcAP11(pts);
+  var rows=evalDets(confT,iouT);
+  var active=rows.filter(function(r){return r.conf>=confT;});
+  var last=active.length?active[active.length-1]:{cumTP:0,cumFP:0,precision:0,recall:0};
+  document.getElementById('pr-ap').textContent=(ap*100).toFixed(1)+'%';
+  document.getElementById('pr-ap11').textContent=(ap11*100).toFixed(1)+'%';
+  document.getElementById('pr-p').textContent=(last.precision*100).toFixed(1)+'%';
+  document.getElementById('pr-r').textContent=(last.recall*100).toFixed(1)+'%';
+  document.getElementById('pr-tp').textContent=last.cumTP+' / '+last.cumFP;
+  var cd=pts.map(function(p){return{x:parseFloat(p.r.toFixed(3)),y:parseFloat(p.p.toFixed(3))};});
+  var curPt={x:parseFloat(last.recall.toFixed(3)),y:parseFloat(last.precision.toFixed(3))};
+  var r11=[0,.1,.2,.3,.4,.5,.6,.7,.8,.9,1];
+  var p11=r11.map(function(r){return{x:r,y:parseFloat(pts.filter(function(p){return p.r>=r;}).reduce(function(m,p){return Math.max(m,p.p);},0).toFixed(3))};});
+  if(prChartInst)prChartInst.destroy();
+  prChartInst=new Chart(document.getElementById('prChart'),{type:'scatter',data:{datasets:[
+    {data:cd,showLine:true,fill:true,backgroundColor:'rgba(37,99,235,0.07)',borderColor:'transparent',pointRadius:0,stepped:'after',order:4},
+    {data:cd,showLine:true,borderColor:'#2563eb',backgroundColor:'transparent',pointRadius:2.5,pointBackgroundColor:'#2563eb',borderWidth:2.5,stepped:'after',order:3},
+    {data:p11,showLine:false,pointRadius:5,pointBackgroundColor:'rgba(124,58,237,0.45)',pointBorderColor:'#7c3aed',pointBorderWidth:1.5,order:2},
+    {data:[curPt],pointRadius:8,pointBackgroundColor:'#dc2626',pointBorderColor:'#fff',pointBorderWidth:2,showLine:false,order:1}
+  ]},options:{responsive:true,maintainAspectRatio:false,animation:false,
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return 'P='+ctx.parsed.y.toFixed(2)+', R='+ctx.parsed.x.toFixed(2);}}}},
+    scales:{x:{min:0,max:1.05,title:{display:true,text:'Recall',color:'#6b6966'},ticks:{color:'#a8a5a0'},grid:{color:'rgba(0,0,0,0.05)'}},
+            y:{min:0,max:1.05,title:{display:true,text:'Precision',color:'#6b6966'},ticks:{color:'#a8a5a0'},grid:{color:'rgba(0,0,0,0.05)'}}}}});
+}
+
+// Slide 5
+function updateTable(){
+  var confT=parseInt(document.getElementById('tbl-thresh').value)/100;
+  var iouT=parseInt(document.getElementById('tbl-iou').value)/100;
+  document.getElementById('tbl-thresh-val').textContent=confT.toFixed(2);
+  document.getElementById('tbl-iou-val').textContent=iouT.toFixed(2);
+  var rows=evalDets(confT,iouT);
+  document.getElementById('tbl-body').innerHTML=rows.map(function(r,i){
+    var active=r.conf>=confT;
+    var badge=r.verdict==='TP'?'<span class="pill pill-tp">TP</span>':'<span class="pill pill-fp">FP</span>';
+    return '<tr class="'+(active?'row-active':'')+'"><td style="font-family:var(--mono);color:var(--text3)">'+(i+1)+'</td><td style="font-family:var(--mono);font-size:11px">'+r.img+'</td><td>person</td><td style="font-family:var(--mono)">'+r.conf.toFixed(2)+'</td><td style="font-family:var(--mono);color:'+(r.iou>=iouT?'#16a34a':'#dc2626')+'">'+r.iou.toFixed(2)+'</td><td>'+badge+'</td><td style="font-family:var(--mono)">'+(active?r.cumTP:'—')+'</td><td style="font-family:var(--mono)">'+(active?r.cumFP:'—')+'</td><td style="font-family:var(--mono);color:#16a34a">'+(active?r.precision.toFixed(3):'—')+'</td><td style="font-family:var(--mono);color:#d97706">'+(active?r.recall.toFixed(3):'—')+'</td></tr>';
+  }).join('');
+}
+
+// Slide 6: PR step animation
+var PRA_ROWS=(function(){
+  var usedGT={};var cumTP=0,cumFP=0;
+  return DETS.map(function(d,i){
+    var key=d.img+'_'+Math.floor(i/1.4);var verdict;
+    if(d.iou>=0.5&&!usedGT[key]){usedGT[key]=true;cumTP++;verdict='TP';}else{cumFP++;verdict='FP';}
+    return{img:d.img,conf:d.conf,iou:d.iou,verdict:verdict,cumTP:cumTP,cumFP:cumFP,precision:cumTP/(cumTP+cumFP),recall:cumTP/GT_TOTAL};
+  });
+})();
+var praStepCur=0,praTimer=null,praChartInst=null;
+function praReset(){
+  if(praTimer){clearInterval(praTimer);praTimer=null;}
+  praStepCur=0;
+  var btn=document.getElementById('pra-play');if(btn)btn.textContent='▶ Play';
+  praRender();
+}
+function praToggle(){
+  if(praTimer){clearInterval(praTimer);praTimer=null;document.getElementById('pra-play').textContent='▶ Play';}
+  else{
+    document.getElementById('pra-play').textContent='⏸ Pause';
+    praTimer=setInterval(function(){
+      if(praStepCur>=PRA_ROWS.length){clearInterval(praTimer);praTimer=null;document.getElementById('pra-play').textContent='▶ Play';return;}
+      praStepCur++;praRender();
+    },900);
+  }
+}
+function praStep(d){
+  if(praTimer){clearInterval(praTimer);praTimer=null;document.getElementById('pra-play').textContent='▶ Play';}
+  praStepCur=Math.max(0,Math.min(PRA_ROWS.length,praStepCur+d));praRender();
+}
+function praRender(){
+  var step=praStepCur;
+  var lbl=document.getElementById('pra-step-lbl');if(lbl)lbl.textContent='Step '+step+' / '+PRA_ROWS.length;
+  var cur_det=document.getElementById('pra-cur-det');
+  if(step===0){
+    if(cur_det)cur_det.innerHTML='<span style="color:var(--text3)">Press Play or Next to begin.</span>';
+    document.getElementById('pra-tp').textContent='0';document.getElementById('pra-fp').textContent='0';
+    document.getElementById('pra-prec').textContent='—';document.getElementById('pra-rec').textContent='—';
+  } else {
+    var r=PRA_ROWS[step-1];var col=r.verdict==='TP'?'var(--green)':'var(--red)';
+    if(cur_det)cur_det.innerHTML='<div style="margin-bottom:4px"><span style="font-family:var(--mono);font-size:11px;color:var(--text3)">'+r.img+'</span></div><div>Conf: <strong style="color:var(--text);font-family:var(--mono)">'+r.conf.toFixed(2)+'</strong> &nbsp; IoU: <strong style="font-family:var(--mono);color:'+(r.iou>=0.5?'var(--green)':'var(--red)')+'">'+r.iou.toFixed(2)+'</strong></div><div style="margin-top:6px">Verdict: <strong style="color:'+col+';font-size:15px">'+r.verdict+'</strong></div><div style="margin-top:4px;font-size:12px;color:var(--text3)">'+(r.verdict==='TP'?'IoU ≥ 0.5 → Recall ↑':'IoU < 0.5 or duplicate → Precision ↓')+'</div>';
+    document.getElementById('pra-tp').textContent=r.cumTP;document.getElementById('pra-fp').textContent=r.cumFP;
+    document.getElementById('pra-prec').textContent=(r.precision*100).toFixed(1)+'%';document.getElementById('pra-rec').textContent=(r.recall*100).toFixed(1)+'%';
+  }
+  var tbody=document.getElementById('pra-history');
+  if(tbody)tbody.innerHTML=PRA_ROWS.slice(0,step).reverse().map(function(r,ri){
+    var vc=r.verdict==='TP'?'#16a34a':'#dc2626';
+    return '<tr style="background:'+(ri===0?'rgba(37,99,235,0.05)':'transparent')+'"><td style="padding:5px 10px;font-family:var(--mono);color:var(--text3)">'+(step-ri)+'</td><td style="padding:5px 10px;font-family:var(--mono)">'+r.conf.toFixed(2)+'</td><td style="padding:5px 10px;font-weight:500;color:'+vc+'">'+r.verdict+'</td><td style="padding:5px 10px;font-family:var(--mono);color:var(--accent)">'+r.precision.toFixed(2)+'</td><td style="padding:5px 10px;font-family:var(--mono);color:var(--amber)">'+r.recall.toFixed(2)+'</td></tr>';
+  }).join('');
+  var canvas=document.getElementById('praCanvas');if(!canvas)return;
+  var plotted=PRA_ROWS.slice(0,step);
+  var pts=[{x:0,y:1}].concat(plotted.map(function(r){return{x:parseFloat(r.recall.toFixed(3)),y:parseFloat(r.precision.toFixed(3))};}));
+  var tpPts=plotted.filter(function(r){return r.verdict==='TP';}).map(function(r){return{x:parseFloat(r.recall.toFixed(3)),y:parseFloat(r.precision.toFixed(3))};});
+  var fpPts=plotted.filter(function(r){return r.verdict==='FP';}).map(function(r){return{x:parseFloat(r.recall.toFixed(3)),y:parseFloat(r.precision.toFixed(3))};});
+  var ds=[
+    {data:pts,showLine:true,borderColor:'rgba(37,99,235,0.25)',backgroundColor:'rgba(37,99,235,0.05)',fill:true,pointRadius:0,stepped:'after',borderWidth:1.5,order:4},
+    {data:tpPts,showLine:false,pointRadius:7,pointBackgroundColor:'rgba(22,163,74,0.8)',pointBorderColor:'#16a34a',pointBorderWidth:1.5,order:2},
+    {data:fpPts,showLine:false,pointRadius:7,pointBackgroundColor:'rgba(220,38,38,0.7)',pointBorderColor:'#dc2626',pointBorderWidth:1.5,order:2},
+  ];
+  if(step>0)ds.push({data:[pts[pts.length-1]],showLine:false,pointRadius:10,pointBackgroundColor:'#2563eb',pointBorderColor:'#fff',pointBorderWidth:2.5,order:1});
+  if(praChartInst)praChartInst.destroy();
+  praChartInst=new Chart(canvas,{type:'scatter',data:{datasets:ds},options:{responsive:true,maintainAspectRatio:false,animation:false,
+    plugins:{legend:{display:false}},
+    scales:{x:{min:0,max:1.05,title:{display:true,text:'Recall',color:'#6b6966'},ticks:{color:'#a8a5a0'},grid:{color:'rgba(0,0,0,0.05)'}},
+            y:{min:0,max:1.1,title:{display:true,text:'Precision',color:'#6b6966'},ticks:{color:'#a8a5a0'},grid:{color:'rgba(0,0,0,0.05)'}}}}});
+}
+
+// Slide 7: Annotated curve
+var annotChartInst=null;
+function buildAnnotCanvas(){
+  var canvas=document.getElementById('annotCanvas');if(!canvas)return;
+  if(annotChartInst)annotChartInst.destroy();
+  var usedGT={};var cumTP=0,cumFP=0;var pts=[{conf:1,p:1,r:0}];
+  DETS.forEach(function(d,i){
+    var key=d.img+'_'+Math.floor(i/1.4);var v;
+    if(d.iou>=0.5&&!usedGT[key]){usedGT[key]=true;cumTP++;v='TP';}else{cumFP++;v='FP';}
+    pts.push({conf:d.conf,p:cumTP/(cumTP+cumFP),r:cumTP/GT_TOTAL,v:v});
+  });
+  var cd=pts.map(function(p){return{x:parseFloat(p.r.toFixed(3)),y:parseFloat(p.p.toFixed(3))};});
+  var tpPts=pts.filter(function(p){return p.v==='TP';}).map(function(p){return{x:parseFloat(p.r.toFixed(3)),y:parseFloat(p.p.toFixed(3))};});
+  var fpPts=pts.filter(function(p){return p.v==='FP';}).map(function(p){return{x:parseFloat(p.r.toFixed(3)),y:parseFloat(p.p.toFixed(3))};});
+  annotChartInst=new Chart(canvas,{type:'scatter',data:{datasets:[
+    {data:cd,showLine:true,fill:true,backgroundColor:'rgba(37,99,235,0.06)',borderColor:'#2563eb',pointRadius:0,stepped:'after',borderWidth:2.5,order:3},
+    {data:tpPts,showLine:false,pointRadius:8,pointBackgroundColor:'rgba(22,163,74,0.75)',pointBorderColor:'#16a34a',pointBorderWidth:1.5,label:'TP — Recall ↑',order:2},
+    {data:fpPts,showLine:false,pointRadius:8,pointBackgroundColor:'rgba(220,38,38,0.65)',pointBorderColor:'#dc2626',pointBorderWidth:1.5,label:'FP — Precision ↓',order:2},
+  ]},options:{responsive:true,maintainAspectRatio:false,animation:false,
+    plugins:{legend:{display:true,position:'bottom',labels:{font:{size:12},color:'#6b6966',usePointStyle:true,padding:16}}},
+    scales:{x:{min:0,max:1.05,title:{display:true,text:'Recall',color:'#6b6966'},ticks:{color:'#a8a5a0'},grid:{color:'rgba(0,0,0,0.05)'}},
+            y:{min:0,max:1.1,title:{display:true,text:'Precision',color:'#6b6966'},ticks:{color:'#a8a5a0'},grid:{color:'rgba(0,0,0,0.05)'}}}}});
+}
+
+// Slide 8: 11-pt vs All-point
+var itpChartInst=null,itpMode='11';
+function itpSetMode(mode){
+  itpMode=mode;
+  document.getElementById('itp-btn-11').style.background=mode==='11'?'#7c3aed':'none';
+  document.getElementById('itp-btn-11').style.color=mode==='11'?'#fff':'var(--text2)';
+  document.getElementById('itp-btn-11').style.borderColor=mode==='11'?'#7c3aed':'var(--border2)';
+  document.getElementById('itp-btn-all').style.background=mode==='all'?'#2563eb':'none';
+  document.getElementById('itp-btn-all').style.color=mode==='all'?'#fff':'var(--text2)';
+  document.getElementById('itp-btn-all').style.borderColor=mode==='all'?'#2563eb':'var(--border2)';
+  document.getElementById('itp-mode-lbl').textContent=mode==='11'?'Showing: 11-point (VOC 2007)':'Showing: All-point (VOC 2010+)';
+  document.getElementById('itp-explain-11').style.display=mode==='11'?'flex':'none';
+  document.getElementById('itp-explain-all').style.display=mode==='all'?'flex':'none';
+  buildInterpCharts();
+}
+function buildInterpCharts(){
+  var canvas=document.getElementById('itpCanvas');if(!canvas)return;
+  var rawPts=buildCurvePts(0.5);
+  var maxP=0;var env=[];
+  for(var i=rawPts.length-1;i>=0;i--){maxP=Math.max(maxP,rawPts[i].p);env[i]=maxP;}
+  var ap11=calcAP11(rawPts),apAll=calcAPAll(rawPts),diff=ap11-apAll;
+  document.getElementById('itp-ap11').textContent=(ap11*100).toFixed(2)+'%';
+  document.getElementById('itp-apall').textContent=(apAll*100).toFixed(2)+'%';
+  var diffEl=document.getElementById('itp-diff');
+  diffEl.textContent=(diff>=0?'+':'')+(diff*100).toFixed(2)+'%';
+  diffEl.style.color=diff>0.005?'#dc2626':diff<-0.005?'#16a34a':'#6b6966';
+  var curveData=rawPts.map(function(p){return{x:parseFloat(p.r.toFixed(3)),y:parseFloat(p.p.toFixed(3))};});
+  var datasets=[];
+  if(itpMode==='11'){
+    var r11=[0,.1,.2,.3,.4,.5,.6,.7,.8,.9,1.0];
+    var p11=r11.map(function(r){var maxPr=rawPts.filter(function(p){return p.r>=r;}).reduce(function(m,p){return Math.max(m,p.p);},0);return{r:r,p:maxPr};});
+    var barData=[];
+    p11.forEach(function(pt){barData.push({x:pt.r,y:0},{x:pt.r,y:pt.p},{x:pt.r+0.099,y:pt.p},{x:pt.r+0.099,y:0},{x:pt.r,y:0});});
+    var dotData=p11.map(function(pt){return{x:pt.r+0.05,y:parseFloat(pt.p.toFixed(3))};});
+    datasets=[
+      {type:'line',data:barData,showLine:true,fill:true,backgroundColor:'rgba(124,58,237,0.18)',borderColor:'rgba(124,58,237,0.55)',borderWidth:1,pointRadius:0,tension:0,order:3},
+      {type:'scatter',data:curveData,showLine:true,borderColor:'#2563eb',pointRadius:0,stepped:'after',borderWidth:2.5,fill:false,order:2},
+      {type:'scatter',data:dotData,showLine:false,pointRadius:6,pointBackgroundColor:'#7c3aed',pointBorderColor:'#fff',pointBorderWidth:1.5,order:1},
+    ];
+  } else {
+    var allData=rawPts.map(function(p,i){return{x:parseFloat(p.r.toFixed(3)),y:parseFloat(env[i].toFixed(3))};});
+    datasets=[
+      {type:'scatter',data:allData,showLine:true,fill:true,backgroundColor:'rgba(37,99,235,0.14)',borderColor:'#2563eb',pointRadius:0,stepped:'after',borderWidth:2.5,order:2},
+    ];
+  }
+  if(itpChartInst)itpChartInst.destroy();
+  itpChartInst=new Chart(canvas,{data:{datasets:datasets},options:{responsive:true,maintainAspectRatio:false,animation:false,
+    plugins:{legend:{display:false}},
+    scales:{x:{type:'linear',min:0,max:1.1,title:{display:true,text:'Recall',color:'#6b6966'},ticks:{color:'#a8a5a0',stepSize:.1},grid:{color:'rgba(0,0,0,0.05)'}},
+            y:{min:0,max:1.1,title:{display:true,text:'Precision',color:'#6b6966'},ticks:{color:'#a8a5a0'},grid:{color:'rgba(0,0,0,0.05)'}}}}});
+}
+
+// Slide 9: Envelope
+var envCur=0,envChartInst=null;
+function envStep(d){envCur=Math.max(0,Math.min(2,envCur+d));buildEnvSlide();}
+function buildEnvSlide(){
+  var wrap=document.getElementById('env-dots-wrap');
+  if(wrap)wrap.innerHTML=[0,1,2].map(function(i){return '<div onclick="envCur='+i+';buildEnvSlide()" style="width:8px;height:8px;border-radius:50%;background:'+(i===envCur?'var(--accent)':'var(--border2)')+';cursor:pointer;transition:background .2s"></div>';}).join('');
+  [0,1,2].forEach(function(i){var el=document.getElementById('env-panel-'+i);if(el)el.style.display=i===envCur?'flex':'none';});
+  var canvas=document.getElementById('envCanvas');if(!canvas)return;
+  var usedGT={};var cumTP=0,cumFP=0;var raw=[{r:0,p:1}];
+  DETS.forEach(function(d,i){
+    var key=d.img+'_'+Math.floor(i/1.4);
+    if(d.iou>=0.5&&!usedGT[key]){usedGT[key]=true;cumTP++;}else{cumFP++;}
+    raw.push({r:cumTP/GT_TOTAL,p:cumTP/(cumTP+cumFP)});
+  });
+  var maxP2=0;var envArr=[];
+  for(var i=raw.length-1;i>=0;i--){maxP2=Math.max(maxP2,raw[i].p);envArr[i]=maxP2;}
+  var rawCurve=raw.map(function(p){return{x:parseFloat(p.r.toFixed(3)),y:parseFloat(p.p.toFixed(3))};});
+  var envCurve=raw.map(function(p,i){return{x:parseFloat(p.r.toFixed(3)),y:parseFloat(envArr[i].toFixed(3))};});
+  var apPts=raw.map(function(p,i){return{r:p.r,p:envArr[i]};});
+  var ap=calcAPAll(apPts);
+  var apEl=document.getElementById('env-ap-val');if(apEl)apEl.textContent=(ap*100).toFixed(1)+'%';
+  var datasets=[];
+  if(envCur===0){
+    datasets=[{type:'scatter',data:rawCurve,showLine:true,borderColor:'#2563eb',backgroundColor:'transparent',pointRadius:3,pointBackgroundColor:'#2563eb',borderWidth:2.5,stepped:'after',fill:false}];
+  } else if(envCur===1){
+    datasets=[
+      {type:'scatter',data:rawCurve,showLine:true,borderColor:'rgba(37,99,235,0.22)',pointRadius:2,pointBackgroundColor:'rgba(37,99,235,0.22)',borderWidth:1.5,stepped:'after',fill:false,order:2},
+      {type:'scatter',data:envCurve,showLine:true,borderColor:'#d97706',pointRadius:0,borderWidth:3,stepped:'after',fill:false,order:1},
+      {type:'scatter',data:envCurve.filter(function(_,i){return i%3===0||i===envCurve.length-1;}),showLine:false,pointRadius:5,pointBackgroundColor:'#d97706',pointBorderColor:'#fff',pointBorderWidth:1.5,order:0},
+    ];
+  } else {
+    datasets=[
+      {type:'scatter',data:rawCurve,showLine:true,borderColor:'rgba(37,99,235,0.18)',pointRadius:0,borderWidth:1.5,stepped:'after',fill:false,order:3},
+      {type:'scatter',data:envCurve,showLine:true,borderColor:'#16a34a',backgroundColor:'rgba(22,163,74,0.14)',fill:true,pointRadius:0,borderWidth:2.5,stepped:'after',order:2},
+    ];
+  }
+  if(envChartInst)envChartInst.destroy();
+  envChartInst=new Chart(canvas,{data:{datasets:datasets},options:{responsive:true,maintainAspectRatio:false,animation:false,
+    plugins:{legend:{display:false}},
+    scales:{x:{type:'linear',min:0,max:1.05,title:{display:true,text:'Recall',color:'#6b6966'},ticks:{color:'#a8a5a0',stepSize:.2},grid:{color:'rgba(0,0,0,0.05)'}},
+            y:{min:0,max:1.1,title:{display:true,text:'Precision',color:'#6b6966'},ticks:{color:'#a8a5a0'},grid:{color:'rgba(0,0,0,0.05)'}}}}});
+}
+
+// Slide 10: Class bars
+var VOC_CLASSES=[
+  {name:'aeroplane',ap:.789},{name:'bicycle',ap:.831},{name:'bird',ap:.742},{name:'boat',ap:.621},
+  {name:'bottle',ap:.523},{name:'bus',ap:.864},{name:'car',ap:.878},{name:'cat',ap:.882},
+  {name:'chair',ap:.514},{name:'cow',ap:.811},{name:'diningtable',ap:.695},{name:'dog',ap:.851},
+  {name:'horse',ap:.876},{name:'motorbike',ap:.844},{name:'person',ap:.792},{name:'pottedplant',ap:.478},
+  {name:'sheep',ap:.798},{name:'sofa',ap:.689},{name:'train',ap:.857},{name:'tvmonitor',ap:.763},
+];
+function buildClassBars(){
+  var mAP=VOC_CLASSES.reduce(function(s,c){return s+c.ap;},0)/VOC_CLASSES.length;
+  var best=VOC_CLASSES.reduce(function(a,b){return a.ap>b.ap?a:b;});
+  var worst=VOC_CLASSES.reduce(function(a,b){return a.ap<b.ap?a:b;});
+  document.getElementById('map-avg').textContent=(mAP*100).toFixed(1)+'%';
+  document.getElementById('map-best').textContent=best.name+' '+Math.round(best.ap*100)+'%';
+  document.getElementById('map-worst').textContent=worst.name+' '+Math.round(worst.ap*100)+'%';
+  document.getElementById('class-bars').innerHTML=[].concat(VOC_CLASSES).sort(function(a,b){return b.ap-a.ap;}).map(function(c){
+    var pct=Math.round(c.ap*100);
+    var col=pct>=80?'#16a34a':pct>=65?'#2563eb':pct>=50?'#d97706':'#dc2626';
+    return '<div class="class-row"><div class="class-name">'+c.name+'</div><div class="bar-bg"><div class="bar-fill" style="width:'+pct+'%;background:'+col+'"><span class="bar-val">'+pct+'%</span></div></div></div>';
+  }).join('');
+}
+
+// Slide 13: VOC vs COCO
+function buildVocCoco(){
+  var rows=[
+    ['Years','2005–2012','2014–present'],['Images','~11,530','~330,000'],['Classes','20','80'],
+    ['Instances','~27,000','~1,500,000'],['Instances / image','2.7 avg','7.7 avg'],
+    ['Annotations','BB + Segmentation','BB + Seg + Keypoint + Caption'],
+    ['IoU threshold','0.5 (single)','0.5 : 0.05 : 0.95 (10 levels)'],
+    ['AP method','All-point interpolation','Same'],
+    ['Primary metric','mAP@0.5','mAP@.5, mAP@.75, mAP (avg)'],
+    ['Size-split AP','None','AP_S / AP_M / AP_L'],
+    ['Difficulty','Medium','High — many small objects'],
+    ['Key venue','VOC Challenge','COCO Challenge, ECCV/CVPR'],
+  ];
+  document.getElementById('cmp-rows').innerHTML=rows.map(function(r,i){
+    return '<div style="background:'+(i%2===0?'rgba(0,0,0,0.02)':'transparent')+';padding:8px 13px;font-size:12px;color:var(--text2);display:flex;align-items:center;">'+r[0]+'</div><div style="background:'+(i%2===0?'rgba(37,99,235,0.03)':'transparent')+';padding:8px 14px;font-size:12px;color:var(--text);display:flex;align-items:center;">'+r[1]+'</div><div style="background:'+(i%2===0?'rgba(124,58,237,0.03)':'transparent')+';padding:8px 14px;font-size:12px;color:var(--text);display:flex;align-items:center;">'+r[2]+'</div>';
+  }).join('');
+}
+
+// Slide 14: Timeline
+var TIMELINE=[
+  {year:2005,name:'PASCAL VOC 2005',color:'#2563eb',imgs:'1,578',cls:4,desc:'First standardised detection benchmark. Established the PR Curve evaluation protocol.'},
+  {year:2007,name:'PASCAL VOC 2007',color:'#2563eb',imgs:'9,963',cls:20,desc:'Expanded to 20 classes. Introduced 11-point AP interpolation. Still widely cited.'},
+  {year:2010,name:'PASCAL VOC 2010',color:'#2563eb',imgs:'11,530',cls:20,desc:'Switched to All-point interpolation for more accurate AUC. Final VOC edition.'},
+  {year:2009,name:'ImageNet (ILSVRC)',color:'#0d9488',imgs:'1.2M',cls:1000,desc:'Classification-focused but included detection track. Opened the large-scale labelling era.'},
+  {year:2014,name:'MS COCO',color:'#7c3aed',imgs:'330K',cls:80,desc:'80 classes, dense crowded scenes, mAP@0.5:0.95. Now the de-facto standard.'},
+  {year:2016,name:'Open Images v1',color:'#d97706',imgs:'900K',cls:600,desc:'Google. 600 classes, weakly supervised. Grew to v7 with 9M images.'},
+  {year:2019,name:'Objects365',color:'#e11d48',imgs:'365K',cls:365,desc:'365 classes, 2M+ instances. Stronger class diversity; widely used for pretraining.'},
+  {year:2021,name:'LVIS v1',color:'#f97316',imgs:'160K',cls:1203,desc:'Long-tail distribution with 1,203 categories. Federated annotation.'},
+  {year:2023,name:'SA-1B (SAM)',color:'#16a34a',imgs:'11M',cls:'N/A',desc:'Meta AI. 11M images, 1.1B masks. Segmentation-focused. Current scale ceiling.'},
+];
+function buildTimeline(){
+  var wrap=document.getElementById('timeline-wrap');wrap.innerHTML='';
+  var line=document.createElement('div');
+  line.style.cssText='position:absolute;left:8px;top:12px;bottom:0;width:2px;background:rgba(0,0,0,0.07);border-radius:2px;';
+  wrap.appendChild(line);
+  TIMELINE.forEach(function(d){
+    var el=document.createElement('div');el.style.cssText='position:relative;margin-bottom:16px;padding-left:20px;';
+    el.innerHTML='<div style="position:absolute;left:-24px;top:4px;width:10px;height:10px;border-radius:50%;background:'+d.color+'"></div><div style="display:flex;align-items:baseline;gap:8px;margin-bottom:2px;flex-wrap:wrap;"><span style="font-family:var(--mono);font-size:11px;color:var(--text3)">'+d.year+'</span><span style="font-size:14px;font-weight:500;color:var(--text)">'+d.name+'</span><span style="font-family:var(--mono);font-size:10px;padding:1px 7px;border-radius:10px;background:var(--bg3);color:var(--text2)">'+d.imgs+' imgs</span><span style="font-family:var(--mono);font-size:10px;padding:1px 7px;border-radius:10px;background:var(--bg3);color:var(--text2)">'+d.cls+' cls</span></div><div style="font-size:12px;color:var(--text2);line-height:1.55">'+d.desc+'</div>';
+    wrap.appendChild(el);
+  });
+}
+
+// Slide 15: Dataset chart
+var DS_DATA=[
+  {name:'VOC 07',year:2007,imgs:9963,cls:20,instances:27000,color:'#2563eb'},
+  {name:'VOC 12',year:2012,imgs:11530,cls:20,instances:33000,color:'#2563eb'},
+  {name:'COCO',year:2014,imgs:330000,cls:80,instances:1500000,color:'#7c3aed'},
+  {name:'Obj365',year:2019,imgs:365000,cls:365,instances:2000000,color:'#e11d48'},
+  {name:'LVIS',year:2021,imgs:160000,cls:1203,instances:2200000,color:'#f97316'},
+  {name:'OI v7',year:2022,imgs:9000000,cls:600,instances:16000000,color:'#d97706'},
+  {name:'SA-1B',year:2023,imgs:11000000,cls:0,instances:1100000000,color:'#16a34a'},
+];
+var dsCI=null;
+function buildDatasetChart(){
+  if(dsCI)dsCI.destroy();
+  dsCI=new Chart(document.getElementById('datasetChart'),{type:'bubble',
+    data:{datasets:DS_DATA.map(function(d){return{label:d.name,data:[{x:d.year,y:parseFloat(Math.log10(d.instances+1).toFixed(2)),r:Math.min(36,Math.max(5,Math.log10(d.imgs+1)*6))}],backgroundColor:d.color+'25',borderColor:d.color,borderWidth:2};})},
+    options:{responsive:true,maintainAspectRatio:false,animation:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){var d=DS_DATA[ctx.datasetIndex];return[d.name+' ('+d.year+')','Images: '+d.imgs.toLocaleString(),'Classes: '+(d.cls||'seg only'),'Instances: '+d.instances.toLocaleString()];}}}},
+      scales:{x:{title:{display:true,text:'Year',color:'#6b6966'},ticks:{color:'#a8a5a0',stepSize:2},grid:{color:'rgba(0,0,0,0.04)'},min:2004,max:2025},
+              y:{title:{display:true,text:'log₁₀(instances)',color:'#6b6966'},ticks:{color:'#a8a5a0'},grid:{color:'rgba(0,0,0,0.04)'},min:3,max:10}}}});
+  document.getElementById('ds-cards').innerHTML=DS_DATA.map(function(d){
+    return '<div style="background:var(--bg2);border:1px solid '+d.color+'22;border-left:3px solid '+d.color+';border-radius:9px;padding:10px 12px;"><div style="display:flex;align-items:center;gap:7px;margin-bottom:5px;"><span style="font-size:13px;font-weight:500;color:var(--text)">'+d.name+'</span><span style="font-family:var(--mono);font-size:10px;color:var(--text3)">'+d.year+'</span></div><div style="font-size:11px;color:var(--text2);line-height:1.6"><div>Images: '+d.imgs.toLocaleString()+'</div><div>Classes: '+(d.cls||'seg')+'</div><div>Instances: '+d.instances.toLocaleString()+'</div></div></div>';
+  }).join('');
+}
+
+// ── onSlideEnter ──
+function onSlideEnter(n){
+  if(n===2)drawIoU();
+  if(n===3)updateConfusion();
+  if(n===4)updatePR();
+  if(n===5)updateTable();
+  if(n===6){praReset();}
+  if(n===7)buildAnnotCanvas();
+  if(n===8){itpMode='11';itpSetMode('11');}
+  if(n===9){envCur=0;buildEnvSlide();}
+  if(n===10)buildClassBars();
+  if(n===13)buildVocCoco();
+  if(n===14)buildTimeline();
+  if(n===15)buildDatasetChart();
+}
+onSlideEnter(0);
+</script>
+</body>
+</html>
