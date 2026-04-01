@@ -1135,7 +1135,7 @@ function buildTimeline(){
   wrap.appendChild(line);
   TIMELINE.forEach(function(d){
     var el=document.createElement('div');el.style.cssText='position:relative;margin-bottom:16px;padding-left:20px;';
-    el.innerHTML='<div style="position:absolute;left:-24px;top:4px;width:10px;height:10px;border-radius:50%;background:'+d.color+'"></div><div style="display:flex;align-items:baseline;gap:8px;margin-bottom:2px;flex-wrap:wrap;"><span style="font-family:var(--mono);font-size:20px;color:var(--text3)">'+d.year+'</span><span style="font-size:23px;font-weight:500;color:var(--text)">'+d.name+'</span><span style="font-family:var(--mono);font-size:20px;padding:1px 7px;border-radius:10px;background:var(--bg3);color:var(--text2)">'+d.imgs+' imgs</span><span style="font-family:var(--mono);font-size:20px;padding:1px 7px;border-radius:10px;background:var(--bg3);color:var(--text2)">'+d.cls+' cls</span></div><div style="font-size:21px;color:var(--text2);line-height:1.55">'+d.desc+'</div>';
+    el.innerHTML='<div style="position:absolute;left:-24px;top:4px;width:10px;height:10px;border-radius:50%;background:'+d.color+'"></div><div style="display:flex;align-items:baseline;gap:8px;margin-bottom:2px;flex-wrap:wrap;"><span style="font-family:var(--mono);font-size:11px;color:var(--text3)">'+d.year+'</span><span style="font-size:14px;font-weight:500;color:var(--text)">'+d.name+'</span><span style="font-family:var(--mono);font-size:10px;padding:1px 7px;border-radius:10px;background:var(--bg3);color:var(--text2)">'+d.imgs+' imgs</span><span style="font-family:var(--mono);font-size:10px;padding:1px 7px;border-radius:10px;background:var(--bg3);color:var(--text2)">'+d.cls+' cls</span></div><div style="font-size:12px;color:var(--text2);line-height:1.55">'+d.desc+'</div>';
     wrap.appendChild(el);
   });
 }
@@ -1255,11 +1255,11 @@ var yearLabelPlugin={
       ctx.fillStyle='#18181a';
       ctx.font='bold 26px DM Mono,monospace';
       ctx.textAlign='center';
-      ctx.fillText(d.map+'%', x, yTop-18);
+      ctx.fillText(d.map+'%', x, yTop-6);
       // year
       ctx.fillStyle='#a8a5a0';
       ctx.font='26px DM Mono,monospace';
-      ctx.fillText(String(d.year), x, yTop-6);
+      ctx.fillText(String(d.year), x, yTop-30);
     });
     ctx.restore();
   }
