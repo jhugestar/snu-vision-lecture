@@ -33,23 +33,23 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 .slide { position: absolute; inset: 0; display: flex; flex-direction: column; padding: 44px 64px 56px; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
 .slide.active { opacity: 1; pointer-events: all; }
 #nav { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 14px; z-index: 100; background: rgba(255,255,255,0.94); backdrop-filter: blur(12px); border: 1px solid var(--border2); border-radius: 40px; padding: 7px 18px; box-shadow: 0 2px 20px rgba(0,0,0,0.08); }
-#nav button { background: none; border: none; color: var(--text2); cursor: pointer; font-size: 18px; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: color 0.2s, background 0.2s; }
+#nav button { background: none; border: none; color: var(--text2); cursor: pointer; font-size:27px; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: color 0.2s, background 0.2s; }
 #nav button:hover { color: var(--text); background: var(--bg2); }
 #nav button:disabled { opacity: 0.25; cursor: default; }
-#slide-counter { font-family: var(--mono); font-size: 12px; color: var(--text3); min-width: 52px; text-align: center; }
+#slide-counter { font-family: var(--mono); font-size:21px; color: var(--text3); min-width: 52px; text-align: center; }
 .dot-row { display: flex; gap: 5px; align-items: center; }
 .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--border2); cursor: pointer; transition: background 0.2s, transform 0.2s; }
 .dot.on { background: var(--accent); transform: scale(1.4); }
-.eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; color: var(--text3); text-transform: uppercase; margin-bottom: 8px; }
-.slide-title { font-family: var(--serif); font-size: clamp(24px, 3vw, 42px); font-weight: 300; line-height: 1.15; color: var(--text); margin-bottom: 6px; }
+.eyebrow { font-family: var(--mono); font-size:20px; letter-spacing: 0.12em; color: var(--text3); text-transform: uppercase; margin-bottom: 8px; }
+.slide-title { font-family: var(--serif); font-size: clamp(30px, 3.5vw, 48px); font-weight: 300; line-height: 1.15; color: var(--text); margin-bottom: 6px; }
 .slide-title em { font-style: italic; color: var(--accent); }
-.subtitle { font-size: 14px; color: var(--text2); line-height: 1.65; margin-bottom: 24px; max-width: 720px; }
+.subtitle { font-size:23px; color: var(--text2); line-height: 1.65; margin-bottom: 24px; max-width: 720px; }
 .cols2 { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; flex: 1; min-height: 0; }
 .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; }
-.pill { display: inline-flex; align-items: center; font-size: 11px; font-family: var(--mono); padding: 3px 10px; border-radius: 20px; font-weight: 500; }
+.pill { display: inline-flex; align-items: center; font-size:20px; font-family: var(--mono); padding: 3px 10px; border-radius: 20px; font-weight: 500; }
 .pill-tp { background: rgba(22,163,74,0.10); color: var(--green); }
 .pill-fp { background: rgba(220,38,38,0.10); color: var(--red); }
-.formula { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 13px 16px; font-family: var(--mono); font-size: 13px; color: var(--text2); margin: 8px 0; line-height: 1.8; }
+.formula { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 13px 16px; font-family: var(--mono); font-size:22px; color: var(--text2); margin: 8px 0; line-height: 1.8; }
 .formula .hl  { color: var(--accent);  font-weight: 500; }
 .formula .hl2 { color: var(--amber); }
 .formula .hl3 { color: var(--green); }
@@ -58,32 +58,32 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 .full-col { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 /* Cover */
 #s0 { justify-content: center; align-items: flex-start; }
-#s0 .big { font-family: var(--serif); font-size: clamp(42px, 5.5vw, 78px); font-weight: 600; line-height: 1.05; }
+#s0 .big { font-family: var(--serif); font-size: clamp(48px, 6vw, 84px); font-weight: 600; line-height: 1.05; }
 #s0 .big em { font-weight: 300; font-style: italic; color: var(--accent); }
-#s0 .sub { font-size: 15px; color: var(--text2); margin-top: 18px; max-width: 540px; line-height: 1.75; }
+#s0 .sub { font-size:24px; color: var(--text2); margin-top: 18px; max-width: 540px; line-height: 1.75; }
 #s0 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 28px; }
-#s0 .chip { font-family: var(--mono); font-size: 11px; padding: 5px 13px; border: 1px solid var(--border2); border-radius: 20px; color: var(--text3); }
+#s0 .chip { font-family: var(--mono); font-size:20px; padding: 5px 13px; border: 1px solid var(--border2); border-radius: 20px; color: var(--text3); }
 /* Pipeline */
 .pipeline { display: flex; align-items: center; flex: 1; }
 .pipe-step { flex: 1; background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 16px 12px; text-align: center; }
-.pipe-step .num { font-family: var(--mono); font-size: 11px; color: var(--text3); margin-bottom: 5px; }
-.pipe-step .name { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
-.pipe-step .desc { font-size: 11px; color: var(--text2); line-height: 1.5; }
-.pipe-arrow { font-size: 16px; color: var(--text3); flex-shrink: 0; margin: 0 6px; }
+.pipe-step .num { font-family: var(--mono); font-size:20px; color: var(--text3); margin-bottom: 5px; }
+.pipe-step .name { font-size:22px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+.pipe-step .desc { font-size:20px; color: var(--text2); line-height: 1.5; }
+.pipe-arrow { font-size:25px; color: var(--text3); flex-shrink: 0; margin: 0 6px; }
 /* IoU */
 .iou-canvas-wrap { display: flex; gap: 28px; align-items: center; flex: 1; }
 #iouCanvas { border-radius: 10px; background: var(--bg2); border: 1px solid var(--border); }
 .iou-right { flex: 1; display: flex; flex-direction: column; gap: 12px; }
 .slider-row { display: flex; flex-direction: column; gap: 5px; }
-.slider-label { font-size: 12px; color: var(--text2); display: flex; justify-content: space-between; }
+.slider-label { font-size:21px; color: var(--text2); display: flex; justify-content: space-between; }
 input[type=range] { width: 100%; accent-color: var(--accent); }
 .iou-result { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 14px; text-align: center; }
-.iou-result .val { font-family: var(--serif); font-size: 48px; font-weight: 300; }
-.iou-result .lbl { font-size: 12px; color: var(--text2); }
-.verdict { font-size: 13px; text-align: center; margin-top: 6px; font-weight: 500; padding: 6px 10px; border-radius: 8px; }
+.iou-result .val { font-family: var(--serif); font-size: 52px; font-weight: 300; }
+.iou-result .lbl { font-size:21px; color: var(--text2); }
+.verdict { font-size:22px; text-align: center; margin-top: 6px; font-weight: 500; padding: 6px 10px; border-radius: 8px; }
 /* Confusion cells */
 .conf-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
-.conf-cell .big-val { font-family: var(--serif); font-size: 44px; font-weight: 300; }
+.conf-cell .big-val { font-family: var(--serif); font-size: 52px; font-weight: 300; }
 .cell-tp { background: rgba(22,163,74,0.07); }
 .cell-fp { background: rgba(220,38,38,0.07); }
 .cell-fn { background: rgba(217,119,6,0.07); }
@@ -93,12 +93,12 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 .pr-left { flex: 1; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
 .pr-right { width: 200px; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
 .metric-mini { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 13px; }
-.metric-mini .ml { font-family: var(--mono); font-size: 10px; color: var(--text3); text-transform: uppercase; margin-bottom: 3px; }
-.metric-mini .mv { font-size: 21px; font-weight: 300; font-family: var(--serif); }
+.metric-mini .ml { font-family: var(--mono); font-size:20px; color: var(--text3); text-transform: uppercase; margin-bottom: 3px; }
+.metric-mini .mv { font-size:28px; font-weight: 300; font-family: var(--serif); }
 /* Table */
 .det-table-wrap { flex: 1; overflow-y: auto; border: 1px solid var(--border); border-radius: 12px; }
-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-thead th { position: sticky; top: 0; background: var(--bg2); padding: 9px 12px; font-family: var(--mono); font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: var(--text3); text-align: left; border-bottom: 1px solid var(--border); }
+table { width: 100%; border-collapse: collapse; font-size:22px; }
+thead th { position: sticky; top: 0; background: var(--bg2); padding: 9px 12px; font-family: var(--mono); font-size:20px; letter-spacing: .07em; text-transform: uppercase; color: var(--text3); text-align: left; border-bottom: 1px solid var(--border); }
 tbody td { padding: 8px 12px; border-bottom: 1px solid rgba(0,0,0,0.04); color: var(--text2); }
 tbody tr:hover td { background: rgba(0,0,0,0.015); }
 tr.row-active td { color: var(--text); }
@@ -106,23 +106,23 @@ tr.row-active td:first-child { border-left: 2px solid var(--accent); }
 /* Interp */
 .interp-wrap { display: flex; gap: 18px; flex: 1; min-height: 0; }
 .interp-col { flex: 1; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
-.interp-label { font-family: var(--mono); font-size: 11px; letter-spacing: .07em; text-transform: uppercase; padding: 3px 9px; border-radius: 5px; align-self: flex-start; }
+.interp-label { font-family: var(--mono); font-size:20px; letter-spacing: .07em; text-transform: uppercase; padding: 3px 9px; border-radius: 5px; align-self: flex-start; }
 .lbl-11  { background: rgba(124,58,237,0.07); color: var(--accent2); }
 .lbl-all { background: rgba(37,99,235,0.07); color: var(--accent); }
 /* mAP bars */
 .class-bars { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
 .class-row { display: flex; align-items: center; gap: 8px; }
-.class-name { font-family: var(--mono); font-size: 11px; color: var(--text2); width: 76px; flex-shrink: 0; }
+.class-name { font-family: var(--mono); font-size:20px; color: var(--text2); width: 76px; flex-shrink: 0; }
 .bar-bg { flex: 1; height: 17px; background: var(--bg3); border-radius: 4px; overflow: hidden; }
 .bar-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; justify-content: flex-end; padding-right: 5px; }
-.bar-val { font-family: var(--mono); font-size: 10px; color: #fff; }
+.bar-val { font-family: var(--mono); font-size:20px; color: #fff; }
 /* Summary */
 .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; flex: 1; }
 .summary-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 7px; }
-.summary-card .sc-num { font-family: var(--mono); font-size: 11px; color: var(--text3); }
-.summary-card .sc-title { font-size: 15px; font-weight: 500; }
-.summary-card .sc-body { font-size: 13px; color: var(--text2); line-height: 1.6; flex: 1; }
-.summary-card .sc-formula { background: var(--bg3); border-radius: 7px; padding: 7px 11px; font-family: var(--mono); font-size: 12px; color: var(--accent2); }
+.summary-card .sc-num { font-family: var(--mono); font-size:20px; color: var(--text3); }
+.summary-card .sc-title { font-size:24px; font-weight: 500; }
+.summary-card .sc-body { font-size:22px; color: var(--text2); line-height: 1.6; flex: 1; }
+.summary-card .sc-formula { background: var(--bg3); border-radius: 7px; padding: 7px 11px; font-family: var(--mono); font-size:21px; color: var(--accent2); }
 /* Class bars */
 .class-bars { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
 </style>
@@ -132,12 +132,34 @@ tr.row-active td:first-child { border-left: 2px solid var(--accent); }
 
 <!-- SLIDE 0: Cover -->
 <div class="slide active" id="s0">
-  <div class="big">PASCAL VOC<br><em>mAP</em> Deep Dive</div>
-  <div class="sub">A complete walkthrough of object detection evaluation — from IoU to 11-point interpolation, 20-class mAP, and modern dataset comparisons.</div>
-  <div class="chips">
-    <div class="chip">IoU</div><div class="chip">TP · FP · FN</div><div class="chip">Precision–Recall</div>
-    <div class="chip">Average Precision</div><div class="chip">11-pt vs All-point</div>
-    <div class="chip">mAP @ 20 classes</div><div class="chip">VOC vs COCO</div><div class="chip">Modern Datasets</div>
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:0;">
+
+    <!-- Top label -->
+    <div style="font-family:var(--mono);font-size:20px;letter-spacing:0.14em;color:var(--text3);text-transform:uppercase;margin-bottom:28px;">Lecture Notes</div>
+
+    <!-- Main title -->
+    <div style="font-family:var(--serif);font-size:clamp(32px,4.5vw,62px);font-weight:600;line-height:1.15;color:var(--text);margin-bottom:10px;">Object Detection Evaluation:<br>A <em style="font-weight:300;font-style:italic;color:var(--accent);">mAP</em> Deep Dive</div>
+
+    <!-- Divider -->
+    <div style="width:48px;height:2px;background:var(--accent);border-radius:2px;margin:24px 0;"></div>
+
+    <!-- Instructor info -->
+    <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:36px;">
+      <div style="font-size:25px;font-weight:500;color:var(--text);">Hanbyul Joo</div>
+      <div style="font-size:23px;color:var(--text2);">SNU Visual Computing Lab</div>
+      <div style="font-size:22px;color:var(--text3);font-family:var(--mono);">Dept. of Computer Science and Engineering</div>
+    </div>
+
+    <!-- Topic chips -->
+    <div style="display:flex;flex-wrap:wrap;gap:7px;">
+      <div class="chip">IoU</div>
+      <div class="chip">TP · FP · FN</div>
+      <div class="chip">Precision–Recall</div>
+      <div class="chip">Average Precision</div>
+      <div class="chip">mAP @ 20 classes</div>
+      <div class="chip">VOC vs COCO</div>
+      <div class="chip">Modern Datasets</div>
+    </div>
   </div>
 </div>
 
@@ -212,22 +234,53 @@ tr.row-active td:first-child { border-left: 2px solid var(--accent); }
   <div class="eyebrow">Step 02</div>
   <div class="slide-title">TP · FP · FN — <em>Assignment Rules</em></div>
   <div class="subtitle">How each detection is classified. Adjust thresholds to watch TP / FP / FN shift in real time.</div>
-  <div class="cols2" style="gap:28px;align-items:start;flex:1;">
-    <div class="full-col" style="gap:12px;">
+  <div style="display:flex;gap:28px;flex:1;min-height:0;">
+
+    <!-- Left: sliders + confusion grid -->
+    <div class="full-col" style="gap:12px;flex:1;">
       <div style="display:flex;flex-direction:column;gap:8px;">
-        <div style="font-size:13px;color:var(--text2);">Confidence threshold: <span id="conf-thresh-val" style="color:var(--text);font-family:var(--mono)">0.50</span></div>
+        <div style="font-size:22px;color:var(--text2);">Confidence threshold: <span id="conf-thresh-val" style="color:var(--text);font-family:var(--mono)">0.50</span></div>
         <input type="range" min="0" max="100" value="50" id="conf-thresh" oninput="updateConfusion()">
-        <div style="font-size:13px;color:var(--text2);">IoU threshold: <span id="iou-thresh-val" style="color:var(--text);font-family:var(--mono)">0.50</span></div>
+        <div style="font-size:22px;color:var(--text2);">IoU threshold: <span id="iou-thresh-val" style="color:var(--text);font-family:var(--mono)">0.50</span></div>
         <input type="range" min="30" max="75" value="50" step="5" id="iou-thresh" oninput="updateConfusion()">
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;border-radius:12px;overflow:hidden;">
-        <div class="conf-cell cell-tp" style="height:128px"><div class="big-val" id="c-tp" style="color:var(--green)">0</div><div style="font-size:12px;font-weight:500;color:var(--green)">TP</div><div style="font-size:11px;color:var(--green);opacity:.7;text-align:center;padding:0 10px">IoU ≥ thr &amp; conf ≥ thr</div></div>
-        <div class="conf-cell cell-fp" style="height:128px"><div class="big-val" id="c-fp" style="color:var(--red)">0</div><div style="font-size:12px;font-weight:500;color:var(--red)">FP</div><div style="font-size:11px;color:var(--red);opacity:.7;text-align:center;padding:0 10px">conf ≥ thr but IoU &lt; thr</div></div>
-        <div class="conf-cell cell-fn" style="height:128px"><div class="big-val" id="c-fn" style="color:var(--amber)">0</div><div style="font-size:12px;font-weight:500;color:var(--amber)">FN</div><div style="font-size:11px;color:var(--amber);opacity:.7;text-align:center;padding:0 10px">GT exists but not detected</div></div>
-        <div class="conf-cell cell-tn" style="height:128px"><div class="big-val" style="color:var(--text3)">—</div><div style="font-size:12px;font-weight:500;color:var(--text3)">TN</div><div style="font-size:11px;color:var(--text3);text-align:center;padding:0 10px">Not defined in detection</div></div>
+        <div class="conf-cell cell-tp" style="height:110px"><div class="big-val" id="c-tp" style="color:var(--green)">0</div><div style="font-size:21px;font-weight:500;color:var(--green)">TP</div><div style="font-size:20px;color:var(--green);opacity:.7;text-align:center;padding:0 10px">IoU ≥ thr &amp; conf ≥ thr</div></div>
+        <div class="conf-cell cell-fp" style="height:110px"><div class="big-val" id="c-fp" style="color:var(--red)">0</div><div style="font-size:21px;font-weight:500;color:var(--red)">FP</div><div style="font-size:20px;color:var(--red);opacity:.7;text-align:center;padding:0 10px">conf ≥ thr but IoU &lt; thr</div></div>
+        <div class="conf-cell cell-fn" style="height:110px"><div class="big-val" id="c-fn" style="color:var(--amber)">0</div><div style="font-size:21px;font-weight:500;color:var(--amber)">FN</div><div style="font-size:20px;color:var(--amber);opacity:.7;text-align:center;padding:0 10px">GT exists but not detected</div></div>
+        <div class="conf-cell cell-tn" style="height:110px"><div class="big-val" style="color:var(--text3)">—</div><div style="font-size:21px;font-weight:500;color:var(--text3)">TN</div><div style="font-size:20px;color:var(--text3);text-align:center;padding:0 10px">Not defined in detection</div></div>
+      </div>
+      <!-- Sample chips -->
+      <div style="display:flex;flex-direction:column;gap:6px;flex:1;min-height:0;overflow-y:auto;">
+        <!-- TP chips -->
+        <div style="background:rgba(22,163,74,0.05);border:1px solid rgba(22,163,74,0.2);border-radius:9px;padding:8px 10px;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
+            <span style="font-family:var(--mono);font-size:20px;font-weight:500;padding:1px 7px;border-radius:8px;background:rgba(22,163,74,0.12);color:#16a34a;">TP</span>
+            <span id="conf-tp-count" style="font-size:20px;color:#16a34a;"></span>
+          </div>
+          <div id="conf-tp-chips" style="display:flex;flex-wrap:wrap;gap:3px;min-height:18px;"></div>
+        </div>
+        <!-- FP chips -->
+        <div style="background:rgba(220,38,38,0.05);border:1px solid rgba(220,38,38,0.2);border-radius:9px;padding:8px 10px;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
+            <span style="font-family:var(--mono);font-size:20px;font-weight:500;padding:1px 7px;border-radius:8px;background:rgba(220,38,38,0.10);color:#dc2626;">FP</span>
+            <span id="conf-fp-count" style="font-size:20px;color:#dc2626;"></span>
+          </div>
+          <div id="conf-fp-chips" style="display:flex;flex-wrap:wrap;gap:3px;min-height:18px;"></div>
+        </div>
+        <!-- FN chips -->
+        <div style="background:rgba(217,119,6,0.05);border:1px solid rgba(217,119,6,0.2);border-radius:9px;padding:8px 10px;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
+            <span style="font-family:var(--mono);font-size:20px;font-weight:500;padding:1px 7px;border-radius:8px;background:rgba(217,119,6,0.10);color:#d97706;">FN</span>
+            <span id="conf-fn-count" style="font-size:20px;color:#d97706;"></span>
+          </div>
+          <div id="conf-fn-chips" style="display:flex;flex-wrap:wrap;gap:3px;min-height:18px;"></div>
+        </div>
       </div>
     </div>
-    <div class="full-col" style="gap:12px;">
+
+    <!-- Right: formulas + metrics + rules -->
+    <div class="full-col" style="gap:12px;flex:1;">
       <div class="formula">
         <span class="hl3">Precision</span> = TP / (TP + FP)<br>
         <span class="hl2">Recall</span>    = TP / (TP + FN)<br>
@@ -238,56 +291,99 @@ tr.row-active td:first-child { border-left: 2px solid var(--accent); }
         <div class="metric-mini"><div class="ml">Recall</div><div class="mv" id="c-rec" style="color:var(--amber)">—</div></div>
         <div class="metric-mini"><div class="ml">F1</div><div class="mv" id="c-f1" style="color:var(--accent)">—</div></div>
       </div>
-      <div class="card" style="flex:1;gap:7px;font-size:13px;color:var(--text2);line-height:1.7;">
-        <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:2px;">Key rules</div>
+      <div class="card" style="flex:1;gap:7px;font-size:22px;color:var(--text2);line-height:1.7;">
+        <div style="font-size:22px;font-weight:500;color:var(--text);margin-bottom:2px;">Key rules</div>
         <div>• Multiple detections on same GT → only 1st is TP, rest are FP</div>
         <div>• Unmatched GTs count as FN</div>
         <div>• No background class → TN is undefined in detection</div>
         <div>• This is why mAP is used instead of Accuracy</div>
       </div>
-    </div>
-  </div>
-</div>
-
-<!-- SLIDE 4: PR Curve -->
-<div class="slide" id="s4">
-  <div class="eyebrow">Step 03</div>
-  <div class="slide-title"><em>Precision–Recall</em> Curve</div>
-  <div class="subtitle">Sort detections by confidence (descending), then plot (Recall, Precision) at each threshold. The PR Curve emerges.</div>
-  <div class="pr-main">
-    <div class="pr-left">
-      <div style="display:flex;gap:12px;align-items:center;flex-shrink:0;">
-        <div style="flex:1;"><div style="font-size:12px;color:var(--text3);margin-bottom:3px;">Confidence threshold</div><input type="range" min="0" max="100" value="50" id="pr-thresh" oninput="updatePR()" style="width:100%"></div>
-        <span id="pr-thresh-val" style="font-family:var(--mono);font-size:13px;color:var(--text);min-width:38px;text-align:right">0.50</span>
-        <div style="flex:1;"><div style="font-size:12px;color:var(--text3);margin-bottom:3px;">IoU threshold</div><input type="range" min="30" max="75" value="50" step="5" id="pr-iou" oninput="updatePR()" style="width:100%"></div>
-        <span id="pr-iou-val" style="font-family:var(--mono);font-size:13px;color:var(--text);min-width:38px;text-align:right">0.50</span>
+      <!-- Legend -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:20px;color:var(--text3);line-height:1.7;">
+        Each chip = one detection sample<br>
+        <span style="font-family:var(--mono);font-size:20px;">img · conf=X · IoU=Y</span>
       </div>
-      <div class="chart-wrap"><canvas id="prChart"></canvas></div>
-    </div>
-    <div class="pr-right">
-      <div class="metric-mini"><div class="ml">AP (All-point)</div><div class="mv" id="pr-ap" style="color:var(--accent)">—</div></div>
-      <div class="metric-mini"><div class="ml">AP (11-point)</div><div class="mv" id="pr-ap11" style="color:var(--accent2)">—</div></div>
-      <div class="metric-mini"><div class="ml">Precision</div><div class="mv" id="pr-p" style="color:var(--green)">—</div></div>
-      <div class="metric-mini"><div class="ml">Recall</div><div class="mv" id="pr-r" style="color:var(--amber)">—</div></div>
-      <div class="metric-mini"><div class="ml">TP / FP</div><div class="mv" id="pr-tp" style="font-size:18px;color:var(--text)">— / —</div></div>
-      <div style="font-size:11px;color:var(--text3);line-height:1.7;padding:2px 0;">Red dot = current threshold<br>Blue area = AP (All-point)<br>Purple dots = 11-pt samples</div>
     </div>
   </div>
 </div>
 
-<!-- SLIDE 5: Table -->
-<div class="slide" id="s5">
-  <div class="eyebrow">Step 03 — Detail</div>
-  <div class="slide-title">Detection <em>Ranking Table</em></div>
-  <div class="subtitle">Sorted by confidence (descending). Cumulative TP/FP per row yields per-row Precision and Recall. Highlighted rows are above the current threshold.</div>
-  <div style="display:flex;gap:14px;margin-bottom:10px;flex-shrink:0;">
-    <div style="flex:1;"><div style="font-size:12px;color:var(--text3);margin-bottom:3px;">Confidence threshold</div><input type="range" min="0" max="100" value="50" id="tbl-thresh" oninput="updateTable()" style="width:100%"></div>
-    <span id="tbl-thresh-val" style="font-family:var(--mono);font-size:13px;color:var(--text);align-self:flex-end">0.50</span>
-    <div style="flex:1;"><div style="font-size:12px;color:var(--text3);margin-bottom:3px;">IoU threshold</div><input type="range" min="30" max="75" value="50" step="5" id="tbl-iou" oninput="updateTable()" style="width:100%"></div>
-    <span id="tbl-iou-val" style="font-family:var(--mono);font-size:13px;color:var(--text);align-self:flex-end">0.50</span>
+
+<!-- SLIDE 4+5 COMBINED: PR Curve + Sample Table + TP/FP/FN cards -->
+<div class="slide" id="s4" style="padding:32px 48px 56px;">
+  <div class="eyebrow">Step 03</div>
+  <div class="slide-title"><em>Precision–Recall</em> Curve — Live Sample Walkthrough</div>
+
+  <!-- Controls row -->
+  <div style="display:flex;gap:14px;align-items:center;flex-shrink:0;margin-bottom:10px;">
+    <div style="flex:1;"><div style="font-size:20px;color:var(--text3);margin-bottom:2px;">Confidence threshold</div><input type="range" min="0" max="100" value="50" id="pr-thresh" oninput="updatePRandTable()" style="width:100%"></div>
+    <span id="pr-thresh-val" style="font-family:var(--mono);font-size:22px;color:var(--text);min-width:36px;text-align:right">0.50</span>
+    <div style="flex:1;"><div style="font-size:20px;color:var(--text3);margin-bottom:2px;">IoU threshold</div><input type="range" min="30" max="75" value="50" step="5" id="pr-iou" oninput="updatePRandTable()" style="width:100%"></div>
+    <span id="pr-iou-val" style="font-family:var(--mono);font-size:22px;color:var(--text);min-width:36px;text-align:right">0.50</span>
+    <div class="metric-mini" style="min-width:72px;flex-shrink:0;"><div class="ml">AP</div><div class="mv" id="pr-ap" style="color:var(--accent);font-size:28px;">—</div></div>
+    <div class="metric-mini" style="min-width:68px;flex-shrink:0;"><div class="ml">Precision</div><div class="mv" id="pr-p" style="color:var(--green);font-size:28px;">—</div></div>
+    <div class="metric-mini" style="min-width:68px;flex-shrink:0;"><div class="ml">Recall</div><div class="mv" id="pr-r" style="color:var(--amber);font-size:28px;">—</div></div>
+    <div class="metric-mini" style="min-width:90px;flex-shrink:0;"><div class="ml">TP / FP / FN</div><div class="mv" id="pr-tp" style="font-size:23px;color:var(--text);">—</div></div>
   </div>
-  <div class="det-table-wrap">
-    <table><thead><tr><th>Rank</th><th>Image</th><th>Class</th><th>Conf</th><th>IoU</th><th>Verdict</th><th>Cum TP</th><th>Cum FP</th><th>Precision</th><th>Recall</th></tr></thead><tbody id="tbl-body"></tbody></table>
+
+  <!-- Main content: chart + table side by side, cards below -->
+  <div style="flex:1;display:flex;flex-direction:column;gap:10px;min-height:0;">
+    <!-- Top: chart left, table right -->
+    <div style="flex:1;display:flex;gap:14px;min-height:0;">
+      <div style="flex:1;position:relative;min-height:0;">
+        <canvas id="prChart" style="width:100%;height:100%;"></canvas>
+      </div>
+      <div style="width:420px;flex-shrink:0;display:flex;flex-direction:column;min-height:0;">
+        <div style="font-size:20px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;">All detections — sorted by confidence ↓</div>
+        <div style="flex:1;overflow-y:auto;border:1px solid var(--border);border-radius:10px;">
+          <table style="width:100%;border-collapse:collapse;font-size:20px;">
+            <thead><tr>
+              <th style="position:sticky;top:0;background:var(--bg2);padding:6px 7px;font-family:var(--mono);font-size:20px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);text-align:left;border-bottom:1px solid var(--border);">#</th>
+              <th style="position:sticky;top:0;background:var(--bg2);padding:6px 7px;font-family:var(--mono);font-size:20px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);text-align:left;border-bottom:1px solid var(--border);">Image</th>
+              <th style="position:sticky;top:0;background:var(--bg2);padding:6px 7px;font-family:var(--mono);font-size:20px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);text-align:left;border-bottom:1px solid var(--border);">Conf</th>
+              <th style="position:sticky;top:0;background:var(--bg2);padding:6px 7px;font-family:var(--mono);font-size:20px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);text-align:left;border-bottom:1px solid var(--border);">IoU</th>
+              <th style="position:sticky;top:0;background:var(--bg2);padding:6px 7px;font-family:var(--mono);font-size:20px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);text-align:left;border-bottom:1px solid var(--border);">Verdict</th>
+              <th style="position:sticky;top:0;background:var(--bg2);padding:6px 7px;font-family:var(--mono);font-size:20px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);text-align:right;border-bottom:1px solid var(--border);">P</th>
+              <th style="position:sticky;top:0;background:var(--bg2);padding:6px 7px;font-family:var(--mono);font-size:20px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);text-align:right;border-bottom:1px solid var(--border);">R</th>
+            </tr></thead>
+            <tbody id="pr-tbl-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom: TP / FP / FN sample cards -->
+    <div style="flex-shrink:0;">
+      <div style="font-size:20px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;">Samples above threshold — classified as:</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+        <!-- TP column -->
+        <div style="background:rgba(22,163,74,0.05);border:1px solid rgba(22,163,74,0.2);border-radius:10px;padding:10px 12px;">
+          <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px;">
+            <span style="font-family:var(--mono);font-size:20px;font-weight:500;padding:2px 8px;border-radius:10px;background:rgba(22,163,74,0.12);color:#16a34a;">TP</span>
+            <span style="font-size:20px;color:var(--text2);">IoU ≥ thr &amp; conf ≥ thr</span>
+            <span id="card-tp-count" style="font-family:var(--mono);font-size:20px;color:#16a34a;margin-left:auto;font-weight:500;"></span>
+          </div>
+          <div id="card-tp-items" style="display:flex;flex-wrap:wrap;gap:4px;min-height:22px;"></div>
+        </div>
+        <!-- FP column -->
+        <div style="background:rgba(220,38,38,0.05);border:1px solid rgba(220,38,38,0.2);border-radius:10px;padding:10px 12px;">
+          <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px;">
+            <span style="font-family:var(--mono);font-size:20px;font-weight:500;padding:2px 8px;border-radius:10px;background:rgba(220,38,38,0.10);color:#dc2626;">FP</span>
+            <span style="font-size:20px;color:var(--text2);">conf ≥ thr but IoU &lt; thr</span>
+            <span id="card-fp-count" style="font-family:var(--mono);font-size:20px;color:#dc2626;margin-left:auto;font-weight:500;"></span>
+          </div>
+          <div id="card-fp-items" style="display:flex;flex-wrap:wrap;gap:4px;min-height:22px;"></div>
+        </div>
+        <!-- FN column -->
+        <div style="background:rgba(217,119,6,0.05);border:1px solid rgba(217,119,6,0.2);border-radius:10px;padding:10px 12px;">
+          <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px;">
+            <span style="font-family:var(--mono);font-size:20px;font-weight:500;padding:2px 8px;border-radius:10px;background:rgba(217,119,6,0.10);color:#d97706;">FN</span>
+            <span style="font-size:20px;color:var(--text2);">GT not matched by any detection</span>
+            <span id="card-fn-count" style="font-family:var(--mono);font-size:20px;color:#d97706;margin-left:auto;font-weight:500;"></span>
+          </div>
+          <div id="card-fn-items" style="display:flex;flex-wrap:wrap;gap:4px;min-height:22px;"></div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -301,11 +397,11 @@ tr.row-active td:first-child { border-left: 2px solid var(--accent); }
     <!-- Left: animated PR canvas -->
     <div style="flex:1;display:flex;flex-direction:column;gap:10px;min-height:0;">
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
-        <button id="pra-play" onclick="praToggle()" style="font-family:var(--mono);font-size:12px;padding:5px 16px;border:1px solid var(--border2);border-radius:20px;background:var(--accent);color:#fff;cursor:pointer;">▶ Play</button>
-        <button onclick="praStep(-1)" style="font-family:var(--mono);font-size:12px;padding:5px 12px;border:1px solid var(--border2);border-radius:20px;background:none;cursor:pointer;color:var(--text2);">← Prev</button>
-        <button onclick="praStep(1)" style="font-family:var(--mono);font-size:12px;padding:5px 12px;border:1px solid var(--border2);border-radius:20px;background:none;cursor:pointer;color:var(--text2);">Next →</button>
-        <button onclick="praReset()" style="font-family:var(--mono);font-size:12px;padding:5px 12px;border:1px solid var(--border2);border-radius:20px;background:none;cursor:pointer;color:var(--text3);">Reset</button>
-        <span id="pra-step-lbl" style="font-family:var(--mono);font-size:12px;color:var(--text3);margin-left:4px;">Step 0 / 20</span>
+        <button id="pra-play" onclick="praToggle()" style="font-family:var(--mono);font-size:21px;padding:5px 16px;border:1px solid var(--border2);border-radius:20px;background:var(--accent);color:#fff;cursor:pointer;">▶ Play</button>
+        <button onclick="praStep(-1)" style="font-family:var(--mono);font-size:21px;padding:5px 12px;border:1px solid var(--border2);border-radius:20px;background:none;cursor:pointer;color:var(--text2);">← Prev</button>
+        <button onclick="praStep(1)" style="font-family:var(--mono);font-size:21px;padding:5px 12px;border:1px solid var(--border2);border-radius:20px;background:none;cursor:pointer;color:var(--text2);">Next →</button>
+        <button onclick="praReset()" style="font-family:var(--mono);font-size:21px;padding:5px 12px;border:1px solid var(--border2);border-radius:20px;background:none;cursor:pointer;color:var(--text3);">Reset</button>
+        <span id="pra-step-lbl" style="font-family:var(--mono);font-size:21px;color:var(--text3);margin-left:4px;">Step 0 / 20</span>
       </div>
       <div style="position:relative;flex:1;min-height:0;">
         <canvas id="praCanvas"></canvas>
@@ -315,9 +411,9 @@ tr.row-active td:first-child { border-left: 2px solid var(--accent); }
     <!-- Right: current detection card + running table -->
     <div style="width:280px;display:flex;flex-direction:column;gap:10px;flex-shrink:0;">
       <!-- current detection -->
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;">
-        <div style="font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Current detection</div>
-        <div id="pra-cur-det" style="font-size:13px;color:var(--text2);line-height:1.8;">—</div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;min-height:170px;">
+        <div style="font-family:var(--mono);font-size:20px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Current detection</div>
+        <div id="pra-cur-det" style="font-size:22px;color:var(--text2);line-height:1.8;">—</div>
       </div>
       <!-- running metrics -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
@@ -328,13 +424,13 @@ tr.row-active td:first-child { border-left: 2px solid var(--accent); }
       </div>
       <!-- mini scrollable history -->
       <div style="flex:1;overflow-y:auto;border:1px solid var(--border);border-radius:10px;">
-        <table style="width:100%;border-collapse:collapse;font-size:11px;">
+        <table style="width:100%;border-collapse:collapse;font-size:20px;">
           <thead><tr>
-            <th style="position:sticky;top:0;background:var(--bg2);padding:7px 10px;font-family:var(--mono);font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);text-align:left;border-bottom:1px solid var(--border);">#</th>
-            <th style="position:sticky;top:0;background:var(--bg2);padding:7px 10px;font-family:var(--mono);font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);text-align:left;border-bottom:1px solid var(--border);">Conf</th>
-            <th style="position:sticky;top:0;background:var(--bg2);padding:7px 10px;font-family:var(--mono);font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);text-align:left;border-bottom:1px solid var(--border);">V</th>
-            <th style="position:sticky;top:0;background:var(--bg2);padding:7px 10px;font-family:var(--mono);font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);text-align:left;border-bottom:1px solid var(--border);">P</th>
-            <th style="position:sticky;top:0;background:var(--bg2);padding:7px 10px;font-family:var(--mono);font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);text-align:left;border-bottom:1px solid var(--border);">R</th>
+            <th style="position:sticky;top:0;background:var(--bg2);padding:7px 10px;font-family:var(--mono);font-size:20px;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);text-align:left;border-bottom:1px solid var(--border);">#</th>
+            <th style="position:sticky;top:0;background:var(--bg2);padding:7px 10px;font-family:var(--mono);font-size:20px;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);text-align:left;border-bottom:1px solid var(--border);">Conf</th>
+            <th style="position:sticky;top:0;background:var(--bg2);padding:7px 10px;font-family:var(--mono);font-size:20px;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);text-align:left;border-bottom:1px solid var(--border);">V</th>
+            <th style="position:sticky;top:0;background:var(--bg2);padding:7px 10px;font-family:var(--mono);font-size:20px;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);text-align:left;border-bottom:1px solid var(--border);">P</th>
+            <th style="position:sticky;top:0;background:var(--bg2);padding:7px 10px;font-family:var(--mono);font-size:20px;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);text-align:left;border-bottom:1px solid var(--border);">R</th>
           </tr></thead>
           <tbody id="pra-history"></tbody>
         </table>
@@ -359,121 +455,25 @@ tr.row-active td:first-child { border-left: 2px solid var(--accent); }
     <div style="display:flex;flex-direction:column;gap:12px;overflow-y:auto;">
 
       <div class="card" style="gap:7px;border-left:3px solid var(--accent);">
-        <div style="font-size:13px;font-weight:500;color:var(--accent);">① TP hit → step right (Recall ↑)</div>
-        <div style="font-size:12px;color:var(--text2);line-height:1.65;">When a new detection is a <strong>TP</strong>, the cumulative TP count goes up. Recall = TP / GT_total, so Recall increases. The curve steps <em>right</em>.</div>
-        <div class="formula" style="margin:0;font-size:11px;">Recall = <span class="hl">TP↑</span> / GT_total → moves right</div>
+        <div style="font-size:22px;font-weight:500;color:var(--accent);">① TP hit → step right (Recall ↑)</div>
+        <div style="font-size:21px;color:var(--text2);line-height:1.65;">When a new detection is a <strong>TP</strong>, the cumulative TP count goes up. Recall = TP / GT_total, so Recall increases. The curve steps <em>right</em>.</div>
+        <div class="formula" style="margin:0;font-size:20px;">Recall = <span class="hl">TP↑</span> / GT_total → moves right</div>
       </div>
 
       <div class="card" style="gap:7px;border-left:3px solid var(--red);">
-        <div style="font-size:13px;font-weight:500;color:var(--red);">② FP hit → step down (Precision ↓)</div>
-        <div style="font-size:12px;color:var(--text2);line-height:1.65;">When a new detection is a <strong>FP</strong>, TP stays the same but TP+FP grows. Precision = TP / (TP+FP) drops. The curve steps <em>down</em>.</div>
-        <div class="formula" style="margin:0;font-size:11px;">Precision = TP / (TP + <span class="hl4">FP↑</span>) → moves down</div>
+        <div style="font-size:22px;font-weight:500;color:var(--red);">② FP hit → step down (Precision ↓)</div>
+        <div style="font-size:21px;color:var(--text2);line-height:1.65;">When a new detection is a <strong>FP</strong>, TP stays the same but TP+FP grows. Precision = TP / (TP+FP) drops. The curve steps <em>down</em>.</div>
+        <div class="formula" style="margin:0;font-size:20px;">Precision = TP / (TP + <span class="hl4">FP↑</span>) → moves down</div>
       </div>
 
       <div class="card" style="gap:7px;border-left:3px solid var(--amber);">
-        <div style="font-size:13px;font-weight:500;color:var(--amber);">③ High-conf detections are added first</div>
-        <div style="font-size:12px;color:var(--text2);line-height:1.65;">Because we sort by <strong>confidence descending</strong>, the model's most certain predictions come first — these tend to be correct, so the curve starts high-precision. It sags as we add lower-confidence (noisier) detections.</div>
-        <div class="formula" style="margin:0;font-size:11px;">Sort: conf 0.97 → 0.93 → … → 0.06</div>
+        <div style="font-size:22px;font-weight:500;color:var(--amber);">③ High-conf detections are added first</div>
+        <div style="font-size:21px;color:var(--text2);line-height:1.65;">Because we sort by <strong>confidence descending</strong>, the model's most certain predictions come first — these tend to be correct, so the curve starts high-precision. It sags as we add lower-confidence (noisier) detections.</div>
+        <div class="formula" style="margin:0;font-size:20px;">Sort: conf 0.97 → 0.93 → … → 0.06</div>
       </div>
 
-      <div style="background:rgba(37,99,235,0.05);border:1px solid rgba(37,99,235,0.15);border-radius:10px;padding:12px 14px;font-size:12px;color:var(--text2);line-height:1.65;">
+      <div style="background:rgba(37,99,235,0.05);border:1px solid rgba(37,99,235,0.15);border-radius:10px;padding:12px 14px;font-size:21px;color:var(--text2);line-height:1.65;">
         <strong style="color:var(--accent);">Takeaway:</strong> A curve that stays <em>top-right</em> means the model finds many TPs early (high precision) and continues finding them (high recall). AP is the area under this curve — bigger = better.
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- SLIDE 8: 11-pt vs All-point ANIMATED -->
-<div class="slide" id="s6">
-  <div class="eyebrow">Step 04</div>
-  <div class="slide-title"><em>11-point</em> vs <em>All-point</em> — Side by Side</div>
-  <div class="subtitle">Both methods first apply the monotone envelope, then calculate the area differently. Toggle between modes to see exactly where the bars land.</div>
-
-  <div style="display:flex;gap:18px;flex:1;min-height:0;">
-
-    <!-- Shared chart (left, bigger) -->
-    <div style="flex:1.4;display:flex;flex-direction:column;gap:10px;min-height:0;">
-      <!-- mode toggle -->
-      <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
-        <button id="itp-btn-11" onclick="itpSetMode('11')" style="font-family:var(--mono);font-size:12px;padding:5px 18px;border:1.5px solid #7c3aed;border-radius:20px;background:#7c3aed;color:#fff;cursor:pointer;">11-point</button>
-        <button id="itp-btn-all" onclick="itpSetMode('all')" style="font-family:var(--mono);font-size:12px;padding:5px 18px;border:1.5px solid var(--border2);border-radius:20px;background:none;color:var(--text2);cursor:pointer;">All-point</button>
-        <span style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-left:6px;" id="itp-mode-lbl">Showing: 11-point (VOC 2007)</span>
-      </div>
-      <div style="position:relative;flex:1;min-height:0;"><canvas id="itpCanvas"></canvas></div>
-      <div style="display:flex;gap:20px;justify-content:center;flex-shrink:0;">
-        <span style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;"><span style="width:14px;height:3px;background:#2563eb;display:inline-block;border-radius:2px;"></span>PR Curve</span>
-        <span style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;"><span style="width:12px;height:12px;background:rgba(124,58,237,0.25);border:1.5px solid #7c3aed;display:inline-block;border-radius:2px;"></span>11-pt bars</span>
-        <span style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;"><span style="width:12px;height:12px;background:rgba(37,99,235,0.18);border:1.5px solid #2563eb;display:inline-block;border-radius:2px;"></span>All-pt area</span>
-      </div>
-    </div>
-
-    <!-- Right: explanation panel -->
-    <div style="width:260px;display:flex;flex-direction:column;gap:10px;flex-shrink:0;overflow-y:auto;">
-      <div class="metric-mini"><div class="ml">AP (11-point)</div><div class="mv" id="itp-ap11" style="color:#7c3aed;">—</div></div>
-      <div class="metric-mini"><div class="ml">AP (All-point)</div><div class="mv" id="itp-apall" style="color:#2563eb;">—</div></div>
-      <div class="metric-mini"><div class="ml">Difference</div><div class="mv" id="itp-diff" style="color:var(--red);font-size:18px;">—</div></div>
-
-      <div id="itp-explain-11" class="card" style="gap:8px;border-left:3px solid #7c3aed;">
-        <div style="font-size:13px;font-weight:500;color:#7c3aed;">11-point (VOC 2007)</div>
-        <div style="font-size:12px;color:var(--text2);line-height:1.65;">Samples recall at <strong>exactly 11 fixed levels</strong>: 0.0, 0.1, …, 1.0. At each level, takes the max precision to the right. Then averages the 11 values.</div>
-        <div class="formula" style="margin:0;font-size:11px;color:#7c3aed;">AP = (1/11) Σ P_max(r)<br>r ∈ {0, 0.1, 0.2 … 1.0}</div>
-        <div style="font-size:11px;color:var(--text3);line-height:1.6;">Problem: if the curve is sparse between two sample points, the area estimate can be wrong — it either over- or under-counts.</div>
-      </div>
-
-      <div id="itp-explain-all" class="card" style="gap:8px;border-left:3px solid #2563eb;display:none;">
-        <div style="font-size:13px;font-weight:500;color:#2563eb;">All-point (VOC 2010+)</div>
-        <div style="font-size:12px;color:var(--text2);line-height:1.65;">Uses <strong>every recall point where the curve actually changes</strong>. Computes width × height for each tiny rectangle and sums them — a true Riemann integral.</div>
-        <div class="formula" style="margin:0;font-size:11px;color:#2563eb;">AP = Σ (r_n − r_{n-1}) × P_max(r_n)<br>for all actual change points</div>
-        <div style="font-size:11px;color:var(--text3);line-height:1.6;">Result: exactly the area under the monotone-envelope curve, no information is missed or double-counted.</div>
-      </div>
-
-      <div style="background:rgba(220,38,38,0.05);border:1px solid rgba(220,38,38,0.15);border-radius:10px;padding:11px 13px;font-size:12px;color:var(--text2);line-height:1.65;">
-        <strong style="color:var(--red);">Key insight:</strong> When the PR curve drops sharply between two 11-pt sample points, 11-point <em>misses</em> that drop. All-point catches it. That's why the same model can look better under 11-point.
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- SLIDE 8b: Monotone Envelope step-by-step -->
-<div class="slide" id="s6b">
-  <div class="eyebrow">Step 04 — Envelope</div>
-  <div class="slide-title">Raw Curve → <em>Monotone Envelope</em> → Area</div>
-  <div class="subtitle">Before computing AP, both methods apply the same envelope step. Watch the three stages one by one.</div>
-  <div style="display:flex;gap:20px;flex:1;min-height:0;">
-
-    <!-- Chart -->
-    <div style="flex:1.3;display:flex;flex-direction:column;gap:10px;min-height:0;">
-      <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
-        <button onclick="envStep(-1)" style="font-family:var(--mono);font-size:12px;padding:5px 14px;border:1px solid var(--border2);border-radius:20px;background:none;cursor:pointer;color:var(--text2);">← Back</button>
-        <button onclick="envStep(1)"  style="font-family:var(--mono);font-size:12px;padding:5px 14px;border:1px solid var(--accent);border-radius:20px;background:var(--accent);color:#fff;cursor:pointer;">Next →</button>
-        <div style="display:flex;gap:6px;margin-left:8px;" id="env-dots-wrap"></div>
-      </div>
-      <div style="position:relative;flex:1;min-height:0;"><canvas id="envCanvas"></canvas></div>
-    </div>
-
-    <!-- Step explanation -->
-    <div style="width:280px;display:flex;flex-direction:column;gap:12px;flex-shrink:0;justify-content:center;">
-      <div id="env-panel-0" class="card" style="gap:9px;border-left:3px solid var(--accent);">
-        <div style="font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;">Stage 1 of 3</div>
-        <div style="font-size:15px;font-weight:500;color:var(--text);">Raw PR Curve</div>
-        <div style="font-size:13px;color:var(--text2);line-height:1.7;">This is the curve you get by sorting detections by confidence and plotting (Recall, Precision) at each step.<br><br>It has a <strong>staircase shape</strong> — right steps from TP hits, downward steps from FP hits.</div>
-        <div class="formula" style="margin:0;font-size:11px;">Each point = one detection added<br>TP → right &nbsp; FP → down</div>
-      </div>
-      <div id="env-panel-1" class="card" style="gap:9px;border-left:3px solid var(--amber);display:none;">
-        <div style="font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;">Stage 2 of 3</div>
-        <div style="font-size:15px;font-weight:500;color:var(--text);">Monotone Envelope</div>
-        <div style="font-size:13px;color:var(--text2);line-height:1.7;">Scan from <strong>right to left</strong>. At each recall point, replace precision with the <em>maximum precision achievable at that recall or higher</em>.<br><br>This removes the "dips" — a dip just means a slightly higher confidence threshold would recover that precision.</div>
-        <div class="formula" style="margin:0;font-size:11px;color:var(--amber);">P_env(r) = max P(r') where r' ≥ r</div>
-        <div style="font-size:11px;color:var(--text3);">Orange line = envelope. Note how it never dips below the maximum it has seen to its right.</div>
-      </div>
-      <div id="env-panel-2" class="card" style="gap:9px;border-left:3px solid var(--green);display:none;">
-        <div style="font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;">Stage 3 of 3</div>
-        <div style="font-size:15px;font-weight:500;color:var(--text);">Area = AP</div>
-        <div style="font-size:13px;color:var(--text2);line-height:1.7;">AP is the <strong>area under the envelope</strong>, not the raw curve.<br><br>The step-downs in the raw curve are gone — replaced by the envelope. This is why AP doesn't penalise individual FPs harshly; it asks: <em>"what's the best precision this model can achieve at each recall level?"</em></div>
-        <div class="formula" style="margin:0;font-size:11px;color:var(--green);">AP = ∫ P_env(r) dr<br>= area of the green region</div>
-        <div style="background:rgba(22,163,74,0.08);border-radius:8px;padding:8px 10px;font-size:12px;">
-          <strong style="color:var(--green)">AP = <span id="env-ap-val">—</span></strong>
-        </div>
       </div>
     </div>
   </div>
@@ -487,19 +487,19 @@ tr.row-active td:first-child { border-left: 2px solid var(--accent); }
   <div style="display:flex;gap:22px;flex:1;min-height:0;">
     <div class="class-bars" id="class-bars" style="flex:1.4;"></div>
     <div style="flex:1;display:flex;flex-direction:column;gap:12px;">
-      <div class="formula" style="font-size:13px;">
+      <div class="formula" style="font-size:22px;">
         mAP = <span class="hl">(1/20)</span> × Σ AP_c<br><br>
         <span class="hl2">mAP@0.5</span>       : VOC standard<br>
         <span class="hl3">mAP@0.5:0.95</span>  : COCO standard
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
         <div class="metric-mini"><div class="ml">mAP (avg)</div><div class="mv" id="map-avg" style="color:var(--accent)">—</div></div>
-        <div class="metric-mini"><div class="ml">Best class</div><div class="mv" id="map-best" style="color:var(--green);font-size:13px;">—</div></div>
-        <div class="metric-mini"><div class="ml">Worst class</div><div class="mv" id="map-worst" style="color:var(--red);font-size:13px;">—</div></div>
+        <div class="metric-mini"><div class="ml">Best class</div><div class="mv" id="map-best" style="color:var(--green);font-size:22px;">—</div></div>
+        <div class="metric-mini"><div class="ml">Worst class</div><div class="mv" id="map-worst" style="color:var(--red);font-size:22px;">—</div></div>
         <div class="metric-mini"><div class="ml"># classes</div><div class="mv" style="color:var(--text)">20</div></div>
       </div>
-      <div class="card" style="flex:1;font-size:12px;color:var(--text2);line-height:1.8;">
-        <div style="font-weight:500;color:var(--text);margin-bottom:5px;font-size:13px;">VOC 20 classes</div>
+      <div class="card" style="flex:1;font-size:21px;color:var(--text2);line-height:1.8;">
+        <div style="font-weight:500;color:var(--text);margin-bottom:5px;font-size:22px;">VOC 20 classes</div>
         aeroplane · bicycle · bird · boat · bottle · bus · car · cat · chair · cow · diningtable · dog · horse · motorbike · <strong style="color:var(--accent)">person</strong> · pottedplant · sheep · sofa · train · tvmonitor
       </div>
     </div>
@@ -543,47 +543,47 @@ tr.row-active td:first-child { border-left: 2px solid var(--accent); }
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;flex:1;min-height:0;">
 
     <div class="card" style="gap:10px;align-items:center;">
-      <div style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--red);text-transform:uppercase;">Case 1 — IoU Miss</div>
+      <div style="font-family:var(--mono);font-size:20px;letter-spacing:.1em;color:var(--red);text-transform:uppercase;">Case 1 — IoU Miss</div>
       <svg viewBox="0 0 220 165" width="100%" style="max-height:165px;flex-shrink:0;">
         <rect x="10" y="30" width="110" height="100" rx="4" fill="rgba(37,99,235,0.07)" stroke="#2563eb" stroke-width="2"/>
-        <text x="14" y="46" font-size="11" fill="#2563eb" font-family="DM Mono,monospace">GT</text>
+        <text x="14" y="46" font-size="20" fill="#2563eb" font-family="DM Mono,monospace">GT</text>
         <rect x="100" y="60" width="110" height="90" rx="4" fill="rgba(217,119,6,0.07)" stroke="#d97706" stroke-width="2" stroke-dasharray="6,3"/>
-        <text x="104" y="76" font-size="11" fill="#d97706" font-family="DM Mono,monospace">Pred</text>
+        <text x="104" y="76" font-size="20" fill="#d97706" font-family="DM Mono,monospace">Pred</text>
         <rect x="100" y="60" width="20" height="70" fill="rgba(220,38,38,0.12)"/>
-        <text x="110" y="158" font-size="10" fill="#dc2626" font-family="DM Mono,monospace" text-anchor="middle">IoU ≈ 0.08  →  FP</text>
+        <text x="110" y="158" font-size="20" fill="#dc2626" font-family="DM Mono,monospace" text-anchor="middle">IoU ≈ 0.08  →  FP</text>
       </svg>
-      <div style="font-size:12px;color:var(--text2);line-height:1.6;text-align:center;">Box was predicted but barely overlaps GT. The location is simply wrong.</div>
-      <div style="font-family:var(--mono);font-size:11px;background:var(--bg3);padding:5px 11px;border-radius:6px;color:var(--red);">IoU &lt; threshold → FP</div>
+      <div style="font-size:21px;color:var(--text2);line-height:1.6;text-align:center;">Box was predicted but barely overlaps GT. The location is simply wrong.</div>
+      <div style="font-family:var(--mono);font-size:20px;background:var(--bg3);padding:5px 11px;border-radius:6px;color:var(--red);">IoU &lt; threshold → FP</div>
     </div>
 
     <div class="card" style="gap:10px;align-items:center;">
-      <div style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--amber);text-transform:uppercase;">Case 2 — Duplicate Detection</div>
+      <div style="font-family:var(--mono);font-size:20px;letter-spacing:.1em;color:var(--amber);text-transform:uppercase;">Case 2 — Duplicate Detection</div>
       <svg viewBox="0 0 220 165" width="100%" style="max-height:165px;flex-shrink:0;">
         <rect x="30" y="25" width="120" height="110" rx="4" fill="rgba(37,99,235,0.07)" stroke="#2563eb" stroke-width="2"/>
-        <text x="34" y="41" font-size="11" fill="#2563eb" font-family="DM Mono,monospace">GT</text>
+        <text x="34" y="41" font-size="20" fill="#2563eb" font-family="DM Mono,monospace">GT</text>
         <rect x="28" y="23" width="118" height="108" rx="4" fill="none" stroke="#16a34a" stroke-width="2"/>
-        <text x="34" y="118" font-size="10" fill="#16a34a" font-family="DM Mono,monospace">Pred1 conf=0.97 ✓TP</text>
+        <text x="34" y="118" font-size="20" fill="#16a34a" font-family="DM Mono,monospace">Pred1 conf=0.97 ✓TP</text>
         <rect x="38" y="33" width="108" height="98" rx="4" fill="rgba(217,119,6,0.06)" stroke="#d97706" stroke-width="2" stroke-dasharray="5,3"/>
-        <text x="44" y="48" font-size="10" fill="#d97706" font-family="DM Mono,monospace">Pred2 conf=0.81</text>
-        <text x="110" y="158" font-size="10" fill="#dc2626" font-family="DM Mono,monospace" text-anchor="middle">Same GT → 2nd is FP</text>
+        <text x="44" y="48" font-size="20" fill="#d97706" font-family="DM Mono,monospace">Pred2 conf=0.81</text>
+        <text x="110" y="158" font-size="20" fill="#dc2626" font-family="DM Mono,monospace" text-anchor="middle">Same GT → 2nd is FP</text>
       </svg>
-      <div style="font-size:12px;color:var(--text2);line-height:1.6;text-align:center;">IoU is fine, but another prediction already claimed this GT. NMS prevents this.</div>
-      <div style="font-family:var(--mono);font-size:11px;background:var(--bg3);padding:5px 11px;border-radius:6px;color:var(--amber);">1st match → TP, rest → FP</div>
+      <div style="font-size:21px;color:var(--text2);line-height:1.6;text-align:center;">IoU is fine, but another prediction already claimed this GT. NMS prevents this.</div>
+      <div style="font-family:var(--mono);font-size:20px;background:var(--bg3);padding:5px 11px;border-radius:6px;color:var(--amber);">1st match → TP, rest → FP</div>
     </div>
 
     <div class="card" style="gap:10px;align-items:center;">
-      <div style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--coral);text-transform:uppercase;">Case 3 — Hallucination</div>
+      <div style="font-family:var(--mono);font-size:20px;letter-spacing:.1em;color:var(--coral);text-transform:uppercase;">Case 3 — Hallucination</div>
       <svg viewBox="0 0 220 165" width="100%" style="max-height:165px;flex-shrink:0;">
         <rect x="10" y="10" width="200" height="140" rx="6" fill="rgba(0,0,0,0.02)" stroke="rgba(0,0,0,0.06)" stroke-width="1"/>
         <rect x="18" y="18" width="58" height="50" rx="3" fill="rgba(37,99,235,0.07)" stroke="#2563eb" stroke-width="1.5"/>
-        <text x="22" y="32" font-size="9" fill="#2563eb" font-family="DM Mono,monospace">GT (person)</text>
+        <text x="22" y="32" font-size="20" fill="#2563eb" font-family="DM Mono,monospace">GT (person)</text>
         <rect x="118" y="68" width="84" height="68" rx="4" fill="rgba(220,38,38,0.07)" stroke="#dc2626" stroke-width="2" stroke-dasharray="5,3"/>
-        <text x="124" y="84" font-size="10" fill="#dc2626" font-family="DM Mono,monospace">Pred conf=0.72</text>
-        <text x="160" y="158" font-size="10" fill="#dc2626" font-family="DM Mono,monospace" text-anchor="middle">Empty region → FP</text>
+        <text x="124" y="84" font-size="20" fill="#dc2626" font-family="DM Mono,monospace">Pred conf=0.72</text>
+        <text x="160" y="158" font-size="20" fill="#dc2626" font-family="DM Mono,monospace" text-anchor="middle">Empty region → FP</text>
         <text x="160" y="124" font-size="20" fill="rgba(220,38,38,0.3)" text-anchor="middle">✕</text>
       </svg>
-      <div style="font-size:12px;color:var(--text2);line-height:1.6;text-align:center;">A box drawn in empty background with no GT nearby. A model hallucination.</div>
-      <div style="font-family:var(--mono);font-size:11px;background:var(--bg3);padding:5px 11px;border-radius:6px;color:var(--coral);">No GT in region → FP</div>
+      <div style="font-size:21px;color:var(--text2);line-height:1.6;text-align:center;">A box drawn in empty background with no GT nearby. A model hallucination.</div>
+      <div style="font-family:var(--mono);font-size:20px;background:var(--bg3);padding:5px 11px;border-radius:6px;color:var(--coral);">No GT in region → FP</div>
     </div>
   </div>
 </div>
@@ -601,8 +601,8 @@ tr.row-active td:first-child { border-left: 2px solid var(--accent); }
     </div>
     <div style="display:grid;grid-template-columns:180px 1fr 1fr;gap:2px;flex:1;overflow-y:auto;" id="cmp-rows"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
-      <div class="formula" style="font-size:12px;margin:0;"><span style="color:var(--accent)">VOC mAP@0.5</span><br>Single IoU → 1 AP value<br>Relatively <span class="hl3">lenient</span> evaluation</div>
-      <div class="formula" style="font-size:12px;margin:0;"><span style="color:var(--accent2)">COCO mAP@0.5:0.05:0.95</span><br>10 IoU levels → 10 APs averaged<br>Box quality is <span class="hl4">strictly</span> penalised</div>
+      <div class="formula" style="font-size:21px;margin:0;"><span style="color:var(--accent)">VOC mAP@0.5</span><br>Single IoU → 1 AP value<br>Relatively <span class="hl3">lenient</span> evaluation</div>
+      <div class="formula" style="font-size:21px;margin:0;"><span style="color:var(--accent2)">COCO mAP@0.5:0.05:0.95</span><br>10 IoU levels → 10 APs averaged<br>Box quality is <span class="hl4">strictly</span> penalised</div>
     </div>
   </div>
 </div>
@@ -628,18 +628,34 @@ tr.row-active td:first-child { border-left: 2px solid var(--accent); }
   </div>
 </div>
 
+
+<!-- SLIDE B: Model Performance Timeline -->
+<div class="slide" id="sB">
+  <div class="eyebrow">Progress</div>
+  <div class="slide-title">Detection Model <em>Performance Timeline</em></div>
+  <div class="subtitle">VOC mAP@0.5 and COCO mAP@0.5:0.95 — from HOG+SVM to modern transformers. Hover bars for details.</div>
+  <div style="flex:1;min-height:0;display:flex;flex-direction:column;gap:10px;">
+    <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;flex-wrap:wrap;">
+      <button onclick="setPerfDataset('voc')" id="perf-voc" style="font-family:var(--mono);font-size:20px;padding:4px 14px;border-radius:20px;border:1.5px solid var(--accent);background:rgba(37,99,235,0.07);color:var(--accent);cursor:pointer;font-weight:500;">VOC mAP@0.5</button>
+      <button onclick="setPerfDataset('coco')" id="perf-coco" style="font-family:var(--mono);font-size:20px;padding:4px 14px;border-radius:20px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;">COCO mAP@0.5:0.95</button>
+      <div id="perf-legend" style="display:flex;flex-wrap:wrap;gap:14px;margin-left:8px;"></div>
+    </div>
+    <div style="position:relative;flex:1;min-height:0;"><canvas id="perfChart"></canvas></div>
+  </div>
+</div>
+
 </div><!-- end slides -->
 
 <div id="nav">
   <button id="btn-prev" onclick="goSlide(-1)" disabled>‹</button>
   <div class="dot-row" id="dots"></div>
-  <span id="slide-counter">1 / 16</span>
+  <span id="slide-counter">1 / 14</span>
   <button id="btn-next" onclick="goSlide(1)">›</button>
 </div>
 
 <script>
 // ── Slide engine ──
-const TOTAL=16; let cur=0;
+const TOTAL=14; let cur=0;
 const slides=document.querySelectorAll('.slide');
 const dotsWrap=document.getElementById('dots');
 for(let i=0;i<TOTAL;i++){
@@ -655,7 +671,7 @@ function setSlide(n){
   document.getElementById('slide-counter').textContent=(cur+1)+' / '+TOTAL;
   document.getElementById('btn-prev').disabled=(cur===0);
   document.getElementById('btn-next').disabled=(cur===TOTAL-1);
-  onSlideEnter(cur);
+  setTimeout(function(){ onSlideEnter(cur); }, 350);
 }
 function goSlide(d){if(cur+d>=0&&cur+d<TOTAL)setSlide(cur+d);}
 document.addEventListener('keydown',function(e){
@@ -726,7 +742,7 @@ function drawIoU(){
   ctx.fillStyle='rgba(217,119,6,0.07)';ctx.fillRect(px,py,ps,ps);
   if(iA>0){ctx.fillStyle='rgba(22,163,74,0.18)';ctx.fillRect(ix,iy,iW,iH);ctx.strokeStyle='rgba(22,163,74,0.45)';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);ctx.strokeRect(ix,iy,iW,iH);ctx.setLineDash([]);}
   ctx.strokeStyle='#2563eb';ctx.lineWidth=2.5;ctx.strokeRect(gx,gy,gw,gh);
-  ctx.fillStyle='#2563eb';ctx.font='bold 11px DM Mono,monospace';ctx.fillText('GT',gx+6,gy+15);
+  ctx.fillStyle='#2563eb';ctx.font='bold 28px DM Mono,monospace';ctx.fillText('GT',gx+6,gy+15);
   ctx.strokeStyle='#d97706';ctx.lineWidth=2.5;ctx.strokeRect(px,py,ps,ps);
   ctx.fillStyle='#d97706';ctx.fillText('Pred',px+6,py+15);
   document.getElementById('iou-val').textContent=iou.toFixed(3);
@@ -754,54 +770,125 @@ function updateConfusion(){
   document.getElementById('c-prec').textContent=(p*100).toFixed(1)+'%';
   document.getElementById('c-rec').textContent=(r*100).toFixed(1)+'%';
   document.getElementById('c-f1').textContent=f1.toFixed(3);
+
+  // Sample chips
+  function chip(r, color, bg){
+    return '<span style="display:inline-block;font-family:var(--mono);font-size:20px;padding:2px 7px;border-radius:7px;background:'+bg+';color:'+color+';border:1px solid '+color+'33;margin:1px 2px;white-space:nowrap;">'+r.img.slice(-6)+' c='+r.conf.toFixed(2)+' IoU='+r.iou.toFixed(2)+'</span>';
+  }
+  var tpHtml='', fpHtml='', fnHtml='';
+  active.forEach(function(r){
+    if(r.verdict==='TP') tpHtml+=chip(r,'#16a34a','rgba(22,163,74,0.08)');
+    else                 fpHtml+=chip(r,'#dc2626','rgba(220,38,38,0.07)');
+  });
+  for(var i=0;i<fn;i++){
+    fnHtml+='<span style="display:inline-block;font-family:var(--mono);font-size:20px;padding:2px 7px;border-radius:7px;background:rgba(217,119,6,0.07);color:#d97706;border:1px solid rgba(217,119,6,0.3);margin:1px 2px;white-space:nowrap;">missed GT #'+(i+1)+'</span>';
+  }
+  var none='<span style="font-size:20px;color:var(--text3);font-style:italic;">none</span>';
+  var tpEl=document.getElementById('conf-tp-chips');
+  var fpEl=document.getElementById('conf-fp-chips');
+  var fnEl=document.getElementById('conf-fn-chips');
+  var tpCnt=document.getElementById('conf-tp-count');
+  var fpCnt=document.getElementById('conf-fp-count');
+  var fnCnt=document.getElementById('conf-fn-count');
+  if(tpEl) tpEl.innerHTML=tpHtml||none;
+  if(fpEl) fpEl.innerHTML=fpHtml||none;
+  if(fnEl) fnEl.innerHTML=fnHtml||none;
+  if(tpCnt) tpCnt.textContent='— '+tp+' detections';
+  if(fpCnt) fpCnt.textContent='— '+fp+' detections';
+  if(fnCnt) fnCnt.textContent='— '+fn+' GTs unmatched';
 }
 
 // Slide 4
 var prChartInst=null;
-function updatePR(){
+function updatePRandTable(){
   var confT=parseInt(document.getElementById('pr-thresh').value)/100;
   var iouT=parseInt(document.getElementById('pr-iou').value)/100;
   document.getElementById('pr-thresh-val').textContent=confT.toFixed(2);
   document.getElementById('pr-iou-val').textContent=iouT.toFixed(2);
+
   var pts=buildCurvePts(iouT);
-  var ap=calcAPAll(pts),ap11=calcAP11(pts);
-  var rows=evalDets(confT,iouT);
-  var active=rows.filter(function(r){return r.conf>=confT;});
-  var last=active.length?active[active.length-1]:{cumTP:0,cumFP:0,precision:0,recall:0};
+  var ap=calcAPAll(pts);
+  var allRows=evalDets(0,iouT);
+  var activeRows=allRows.filter(function(r){return r.conf>=confT;});
+  var last=activeRows.length?activeRows[activeRows.length-1]:{cumTP:0,cumFP:0,precision:0,recall:0};
+  var fnCount=GT_TOTAL-last.cumTP;
+
   document.getElementById('pr-ap').textContent=(ap*100).toFixed(1)+'%';
-  document.getElementById('pr-ap11').textContent=(ap11*100).toFixed(1)+'%';
-  document.getElementById('pr-p').textContent=(last.precision*100).toFixed(1)+'%';
-  document.getElementById('pr-r').textContent=(last.recall*100).toFixed(1)+'%';
-  document.getElementById('pr-tp').textContent=last.cumTP+' / '+last.cumFP;
+  document.getElementById('pr-p').textContent=activeRows.length?(last.precision*100).toFixed(1)+'%':'—';
+  document.getElementById('pr-r').textContent=activeRows.length?(last.recall*100).toFixed(1)+'%':'—';
+  document.getElementById('pr-tp').textContent=last.cumTP+' / '+last.cumFP+' / '+fnCount;
+
+  // PR chart
   var cd=pts.map(function(p){return{x:parseFloat(p.r.toFixed(3)),y:parseFloat(p.p.toFixed(3))};});
   var curPt={x:parseFloat(last.recall.toFixed(3)),y:parseFloat(last.precision.toFixed(3))};
-  var r11=[0,.1,.2,.3,.4,.5,.6,.7,.8,.9,1];
-  var p11=r11.map(function(r){return{x:r,y:parseFloat(pts.filter(function(p){return p.r>=r;}).reduce(function(m,p){return Math.max(m,p.p);},0).toFixed(3))};});
   if(prChartInst)prChartInst.destroy();
   prChartInst=new Chart(document.getElementById('prChart'),{type:'scatter',data:{datasets:[
-    {data:cd,showLine:true,fill:true,backgroundColor:'rgba(37,99,235,0.07)',borderColor:'transparent',pointRadius:0,stepped:'after',order:4},
-    {data:cd,showLine:true,borderColor:'#2563eb',backgroundColor:'transparent',pointRadius:2.5,pointBackgroundColor:'#2563eb',borderWidth:2.5,stepped:'after',order:3},
-    {data:p11,showLine:false,pointRadius:5,pointBackgroundColor:'rgba(124,58,237,0.45)',pointBorderColor:'#7c3aed',pointBorderWidth:1.5,order:2},
+    {data:cd,showLine:true,fill:true,backgroundColor:'rgba(37,99,235,0.07)',borderColor:'transparent',pointRadius:0,stepped:'after',order:3},
+    {data:cd,showLine:true,borderColor:'#2563eb',backgroundColor:'transparent',pointRadius:2.5,pointBackgroundColor:'#2563eb',borderWidth:2.5,stepped:'after',order:2},
     {data:[curPt],pointRadius:8,pointBackgroundColor:'#dc2626',pointBorderColor:'#fff',pointBorderWidth:2,showLine:false,order:1}
   ]},options:{responsive:true,maintainAspectRatio:false,animation:false,
     plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return 'P='+ctx.parsed.y.toFixed(2)+', R='+ctx.parsed.x.toFixed(2);}}}},
     scales:{x:{min:0,max:1.05,title:{display:true,text:'Recall',color:'#6b6966'},ticks:{color:'#a8a5a0'},grid:{color:'rgba(0,0,0,0.05)'}},
             y:{min:0,max:1.05,title:{display:true,text:'Precision',color:'#6b6966'},ticks:{color:'#a8a5a0'},grid:{color:'rgba(0,0,0,0.05)'}}}}});
-}
 
-// Slide 5
-function updateTable(){
-  var confT=parseInt(document.getElementById('tbl-thresh').value)/100;
-  var iouT=parseInt(document.getElementById('tbl-iou').value)/100;
-  document.getElementById('tbl-thresh-val').textContent=confT.toFixed(2);
-  document.getElementById('tbl-iou-val').textContent=iouT.toFixed(2);
-  var rows=evalDets(confT,iouT);
-  document.getElementById('tbl-body').innerHTML=rows.map(function(r,i){
+  // Sample table
+  var tbody=document.getElementById('pr-tbl-body');
+  if(!tbody)return;
+  var html='';
+  allRows.forEach(function(r,i){
     var active=r.conf>=confT;
-    var badge=r.verdict==='TP'?'<span class="pill pill-tp">TP</span>':'<span class="pill pill-fp">FP</span>';
-    return '<tr class="'+(active?'row-active':'')+'"><td style="font-family:var(--mono);color:var(--text3)">'+(i+1)+'</td><td style="font-family:var(--mono);font-size:11px">'+r.img+'</td><td>person</td><td style="font-family:var(--mono)">'+r.conf.toFixed(2)+'</td><td style="font-family:var(--mono);color:'+(r.iou>=iouT?'#16a34a':'#dc2626')+'">'+r.iou.toFixed(2)+'</td><td>'+badge+'</td><td style="font-family:var(--mono)">'+(active?r.cumTP:'—')+'</td><td style="font-family:var(--mono)">'+(active?r.cumFP:'—')+'</td><td style="font-family:var(--mono);color:#16a34a">'+(active?r.precision.toFixed(3):'—')+'</td><td style="font-family:var(--mono);color:#d97706">'+(active?r.recall.toFixed(3):'—')+'</td></tr>';
-  }).join('');
+    var isTP=active&&r.verdict==='TP';
+    var isFP=active&&r.verdict==='FP';
+    var bgStyle=isTP?'background:rgba(22,163,74,0.07);':isFP?'background:rgba(220,38,38,0.07);':'';
+    var borderLeft=isTP?'border-left:2px solid #16a34a;':isFP?'border-left:2px solid #dc2626;':'border-left:2px solid transparent;';
+    var txtColor=active?'color:var(--text);':'color:var(--text3);';
+    var vBadge=isTP?'<span style="font-family:var(--mono);font-size:20px;padding:2px 6px;border-radius:10px;background:rgba(22,163,74,0.12);color:#16a34a;">TP</span>'
+              :isFP?'<span style="font-family:var(--mono);font-size:20px;padding:2px 6px;border-radius:10px;background:rgba(220,38,38,0.12);color:#dc2626;">FP</span>'
+              :'<span style="font-family:var(--mono);font-size:20px;color:var(--text3);">—</span>';
+    html+='<tr style="'+bgStyle+borderLeft+'">'
+      +'<td style="padding:5px 7px;border-bottom:1px solid rgba(0,0,0,0.04);font-family:var(--mono);'+txtColor+'">'+(i+1)+'</td>'
+      +'<td style="padding:5px 7px;border-bottom:1px solid rgba(0,0,0,0.04);font-family:var(--mono);font-size:20px;'+txtColor+'">'+r.img.slice(-6)+'</td>'
+      +'<td style="padding:5px 7px;border-bottom:1px solid rgba(0,0,0,0.04);font-family:var(--mono);'+txtColor+'">'+r.conf.toFixed(2)+'</td>'
+      +'<td style="padding:5px 7px;border-bottom:1px solid rgba(0,0,0,0.04);font-family:var(--mono);color:'+(r.iou>=iouT?'#16a34a':'#dc2626')+';">'+r.iou.toFixed(2)+'</td>'
+      +'<td style="padding:5px 7px;border-bottom:1px solid rgba(0,0,0,0.04);">'+vBadge+'</td>'
+      +'<td style="padding:5px 7px;border-bottom:1px solid rgba(0,0,0,0.04);font-family:var(--mono);text-align:right;color:#16a34a;">'+(active?r.precision.toFixed(2):'—')+'</td>'
+      +'<td style="padding:5px 7px;border-bottom:1px solid rgba(0,0,0,0.04);font-family:var(--mono);text-align:right;color:#d97706;">'+(active?r.recall.toFixed(2):'—')+'</td>'
+      +'</tr>';
+  });
+  tbody.innerHTML=html;
+
+  // TP / FP / FN sample cards
+  function makeChip(label, color, bg){
+    return '<span style="display:inline-block;font-family:var(--mono);font-size:20px;padding:2px 8px;border-radius:8px;background:'+bg+';color:'+color+';border:1px solid '+color+'44;">'+label+'</span>';
+  }
+  var tpItems='', fpItems='', fnItems='';
+  activeRows.forEach(function(r){
+    var chip='<span style="display:inline-block;font-family:var(--mono);font-size:20px;padding:2px 8px;border-radius:8px;margin:1px;white-space:nowrap;">';
+    if(r.verdict==='TP'){
+      tpItems+='<span style="display:inline-block;font-family:var(--mono);font-size:20px;padding:2px 8px;border-radius:8px;background:rgba(22,163,74,0.10);color:#16a34a;border:1px solid rgba(22,163,74,0.3);margin:1px 2px;white-space:nowrap;">'+r.img.slice(-6)+' c='+r.conf.toFixed(2)+' IoU='+r.iou.toFixed(2)+'</span>';
+    } else {
+      fpItems+='<span style="display:inline-block;font-family:var(--mono);font-size:20px;padding:2px 8px;border-radius:8px;background:rgba(220,38,38,0.08);color:#dc2626;border:1px solid rgba(220,38,38,0.25);margin:1px 2px;white-space:nowrap;">'+r.img.slice(-6)+' c='+r.conf.toFixed(2)+' IoU='+r.iou.toFixed(2)+'</span>';
+    }
+  });
+  // FN = GT_TOTAL - TP count (unmatched GTs)
+  for(var fi=0;fi<fnCount;fi++){
+    fnItems+='<span style="display:inline-block;font-family:var(--mono);font-size:20px;padding:2px 8px;border-radius:8px;background:rgba(217,119,6,0.08);color:#d97706;border:1px solid rgba(217,119,6,0.25);margin:1px 2px;white-space:nowrap;">missed GT #'+(fi+1)+'</span>';
+  }
+  var tpEl=document.getElementById('card-tp-items');
+  var fpEl=document.getElementById('card-fp-items');
+  var fnEl=document.getElementById('card-fn-items');
+  var tpCnt=document.getElementById('card-tp-count');
+  var fpCnt=document.getElementById('card-fp-count');
+  var fnCnt=document.getElementById('card-fn-count');
+  if(tpEl){tpEl.innerHTML=tpItems||'<span style="font-size:20px;color:var(--text3);font-style:italic;">none</span>';}
+  if(fpEl){fpEl.innerHTML=fpItems||'<span style="font-size:20px;color:var(--text3);font-style:italic;">none</span>';}
+  if(fnEl){fnEl.innerHTML=fnItems||'<span style="font-size:20px;color:var(--text3);font-style:italic;">none</span>';}
+  if(tpCnt){tpCnt.textContent=last.cumTP+' detections';}
+  if(fpCnt){fpCnt.textContent=last.cumFP+' detections';}
+  if(fnCnt){fnCnt.textContent=fnCount+' GTs';}
 }
+function updatePR(){updatePRandTable();}
+function updateTable(){updatePRandTable();}
 
 // Slide 6: PR step animation
 var PRA_ROWS=(function(){
@@ -843,15 +930,15 @@ function praRender(){
     document.getElementById('pra-prec').textContent='—';document.getElementById('pra-rec').textContent='—';
   } else {
     var r=PRA_ROWS[step-1];var col=r.verdict==='TP'?'var(--green)':'var(--red)';
-    if(cur_det)cur_det.innerHTML='<div style="margin-bottom:4px"><span style="font-family:var(--mono);font-size:11px;color:var(--text3)">'+r.img+'</span></div><div>Conf: <strong style="color:var(--text);font-family:var(--mono)">'+r.conf.toFixed(2)+'</strong> &nbsp; IoU: <strong style="font-family:var(--mono);color:'+(r.iou>=0.5?'var(--green)':'var(--red)')+'">'+r.iou.toFixed(2)+'</strong></div><div style="margin-top:6px">Verdict: <strong style="color:'+col+';font-size:15px">'+r.verdict+'</strong></div><div style="margin-top:4px;font-size:12px;color:var(--text3)">'+(r.verdict==='TP'?'IoU ≥ 0.5 → Recall ↑':'IoU < 0.5 or duplicate → Precision ↓')+'</div>';
+    if(cur_det)cur_det.innerHTML='<div style="margin-bottom:4px"><span style="font-family:var(--mono);font-size:20px;color:var(--text3)">'+r.img+'</span></div><div>Conf: <strong style="color:var(--text);font-family:var(--mono)">'+r.conf.toFixed(2)+'</strong> &nbsp; IoU: <strong style="font-family:var(--mono);color:'+(r.iou>=0.5?'var(--green)':'var(--red)')+'">'+r.iou.toFixed(2)+'</strong></div><div style="margin-top:6px">Verdict: <strong style="color:'+col+';font-size:24px">'+r.verdict+'</strong></div><div style="margin-top:4px;font-size:21px;color:var(--text3)">'+(r.verdict==='TP'?'IoU ≥ 0.5 &amp; unique → Recall ↑':'IoU &lt; 0.5 or duplicate → Prec ↓')+'</div>';
     document.getElementById('pra-tp').textContent=r.cumTP;document.getElementById('pra-fp').textContent=r.cumFP;
     document.getElementById('pra-prec').textContent=(r.precision*100).toFixed(1)+'%';document.getElementById('pra-rec').textContent=(r.recall*100).toFixed(1)+'%';
   }
   var tbody=document.getElementById('pra-history');
-  if(tbody)tbody.innerHTML=PRA_ROWS.slice(0,step).reverse().map(function(r,ri){
+  if(tbody){tbody.innerHTML=PRA_ROWS.slice(0,step).map(function(r,ri){
     var vc=r.verdict==='TP'?'#16a34a':'#dc2626';
-    return '<tr style="background:'+(ri===0?'rgba(37,99,235,0.05)':'transparent')+'"><td style="padding:5px 10px;font-family:var(--mono);color:var(--text3)">'+(step-ri)+'</td><td style="padding:5px 10px;font-family:var(--mono)">'+r.conf.toFixed(2)+'</td><td style="padding:5px 10px;font-weight:500;color:'+vc+'">'+r.verdict+'</td><td style="padding:5px 10px;font-family:var(--mono);color:var(--accent)">'+r.precision.toFixed(2)+'</td><td style="padding:5px 10px;font-family:var(--mono);color:var(--amber)">'+r.recall.toFixed(2)+'</td></tr>';
-  }).join('');
+    return '<tr style="background:'+(ri===step-1?'rgba(37,99,235,0.05)':'transparent')+'"><td style="padding:5px 10px;font-family:var(--mono);color:var(--text3)">'+(ri+1)+'</td><td style="padding:5px 10px;font-family:var(--mono)">'+r.conf.toFixed(2)+'</td><td style="padding:5px 10px;font-weight:500;color:'+vc+'">'+r.verdict+'</td><td style="padding:5px 10px;font-family:var(--mono);color:var(--accent)">'+r.precision.toFixed(2)+'</td><td style="padding:5px 10px;font-family:var(--mono);color:var(--amber)">'+r.recall.toFixed(2)+'</td></tr>';
+  }).join('');var sc=tbody.parentElement.parentElement;if(sc)sc.scrollTop=sc.scrollHeight;}
   var canvas=document.getElementById('praCanvas');if(!canvas)return;
   var plotted=PRA_ROWS.slice(0,step);
   var pts=[{x:0,y:1}].concat(plotted.map(function(r){return{x:parseFloat(r.recall.toFixed(3)),y:parseFloat(r.precision.toFixed(3))};}));
@@ -1025,7 +1112,7 @@ function buildVocCoco(){
     ['Key venue','VOC Challenge','COCO Challenge, ECCV/CVPR'],
   ];
   document.getElementById('cmp-rows').innerHTML=rows.map(function(r,i){
-    return '<div style="background:'+(i%2===0?'rgba(0,0,0,0.02)':'transparent')+';padding:8px 13px;font-size:12px;color:var(--text2);display:flex;align-items:center;">'+r[0]+'</div><div style="background:'+(i%2===0?'rgba(37,99,235,0.03)':'transparent')+';padding:8px 14px;font-size:12px;color:var(--text);display:flex;align-items:center;">'+r[1]+'</div><div style="background:'+(i%2===0?'rgba(124,58,237,0.03)':'transparent')+';padding:8px 14px;font-size:12px;color:var(--text);display:flex;align-items:center;">'+r[2]+'</div>';
+    return '<div style="background:'+(i%2===0?'rgba(0,0,0,0.02)':'transparent')+';padding:8px 13px;font-size:21px;color:var(--text2);display:flex;align-items:center;">'+r[0]+'</div><div style="background:'+(i%2===0?'rgba(37,99,235,0.03)':'transparent')+';padding:8px 14px;font-size:21px;color:var(--text);display:flex;align-items:center;">'+r[1]+'</div><div style="background:'+(i%2===0?'rgba(124,58,237,0.03)':'transparent')+';padding:8px 14px;font-size:21px;color:var(--text);display:flex;align-items:center;">'+r[2]+'</div>';
   }).join('');
 }
 
@@ -1048,7 +1135,7 @@ function buildTimeline(){
   wrap.appendChild(line);
   TIMELINE.forEach(function(d){
     var el=document.createElement('div');el.style.cssText='position:relative;margin-bottom:16px;padding-left:20px;';
-    el.innerHTML='<div style="position:absolute;left:-24px;top:4px;width:10px;height:10px;border-radius:50%;background:'+d.color+'"></div><div style="display:flex;align-items:baseline;gap:8px;margin-bottom:2px;flex-wrap:wrap;"><span style="font-family:var(--mono);font-size:11px;color:var(--text3)">'+d.year+'</span><span style="font-size:14px;font-weight:500;color:var(--text)">'+d.name+'</span><span style="font-family:var(--mono);font-size:10px;padding:1px 7px;border-radius:10px;background:var(--bg3);color:var(--text2)">'+d.imgs+' imgs</span><span style="font-family:var(--mono);font-size:10px;padding:1px 7px;border-radius:10px;background:var(--bg3);color:var(--text2)">'+d.cls+' cls</span></div><div style="font-size:12px;color:var(--text2);line-height:1.55">'+d.desc+'</div>';
+    el.innerHTML='<div style="position:absolute;left:-24px;top:4px;width:10px;height:10px;border-radius:50%;background:'+d.color+'"></div><div style="display:flex;align-items:baseline;gap:8px;margin-bottom:2px;flex-wrap:wrap;"><span style="font-family:var(--mono);font-size:20px;color:var(--text3)">'+d.year+'</span><span style="font-size:23px;font-weight:500;color:var(--text)">'+d.name+'</span><span style="font-family:var(--mono);font-size:20px;padding:1px 7px;border-radius:10px;background:var(--bg3);color:var(--text2)">'+d.imgs+' imgs</span><span style="font-family:var(--mono);font-size:20px;padding:1px 7px;border-radius:10px;background:var(--bg3);color:var(--text2)">'+d.cls+' cls</span></div><div style="font-size:21px;color:var(--text2);line-height:1.55">'+d.desc+'</div>';
     wrap.appendChild(el);
   });
 }
@@ -1073,26 +1160,130 @@ function buildDatasetChart(){
       scales:{x:{title:{display:true,text:'Year',color:'#6b6966'},ticks:{color:'#a8a5a0',stepSize:2},grid:{color:'rgba(0,0,0,0.04)'},min:2004,max:2025},
               y:{title:{display:true,text:'log₁₀(instances)',color:'#6b6966'},ticks:{color:'#a8a5a0'},grid:{color:'rgba(0,0,0,0.04)'},min:3,max:10}}}});
   document.getElementById('ds-cards').innerHTML=DS_DATA.map(function(d){
-    return '<div style="background:var(--bg2);border:1px solid '+d.color+'22;border-left:3px solid '+d.color+';border-radius:9px;padding:10px 12px;"><div style="display:flex;align-items:center;gap:7px;margin-bottom:5px;"><span style="font-size:13px;font-weight:500;color:var(--text)">'+d.name+'</span><span style="font-family:var(--mono);font-size:10px;color:var(--text3)">'+d.year+'</span></div><div style="font-size:11px;color:var(--text2);line-height:1.6"><div>Images: '+d.imgs.toLocaleString()+'</div><div>Classes: '+(d.cls||'seg')+'</div><div>Instances: '+d.instances.toLocaleString()+'</div></div></div>';
+    return '<div style="background:var(--bg2);border:1px solid '+d.color+'22;border-left:3px solid '+d.color+';border-radius:9px;padding:10px 12px;"><div style="display:flex;align-items:center;gap:7px;margin-bottom:5px;"><span style="font-size:22px;font-weight:500;color:var(--text)">'+d.name+'</span><span style="font-family:var(--mono);font-size:20px;color:var(--text3)">'+d.year+'</span></div><div style="font-size:20px;color:var(--text2);line-height:1.6"><div>Images: '+d.imgs.toLocaleString()+'</div><div>Classes: '+(d.cls||'seg')+'</div><div>Instances: '+d.instances.toLocaleString()+'</div></div></div>';
   }).join('');
 }
 
 // ── onSlideEnter ──
+// Index → slide id:
+// 0=s0(cover) 1=s1(pipeline) 2=s2(IoU) 3=s3(confusion)
+// 4=s4(PR+table) 5=s5b(PR step) 6=s5c(stairs) 7=s7(mAP bars)
+// 8=s8(summary) 9=s9(FP cases) 10=s10(VOC vs COCO)
+// 11=s11(timeline) 12=s12(datasets) 13=sB(perf chart)
 function onSlideEnter(n){
   if(n===2)drawIoU();
   if(n===3)updateConfusion();
-  if(n===4)updatePR();
-  if(n===5)updateTable();
-  if(n===6){praReset();}
-  if(n===7)buildAnnotCanvas();
-  if(n===8){itpMode='11';itpSetMode('11');}
-  if(n===9){envCur=0;buildEnvSlide();}
-  if(n===10)buildClassBars();
-  if(n===13)buildVocCoco();
-  if(n===14)buildTimeline();
-  if(n===15)buildDatasetChart();
+  if(n===4)updatePRandTable();
+  if(n===5){praReset();}
+  if(n===6)buildAnnotCanvas();
+  if(n===7)buildClassBars();
+  if(n===8){}
+  if(n===9){}
+  if(n===10)buildVocCoco();
+  if(n===11)buildTimeline();
+  if(n===12)buildDatasetChart();
+  if(n===13)buildPerfChart();
 }
 onSlideEnter(0);
+
+// ══════════════════════════════════════════
+// SLIDE B — Model Performance Chart
+// ══════════════════════════════════════════
+var PERF_VOC = [
+  {model:'HOG+SVM',      year:2008, map:20.1, era:'classical'},
+  {model:'DPM v1',       year:2008, map:26.8, era:'classical'},
+  {model:'DPM v3',       year:2009, map:30.0, era:'classical'},
+  {model:'DPM v5',       year:2010, map:33.7, era:'classical'},
+  {model:'OverFeat',     year:2013, map:24.3, era:'cnn-early'},
+  {model:'R-CNN',        year:2014, map:53.7, era:'cnn-early'},
+  {model:'SPPNet',       year:2014, map:59.2, era:'cnn-early'},
+  {model:'Fast R-CNN',   year:2015, map:70.0, era:'two-stage'},
+  {model:'Faster R-CNN', year:2015, map:78.8, era:'two-stage'},
+  {model:'YOLOv1',       year:2016, map:63.4, era:'one-stage'},
+  {model:'SSD',          year:2016, map:77.2, era:'one-stage'},
+  {model:'YOLOv2',       year:2017, map:78.6, era:'one-stage'},
+  {model:'YOLOv3',       year:2018, map:82.1, era:'one-stage'},
+  {model:'YOLOv4',       year:2020, map:89.7, era:'one-stage'},
+];
+var PERF_COCO = [
+  {model:'DPM v5',        year:2014, map:12.7, era:'classical'},
+  {model:'Fast R-CNN',    year:2015, map:19.7, era:'two-stage'},
+  {model:'Faster R-CNN',  year:2015, map:21.9, era:'two-stage'},
+  {model:'SSD',           year:2016, map:25.1, era:'one-stage'},
+  {model:'YOLOv2',        year:2017, map:21.6, era:'one-stage'},
+  {model:'RetinaNet',     year:2017, map:39.1, era:'one-stage'},
+  {model:'Mask R-CNN',    year:2017, map:39.8, era:'two-stage'},
+  {model:'YOLOv3',        year:2018, map:33.0, era:'one-stage'},
+  {model:'FCOS',          year:2019, map:44.7, era:'one-stage'},
+  {model:'EfficientDet',  year:2020, map:51.0, era:'one-stage'},
+  {model:'DETR',          year:2020, map:42.0, era:'transformer'},
+  {model:'YOLOv4',        year:2020, map:43.5, era:'one-stage'},
+  {model:'Swin-L (Cas.)', year:2021, map:58.7, era:'transformer'},
+  {model:'YOLOv8-x',      year:2023, map:53.9, era:'one-stage'},
+  {model:'RT-DETR-X',     year:2023, map:54.8, era:'transformer'},
+  {model:'YOLOv10-X',     year:2024, map:54.4, era:'one-stage'},
+  {model:'DETA',          year:2024, map:63.5, era:'transformer'},
+];
+var ERA_COLORS={
+  'classical':'#a8a5a0',
+  'cnn-early':'#d97706',
+  'two-stage':'#2563eb',
+  'one-stage':'#16a34a',
+  'transformer':'#7c3aed',
+};
+var perfDataset='voc';
+var perfCI=null;
+function setPerfDataset(ds){
+  perfDataset=ds;
+  document.getElementById('perf-voc').style.cssText=ds==='voc'?'font-family:var(--mono);font-size:20px;padding:4px 14px;border-radius:20px;border:1.5px solid var(--accent);background:rgba(37,99,235,0.07);color:var(--accent);cursor:pointer;font-weight:500;':'font-family:var(--mono);font-size:20px;padding:4px 14px;border-radius:20px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;';
+  document.getElementById('perf-coco').style.cssText=ds==='coco'?'font-family:var(--mono);font-size:20px;padding:4px 14px;border-radius:20px;border:1.5px solid var(--accent2);background:rgba(124,58,237,0.07);color:var(--accent2);cursor:pointer;font-weight:500;':'font-family:var(--mono);font-size:20px;padding:4px 14px;border-radius:20px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;';
+  buildPerfChart();
+}
+// Custom plugin: draw year label + mAP value on top of each bar
+var yearLabelPlugin={
+  id:'yearLabel',
+  afterDatasetsDraw:function(chart){
+    var ctx=chart.ctx;
+    var data=perfDataset==='voc'?PERF_VOC:PERF_COCO;
+    var ds=chart.data.datasets[0];
+    var meta=chart.getDatasetMeta(0);
+    ctx.save();
+    meta.data.forEach(function(bar,i){
+      var d=data[i];
+      var x=bar.x, yTop=bar.y;
+      // mAP value
+      ctx.fillStyle='#18181a';
+      ctx.font='bold 26px DM Mono,monospace';
+      ctx.textAlign='center';
+      ctx.fillText(d.map+'%', x, yTop-18);
+      // year
+      ctx.fillStyle='#a8a5a0';
+      ctx.font='26px DM Mono,monospace';
+      ctx.fillText(String(d.year), x, yTop-6);
+    });
+    ctx.restore();
+  }
+};
+
+function buildPerfChart(){
+  var data=perfDataset==='voc'?PERF_VOC:PERF_COCO;
+  var labels=data.map(function(d){return d.model;});
+  var vals=data.map(function(d){return d.map;});
+  var bgColors=data.map(function(d){return ERA_COLORS[d.era]+'bb';});
+  var bdColors=data.map(function(d){return ERA_COLORS[d.era];});
+  if(perfCI)perfCI.destroy();
+  perfCI=new Chart(document.getElementById('perfChart'),{type:'bar',
+    data:{labels:labels,datasets:[{data:vals,backgroundColor:bgColors,borderColor:bdColors,borderWidth:1.5,borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,animation:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){var d=data[ctx.dataIndex];return d.model+': '+d.map+'% mAP ('+d.era+')';}}}},
+      scales:{x:{ticks:{color:'#a8a5a0',font:{size:10,family:'DM Mono,monospace'},maxRotation:55,minRotation:40},grid:{display:false}},
+              y:{min:0,max:100,title:{display:true,text:'mAP (%)',color:'#6b6966'},ticks:{color:'#a8a5a0',stepSize:20},grid:{color:'rgba(0,0,0,0.05)'}}}},
+    plugins:[yearLabelPlugin]});
+  // Build legend
+  var eras=[];var seen={};data.forEach(function(d){if(!seen[d.era]){seen[d.era]=true;eras.push(d.era);}});
+  var legendEl=document.getElementById('perf-legend');
+  if(legendEl)legendEl.innerHTML=eras.map(function(e){return '<div style="display:flex;align-items:center;gap:5px;"><div style="width:12px;height:12px;border-radius:3px;background:'+ERA_COLORS[e]+';"></div><span style="font-family:var(--mono);font-size:20px;color:var(--text2);">'+e+'</span></div>';}).join('');
+}
 </script>
 </body>
 </html>
