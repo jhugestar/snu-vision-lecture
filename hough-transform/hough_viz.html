@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hough Transform Interactive Visualization</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #0d0d1f;
+  color: #e2e8f0;
+  min-height: 100vh;
+}
+header {
+  background: linear-gradient(135deg, #1a0533, #0d1f4a);
+  padding: 18px 24px;
+  text-align: center;
+  border-bottom: 2px solid #7c3aed44;
+}
+header h1 { font-size: 1.7em; color: #a78bfa; letter-spacing: 1px; }
+header p  { color: #94a3b8; font-size: 0.92em; margin-top: 4px; }
+
+.tabs {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+  background: #12122a;
+  border-bottom: 1px solid #1e1e4a;
+}
+.tab-btn {
+  padding: 9px 32px;
+  border: 2px solid #3730a3;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  border-radius: 30px;
+  font-size: 0.95em;
+  font-weight: 600;
+  transition: all 0.25s;
+}
+.tab-btn.active { background: #7c3aed; border-color: #7c3aed; color: #fff; }
+.tab-btn:hover:not(.active) { border-color: #7c3aed; color: #c4b5fd; }
+
+.section { display: none; }
+.section.visible { display: block; }
+
+.viz-row {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 20px 20px 8px;
+  flex-wrap: wrap;
+}
+.canvas-panel {
+  background: #12122a;
+  border: 1px solid #1e1e4a;
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: 0 4px 24px #00000066;
+}
+.canvas-title {
+  text-align: center;
+  font-size: 0.95em;
+  font-weight: 700;
+  color: #a78bfa;
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+}
+.canvas-sub {
+  text-align: center;
+  font-size: 0.76em;
+  color: #475569;
+  margin-top: 6px;
+}
+canvas { display: block; border-radius: 6px; }
+
+.arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+  padding-top: 60px;
+  font-size: 2em;
+  color: #7c3aed;
+  font-weight: bold;
+}
+
+.controls {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  padding: 8px 16px 10px;
+  flex-wrap: wrap;
+}
+.btn {
+  padding: 8px 22px;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.88em;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+.btn-primary   { background: #7c3aed; color: #fff; }
+.btn-secondary { background: #1e1e4a; color: #a5b4fc; border: 1px solid #3730a3; }
+.btn-green     { background: #065f46; color: #6ee7b7; border: 1px solid #059669; }
+.btn:hover { transform: scale(1.05); filter: brightness(1.15); }
+
+.badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 4px 20px 6px;
+  justify-content: center;
+  min-height: 28px;
+}
+.badge {
+  padding: 3px 12px;
+  border-radius: 14px;
+  font-size: 0.79em;
+  font-weight: 700;
+  font-family: monospace;
+}
+
+/* ===== PRESET PANEL ===== */
+.preset-panel {
+  max-width: 900px;
+  margin: 2px auto 6px;
+  background: #0c1a30;
+  border: 1px solid #1e3a6a;
+  border-left: 4px solid #fbbf24;
+  border-radius: 10px;
+  padding: 12px 20px;
+}
+.preset-panel-title {
+  font-size: 0.82em;
+  font-weight: 700;
+  color: #fbbf24;
+  margin-bottom: 10px;
+  letter-spacing: 0.3px;
+}
+.preset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 8px;
+}
+.preset-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.preset-label {
+  font-size: 0.8em;
+  color: #94a3b8;
+  min-width: 80px;
+  font-family: monospace;
+}
+.preset-row input[type=range] {
+  flex: 1;
+  accent-color: #fbbf24;
+  min-width: 100px;
+}
+.preset-val {
+  font-size: 0.82em;
+  font-weight: 700;
+  color: #fbbf24;
+  font-family: monospace;
+  min-width: 55px;
+  text-align: right;
+}
+.preset-hint {
+  margin-top: 8px;
+  font-size: 0.78em;
+  color: #475569;
+}
+
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+  padding: 6px 20px;
+  font-size: 0.9em;
+  color: #94a3b8;
+}
+input[type=range] { accent-color: #7c3aed; }
+
+.info-box {
+  max-width: 900px;
+  margin: 4px auto 20px;
+  background: #12122a;
+  border: 1px solid #1e1e4a;
+  border-left: 4px solid #7c3aed;
+  border-radius: 10px;
+  padding: 16px 20px;
+  font-size: 0.9em;
+  line-height: 1.75;
+  color: #cbd5e1;
+}
+.info-box h3 { color: #c4b5fd; margin-bottom: 8px; font-size: 1em; }
+.info-box .math { color: #fbbf24; font-weight: bold; font-family: monospace; }
+.info-box .hl { color: #f87171; font-weight: bold; }
+.status-msg {
+  text-align: center;
+  font-size: 0.84em;
+  color: #64748b;
+  padding: 2px 16px;
+  min-height: 20px;
+}
+.status-msg.ok { color: #6ee7b7; font-weight: bold; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Hough Transform Interactive Visualization</h1>
+  <p>Computer Vision Lecture — Intuitive Understanding of Line &amp; Circle Detection</p>
+  <p style="margin-top:6px;font-size:0.82em;color:#7c3aed">Hanbyul Joo &nbsp;|&nbsp; Visual Computing Lab, Seoul National University</p>
+</header>
+
+<nav class="tabs">
+  <button class="tab-btn active" onclick="switchTab('line')">📐 Line Detection (Line HT)</button>
+  <button class="tab-btn" onclick="switchTab('circle')">⭕ Circle Detection (Circle HT)</button>
+</nav>
+
+<!-- ===== LINE SECTION ===== -->
+<div id="line-section" class="section visible">
+  <div class="viz-row">
+    <div class="canvas-panel">
+      <div class="canvas-title">Image Space</div>
+      <canvas id="imgC" width="420" height="420"></canvas>
+      <div class="canvas-sub" id="imgC-sub">Click to add points | Preset mode: drag handles</div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="canvas-panel">
+      <div class="canvas-title">Hough Space (θ–ρ)</div>
+      <canvas id="htC" width="420" height="420"></canvas>
+      <div class="canvas-sub">Each point → sinusoid | Intersection → line | Hover to preview line</div>
+    </div>
+  </div>
+
+  <!-- Line Preset Panel -->
+  <div id="line-preset-panel" class="preset-panel" style="display:none">
+    <div class="preset-panel-title">⚙ Line Parameters — drag handles or adjust sliders</div>
+    <div class="preset-grid">
+      <div class="preset-row">
+        <span class="preset-label">Angle θ</span>
+        <input type="range" id="lTheta" min="1" max="179" value="45" oninput="lineHT.onThetaSlider(this.value)">
+        <span class="preset-val" id="lThetaVal">45°</span>
+      </div>
+      <div class="preset-row">
+        <span class="preset-label">Offset ρ</span>
+        <input type="range" id="lRho" min="-300" max="300" value="0" oninput="lineHT.onRhoSlider(this.value)">
+        <span class="preset-val" id="lRhoVal">0 px</span>
+      </div>
+      <div class="preset-row">
+        <span class="preset-label"># Points</span>
+        <input type="range" id="lNPts" min="2" max="12" value="5" oninput="lineHT.onNPtsSlider(this.value)">
+        <span class="preset-val" id="lNPtsVal">5</span>
+      </div>
+      <div class="preset-row">
+        <span class="preset-label">Noise</span>
+        <input type="range" id="lNoise" min="0" max="30" value="5" oninput="lineHT.onNoiseSlider(this.value)">
+        <span class="preset-val" id="lNoiseVal">5 px</span>
+      </div>
+    </div>
+    <div class="preset-hint">💡 Drag yellow handles (●) on the canvas or use sliders | Points auto-regenerate on change</div>
+  </div>
+
+  <div class="badge-row" id="line-badges"></div>
+  <div class="status-msg" id="line-status">Click on Image Space to add points | or use "Load Preset" to get an adjustable line</div>
+  <div class="controls">
+    <button class="btn btn-primary"   onclick="lineHT.detect()">🔍 Detect Line</button>
+    <button class="btn btn-green"     onclick="lineHT.preset()">▶ Single Line</button>
+    <button class="btn btn-green"     onclick="lineHT.presetRectangle()">▶ Rectangle</button>
+    <button class="btn btn-green"     onclick="lineHT.presetCirclePoints()">▶ Circle Points</button>
+    <button class="btn btn-secondary" onclick="lineHT.toggleAccum()">🔲 Toggle Accumulator</button>
+    <button class="btn btn-secondary" onclick="lineHT.clear()">✕ Clear</button>
+  </div>
+  <div class="info-box">
+    <h3>💡 How Line Hough Transform Works</h3>
+    Normal form of a line: <span class="math">ρ = x·cos(θ) + y·sin(θ)</span><br>
+    Every line through a point (x, y) in image space maps to a <span class="hl">sinusoidal curve</span> in Hough space.<br>
+    Curves from collinear points all <span class="hl">intersect at one point</span> in Hough space.<br>
+    That intersection's <span class="math">(θ, ρ)</span> gives the direction and distance-from-origin of the detected line.
+  </div>
+</div>
+
+<!-- ===== CIRCLE SECTION ===== -->
+<div id="circle-section" class="section">
+  <div class="viz-row">
+    <div class="canvas-panel">
+      <div class="canvas-title">Image Space</div>
+      <canvas id="cImgC" width="420" height="420"></canvas>
+      <div class="canvas-sub">Click to add points | Preset mode: drag handles</div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="canvas-panel">
+      <div class="canvas-title">Hough Space (a–b Parameter Space)</div>
+      <canvas id="cHtC" width="420" height="420"></canvas>
+      <div class="canvas-sub">Each point → circle of radius r | Intersection → circle center | Hover to preview</div>
+    </div>
+  </div>
+
+  <div class="slider-row">
+    <label>Radius <span style="color:#fbbf24;font-family:monospace">r</span>:</label>
+    <input type="range" id="rSlider" min="20" max="160" value="90" style="width:180px" oninput="circleHT.setRadius(this.value)">
+    <span id="rVal" style="color:#fbbf24;font-weight:bold;font-family:monospace;">90</span> px
+  </div>
+
+  <!-- Circle Preset Panel -->
+  <div id="circ-preset-panel" class="preset-panel" style="display:none">
+    <div class="preset-panel-title">⚙ Circle Parameters — drag handles or adjust sliders</div>
+    <div class="preset-grid">
+      <div class="preset-row">
+        <span class="preset-label">Center X (a)</span>
+        <input type="range" id="cCx" min="30" max="390" value="210" oninput="circleHT.onCxSlider(this.value)">
+        <span class="preset-val" id="cCxVal">210 px</span>
+      </div>
+      <div class="preset-row">
+        <span class="preset-label">Center Y (b)</span>
+        <input type="range" id="cCy" min="30" max="390" value="210" oninput="circleHT.onCySlider(this.value)">
+        <span class="preset-val" id="cCyVal">210 px</span>
+      </div>
+      <div class="preset-row">
+        <span class="preset-label"># Points</span>
+        <input type="range" id="cNPts" min="3" max="14" value="7" oninput="circleHT.onNPtsSlider(this.value)">
+        <span class="preset-val" id="cNPtsVal">7</span>
+      </div>
+      <div class="preset-row">
+        <span class="preset-label">Noise</span>
+        <input type="range" id="cNoise" min="0" max="30" value="5" oninput="circleHT.onNoiseSlider(this.value)">
+        <span class="preset-val" id="cNoiseVal">5 px</span>
+      </div>
+    </div>
+    <div class="preset-hint">💡 Drag center handle (◆) to move, edge handle (●) to resize | The r slider above also works</div>
+  </div>
+
+  <div class="badge-row" id="circ-badges"></div>
+  <div class="status-msg" id="circ-status">Click on Image Space to add points on a circle | or use "Load Preset" for an adjustable circle</div>
+  <div class="controls">
+    <button class="btn btn-primary"   onclick="circleHT.detect()">🔍 Detect Circle</button>
+    <button class="btn btn-green"     onclick="circleHT.preset()">▶ Load Preset (adjustable)</button>
+    <button class="btn btn-secondary" onclick="circleHT.clear()">✕ Clear</button>
+  </div>
+  <div class="info-box">
+    <h3>💡 How Circle Hough Transform Works</h3>
+    Circle equation: <span class="math">(x−a)² + (y−b)² = r²</span><br>
+    With a fixed radius <span class="math">r</span>, each image point (x, y) maps to a
+    <span class="hl">circle of radius r</span> in the (a, b) parameter space.<br>
+    Circles from points on the same circle all <span class="hl">intersect at one point (the center)</span> in parameter space.
+  </div>
+</div>
+
+<script>
+// ============================================================
+// CONSTANTS & UTILITIES
+// ============================================================
+const W = 420, H = 420;
+const DIAG = Math.sqrt(W * W + H * H) / 2;  // ≈ 297
+const THETA_STEPS = 360;
+const RHO_STEPS   = 400;
+
+const PALETTE = [
+  '#f87171','#fb923c','#facc15','#4ade80','#34d399',
+  '#22d3ee','#60a5fa','#a78bfa','#f472b6','#e879f9'
+];
+
+function hotmap(t) {
+  t = Math.max(0, Math.min(1, t));
+  if (t < 0.2)  return [0,   0,   Math.round(t/0.2*200)];
+  if (t < 0.4)  return [0,   Math.round((t-0.2)/0.2*255), 255];
+  if (t < 0.6)  return [Math.round((t-0.4)/0.2*255), 255, Math.round((1-(t-0.4)/0.2)*255)];
+  if (t < 0.8)  return [255, Math.round((1-(t-0.6)/0.2)*200), 0];
+  return [255, 0, 0];
+}
+
+function drawGrid(ctx, steps=8) {
+  ctx.strokeStyle = '#1a1a3a'; ctx.lineWidth = 0.5;
+  for (let i=0;i<=steps;i++) {
+    const x=i/steps*W, y=i/steps*H;
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+  }
+}
+
+function dist(a, b) {
+  if (!a || !b) return Infinity;
+  return Math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2);
+}
+
+function lineEndpoints(theta, rho, W, H) {
+  const cos=Math.cos(theta), sin=Math.sin(theta);
+  const cx=W/2, cy=H/2;
+  const pts=[];
+  const check=(x,y)=>{ if(x>=-1&&x<=W+1&&y>=-1&&y<=H+1) pts.push({x,y}); };
+  if(Math.abs(sin)>1e-6){
+    check(0,   cy+(rho+cx*cos)/sin);
+    check(W,   cy+(rho-cx*cos)/sin);
+  }
+  if(Math.abs(cos)>1e-6){
+    check(cx+(rho+cy*sin)/cos, 0);
+    check(cx+(rho-cy*sin)/cos, H);
+  }
+  return pts.filter((p,i)=>!pts.slice(0,i).some(q=>Math.abs(q.x-p.x)<2&&Math.abs(q.y-p.y)<2));
+}
+
+function thetaRhoFromPoints(p1, p2) {
+  const cx1=p1.x-W/2, cy1=p1.y-H/2;
+  const cx2=p2.x-W/2, cy2=p2.y-H/2;
+  const dx=cx2-cx1, dy=cy2-cy1;
+  if(Math.abs(dx)<0.5 && Math.abs(dy)<0.5) return null;
+  let theta = Math.atan2(dy, dx) + Math.PI/2;
+  theta = ((theta % Math.PI) + Math.PI) % Math.PI;
+  const rho = cx1*Math.cos(theta) + cy1*Math.sin(theta);
+  return {theta, rho};
+}
+
+function drawHandle(ctx, x, y, color, shape='circle', size=9) {
+  ctx.save();
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 10;
+  if (shape === 'diamond') {
+    ctx.fillStyle = color;
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x, y-size); ctx.lineTo(x+size, y);
+    ctx.lineTo(x, y+size); ctx.lineTo(x-size, y);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+  } else {
+    ctx.fillStyle = color;
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(x, y, size, 0, Math.PI*2);
+    ctx.fill(); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function generateLinePoints(theta, rho, nPts, noise) {
+  const dirX = -Math.sin(theta), dirY = Math.cos(theta);
+  const px0 = W/2 + rho*Math.cos(theta);
+  const py0 = H/2 + rho*Math.sin(theta);
+  const L = 260;
+  const pts = [];
+  for (let i=0; i<nPts; i++) {
+    const t = nPts>1 ? (i/(nPts-1)-0.5)*L : 0;
+    const x = px0 + t*dirX + (Math.random()-0.5)*noise;
+    const y = py0 + t*dirY + (Math.random()-0.5)*noise;
+    if (x>=8&&x<=W-8&&y>=8&&y<=H-8) pts.push({x, y});
+  }
+  return pts;
+}
+
+function generateCirclePoints(cx, cy, r, nPts, noise) {
+  return Array.from({length:nPts}, (_,i) => {
+    const ang = (i/nPts)*2*Math.PI;
+    return {
+      x: cx + r*Math.cos(ang) + (Math.random()-0.5)*noise,
+      y: cy + r*Math.sin(ang) + (Math.random()-0.5)*noise
+    };
+  });
+}
+
+// ============================================================
+// LINE HOUGH TRANSFORM
+// ============================================================
+class LineHTViz {
+  constructor() {
+    this.imgC = document.getElementById('imgC');
+    this.htC  = document.getElementById('htC');
+    this.iCtx = this.imgC.getContext('2d');
+    this.hCtx = this.htC.getContext('2d');
+
+    this.points   = [];
+    this.detected = [];
+    this.showAccum = true;
+    this.htHover  = null;   // hover position on Hough canvas
+
+    // Preset mode state
+    this.presetActive = false;
+    this.presetTheta  = Math.PI/4;   // 45°
+    this.presetRho    = 0;
+    this.presetNPts   = 5;
+    this.presetNoise  = 5;
+    this.handles      = { p1: null, p2: null };  // two control points on the line
+    this.dragging     = null;  // null | 'p1' | 'p2'
+    this.imgHover     = null;  // which handle is being hovered
+
+    // Image canvas events
+    this.imgC.addEventListener('mousedown', e => this._onImgDown(e));
+    this.imgC.addEventListener('mousemove', e => this._onImgHover(e));
+    this.imgC.addEventListener('mouseleave',() => { this.imgHover=null; if(this.presetActive) this.render(); });
+
+    // Hough canvas events
+    this.htC.addEventListener('mousemove',  e => this._onHtHover(e));
+    this.htC.addEventListener('mouseleave', () => { this.htHover=null; this.render(); });
+
+    // Global drag tracking
+    document.addEventListener('mousemove', e => this._onDrag(e));
+    document.addEventListener('mouseup',   () => { this.dragging=null; });
+
+    this.render();
+  }
+
+  _canvasPos(e, canvas) {
+    const r = canvas.getBoundingClientRect();
+    return { x:(e.clientX-r.left)*(W/r.width), y:(e.clientY-r.top)*(H/r.height) };
+  }
+
+  _onImgDown(e) {
+    const pos = this._canvasPos(e, this.imgC);
+    if (this.presetActive) {
+      if (dist(pos, this.handles.p1) < 14) { this.dragging='p1'; return; }
+      if (dist(pos, this.handles.p2) < 14) { this.dragging='p2'; return; }
+    }
+    // Always allow adding points by clicking (outside handles)
+    this.points.push(pos);
+    this.detected = [];
+    this.updateBadges();
+    this.updateStatus();
+    this.render();
+  }
+
+  _onImgHover(e) {
+    if (!this.presetActive) return;
+    const pos = this._canvasPos(e, this.imgC);
+    const near = dist(pos,this.handles.p1)<14 ? 'p1'
+               : dist(pos,this.handles.p2)<14 ? 'p2' : null;
+    if (near !== this.imgHover) {
+      this.imgHover = near;
+      this.imgC.style.cursor = near ? 'move' : 'crosshair';
+      this.render();
+    }
+  }
+
+  _onDrag(e) {
+    if (!this.dragging || !this.presetActive) return;
+    const pos = this._canvasPos(e, this.imgC);
+    // Clamp to canvas
+    pos.x = Math.max(5, Math.min(W-5, pos.x));
+    pos.y = Math.max(5, Math.min(H-5, pos.y));
+
+    this.handles[this.dragging] = pos;
+    const tr = thetaRhoFromPoints(this.handles.p1, this.handles.p2);
+    if (tr) {
+      this.presetTheta = tr.theta;
+      this.presetRho   = tr.rho;
+      this._syncSliders();
+      this._regenPoints();
+      this.render();
+    }
+  }
+
+  _onHtHover(e) {
+    const pos = this._canvasPos(e, this.htC);
+    const theta = (pos.x/W)*Math.PI;
+    const rho   = DIAG*(1 - 2*pos.y/H);
+    this.htHover = {theta, rho, px:pos.x, py:pos.y};
+    this.render();
+  }
+
+  _syncSliders() {
+    const deg = Math.round(this.presetTheta*180/Math.PI);
+    const rho = Math.round(this.presetRho);
+    document.getElementById('lTheta').value = deg;
+    document.getElementById('lThetaVal').textContent = deg+'°';
+    document.getElementById('lRho').value = rho;
+    document.getElementById('lRhoVal').textContent = rho+' px';
+  }
+
+  _updateHandlesFromParams() {
+    const pts = lineEndpoints(this.presetTheta, this.presetRho, W, H);
+    if (pts.length >= 2) {
+      this.handles.p1 = {...pts[0]};
+      this.handles.p2 = {...pts[pts.length-1]};
+    }
+  }
+
+  _regenPoints() {
+    this.points = generateLinePoints(this.presetTheta, this.presetRho, this.presetNPts, this.presetNoise);
+    this.detected = [];
+    this.updateBadges();
+  }
+
+  // Slider callbacks
+  onThetaSlider(v) {
+    this.presetTheta = parseInt(v)*Math.PI/180;
+    document.getElementById('lThetaVal').textContent = v+'°';
+    this._updateHandlesFromParams();
+    this._regenPoints(); this.render();
+  }
+  onRhoSlider(v) {
+    this.presetRho = parseInt(v);
+    document.getElementById('lRhoVal').textContent = v+' px';
+    this._updateHandlesFromParams();
+    this._regenPoints(); this.render();
+  }
+  onNPtsSlider(v) {
+    this.presetNPts = parseInt(v);
+    document.getElementById('lNPtsVal').textContent = v;
+    this._regenPoints(); this.render();
+  }
+  onNoiseSlider(v) {
+    this.presetNoise = parseInt(v);
+    document.getElementById('lNoiseVal').textContent = v+' px';
+    this._regenPoints(); this.render();
+  }
+
+  computeAccum() {
+    const acc = Array.from({length:THETA_STEPS}, ()=>new Float32Array(RHO_STEPS));
+    for (const p of this.points) {
+      const cx=p.x-W/2, cy=p.y-H/2;
+      for (let ti=0;ti<THETA_STEPS;ti++) {
+        const theta=(ti/THETA_STEPS)*Math.PI;
+        const rho=cx*Math.cos(theta)+cy*Math.sin(theta);
+        const ri=Math.round((1-rho/DIAG)/2*(RHO_STEPS-1));
+        if(ri>=0&&ri<RHO_STEPS) acc[ti][ri]++;
+      }
+    }
+    return acc;
+  }
+
+  render() { this.drawImageSpace(); this.drawHoughSpace(); }
+
+  drawImageSpace() {
+    const ctx = this.iCtx;
+    ctx.fillStyle='#08081a'; ctx.fillRect(0,0,W,H);
+    drawGrid(ctx);
+
+    // Center crosshair
+    ctx.strokeStyle='#1e1e4a'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.moveTo(W/2,0); ctx.lineTo(W/2,H); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,H/2); ctx.lineTo(W,H/2); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Preset mode: draw the target line
+    if (this.presetActive) {
+      const pts = lineEndpoints(this.presetTheta, this.presetRho, W, H);
+      if (pts.length >= 2) {
+        ctx.strokeStyle='rgba(251,191,36,0.25)'; ctx.lineWidth=2; ctx.setLineDash([8,5]);
+        ctx.beginPath(); ctx.moveTo(pts[0].x,pts[0].y); ctx.lineTo(pts[pts.length-1].x,pts[pts.length-1].y);
+        ctx.stroke(); ctx.setLineDash([]);
+      }
+    }
+
+    // Hover preview line (from Hough space hover)
+    if (this.htHover) {
+      const pts = lineEndpoints(this.htHover.theta, this.htHover.rho, W, H);
+      if (pts.length >= 2) {
+        ctx.strokeStyle='rgba(167,139,250,0.45)'; ctx.lineWidth=1.5; ctx.setLineDash([6,4]);
+        ctx.beginPath(); ctx.moveTo(pts[0].x,pts[0].y); ctx.lineTo(pts[pts.length-1].x,pts[pts.length-1].y);
+        ctx.stroke(); ctx.setLineDash([]);
+      }
+    }
+
+    // Detected lines (each in a different palette color)
+    const LINE_COLORS=['#facc15','#34d399','#f87171','#60a5fa','#fb923c','#a78bfa','#f472b6','#4ade80'];
+    for (let di=0;di<this.detected.length;di++) {
+      const d=this.detected[di];
+      const pts = lineEndpoints(d.theta, d.rho, W, H);
+      if (pts.length>=2) {
+        const col=LINE_COLORS[di%LINE_COLORS.length];
+        ctx.strokeStyle=col; ctx.lineWidth=2.5; ctx.setLineDash([10,4]);
+        ctx.beginPath(); ctx.moveTo(pts[0].x,pts[0].y); ctx.lineTo(pts[pts.length-1].x,pts[pts.length-1].y);
+        ctx.stroke(); ctx.setLineDash([]);
+      }
+    }
+
+    // Draw points (skip individual labels when many)
+    const manyPts = this.points.length > 10;
+    for (let i=0;i<this.points.length;i++) {
+      const {x,y}=this.points[i]; const col=PALETTE[i%PALETTE.length];
+      ctx.fillStyle=col; ctx.strokeStyle='#fff'; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.arc(x,y,manyPts?4:7,0,Math.PI*2); ctx.fill(); ctx.stroke();
+      if(!manyPts){ ctx.fillStyle=col; ctx.font='bold 10px monospace'; ctx.fillText(`P${i+1}`,x+9,y-7); }
+    }
+
+    // Preset handles
+    if (this.presetActive && this.handles.p1 && this.handles.p2) {
+      // Line between handles
+      ctx.strokeStyle='rgba(251,191,36,0.5)'; ctx.lineWidth=1.5; ctx.setLineDash([4,3]);
+      ctx.beginPath(); ctx.moveTo(this.handles.p1.x,this.handles.p1.y);
+      ctx.lineTo(this.handles.p2.x,this.handles.p2.y); ctx.stroke(); ctx.setLineDash([]);
+
+      const h1Size = this.imgHover==='p1' ? 11 : 9;
+      const h2Size = this.imgHover==='p2' ? 11 : 9;
+      drawHandle(ctx, this.handles.p1.x, this.handles.p1.y, '#fbbf24', 'circle', h1Size);
+      drawHandle(ctx, this.handles.p2.x, this.handles.p2.y, '#fbbf24', 'circle', h2Size);
+
+      // Param readout
+      const deg = Math.round(this.presetTheta*180/Math.PI);
+      const rho = Math.round(this.presetRho);
+      ctx.fillStyle='rgba(251,191,36,0.85)'; ctx.font='bold 11px monospace';
+      ctx.fillText(`θ=${deg}° ρ=${rho}px`, 8, H-8);
+    }
+  }
+
+  drawHoughSpace() {
+    const ctx = this.hCtx;
+    ctx.fillStyle='#08081a'; ctx.fillRect(0,0,W,H);
+    drawGrid(ctx);
+
+    // Zero-rho dashed line
+    ctx.strokeStyle='#2a2a5a'; ctx.lineWidth=1; ctx.setLineDash([5,4]);
+    ctx.beginPath(); ctx.moveTo(0,H/2); ctx.lineTo(W,H/2); ctx.stroke();
+    ctx.setLineDash([]);
+
+    if (this.points.length>0 && this.showAccum) {
+      const acc = this.computeAccum();
+      let maxV=1;
+      for(let t=0;t<THETA_STEPS;t++) for(let r=0;r<RHO_STEPS;r++) if(acc[t][r]>maxV) maxV=acc[t][r];
+      const imgData=ctx.createImageData(W,H); const d=imgData.data;
+      for(let py=0;py<H;py++) for(let px=0;px<W;px++) {
+        const ti=Math.floor(px/W*THETA_STEPS), ri=Math.floor(py/H*RHO_STEPS);
+        const v=acc[ti][ri];
+        if(v>0){
+          const [r,g,b]=hotmap(v/maxV); const idx=(py*W+px)*4;
+          d[idx]=r; d[idx+1]=g; d[idx+2]=b; d[idx+3]=255;
+        }
+      }
+      ctx.putImageData(imgData,0,0);
+    }
+
+    // Sinusoidal curves
+    for(let i=0;i<this.points.length;i++) {
+      const {x,y}=this.points[i]; const cx=x-W/2, cy=y-H/2;
+      const col=PALETTE[i%PALETTE.length];
+      ctx.strokeStyle=col; ctx.lineWidth=1.8; ctx.globalAlpha=0.85;
+      ctx.beginPath();
+      for(let ti=0;ti<=THETA_STEPS;ti++) {
+        const theta=(ti/THETA_STEPS)*Math.PI;
+        const rho=cx*Math.cos(theta)+cy*Math.sin(theta);
+        const px=(ti/THETA_STEPS)*W;
+        const py=(1-rho/DIAG)/2*H;
+        ti===0 ? ctx.moveTo(px,py) : ctx.lineTo(px,py);
+      }
+      ctx.stroke(); ctx.globalAlpha=1;
+    }
+
+    // Detected peaks (same color mapping as image-space lines)
+    const LINE_COLORS_HT=['#facc15','#34d399','#f87171','#60a5fa','#fb923c','#a78bfa','#f472b6','#4ade80'];
+    for(let di=0;di<this.detected.length;di++){
+      const d=this.detected[di];
+      const col=LINE_COLORS_HT[di%LINE_COLORS_HT.length];
+      const px=(d.theta_idx/THETA_STEPS)*W;
+      const py=(1-d.rho/DIAG)/2*H;
+      const gr=ctx.createRadialGradient(px,py,0,px,py,18);
+      const r2=parseInt(col.slice(1,3),16),g2=parseInt(col.slice(3,5),16),b2=parseInt(col.slice(5,7),16);
+      gr.addColorStop(0,`rgba(${r2},${g2},${b2},0.5)`); gr.addColorStop(1,`rgba(${r2},${g2},${b2},0)`);
+      ctx.fillStyle=gr; ctx.beginPath(); ctx.arc(px,py,18,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='white'; ctx.strokeStyle=col; ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.arc(px,py,7,0,Math.PI*2); ctx.fill(); ctx.stroke();
+    }
+
+    // Hough space hover crosshair
+    if(this.htHover) {
+      const {px,py}=this.htHover;
+      ctx.strokeStyle='rgba(167,139,250,0.5)'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+      ctx.beginPath(); ctx.moveTo(px,0); ctx.lineTo(px,H); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0,py); ctx.lineTo(W,py); ctx.stroke();
+      ctx.setLineDash([]);
+      const deg=Math.round(this.htHover.theta*180/Math.PI);
+      const rho=Math.round(this.htHover.rho);
+      ctx.fillStyle='rgba(167,139,250,0.9)'; ctx.font='11px monospace';
+      ctx.fillText(`θ=${deg}°  ρ=${rho}px`, Math.min(px+6,W-90), Math.max(py-6,14));
+    }
+
+    // Axis labels
+    ctx.fillStyle='#334155'; ctx.font='10px monospace';
+    ctx.fillText('θ=0°',4,H-5); ctx.fillText('θ=90°',W/2-16,H-5); ctx.fillText('θ=180°',W-52,H-5);
+    ctx.fillText('ρ=+',4,13); ctx.fillText('ρ=0',4,H/2-4); ctx.fillText('ρ=−',4,H-18);
+  }
+
+  detect() {
+    if(this.points.length<2){this.setStatus('Need at least 2 points');return;}
+    const acc=this.computeAccum();
+    let maxV=0,maxT=0,maxR=0;
+    for(let t=0;t<THETA_STEPS;t++) for(let r=0;r<RHO_STEPS;r++)
+      if(acc[t][r]>maxV){maxV=acc[t][r];maxT=t;maxR=r;}
+    if(maxV>=2){
+      const theta=(maxT/THETA_STEPS)*Math.PI;
+      const rho=DIAG*(1-2*maxR/(RHO_STEPS-1));
+      this.detected=[{theta,rho,theta_idx:maxT,rho_idx:maxR,votes:maxV}];
+      this.setStatus(`✅ Line detected! θ=${Math.round(theta*180/Math.PI)}°, ρ=${Math.round(rho)}px (votes:${maxV}/${this.points.length})`,true);
+    }
+    this.render();
+  }
+
+  preset() {
+    this.clear(false);
+    this.presetActive = true;
+    this.presetTheta  = Math.PI/4;
+    this.presetRho    = 0;
+    this.presetNPts   = 5;
+    this.presetNoise  = 5;
+    document.getElementById('lTheta').value=45; document.getElementById('lThetaVal').textContent='45°';
+    document.getElementById('lRho').value=0;    document.getElementById('lRhoVal').textContent='0 px';
+    document.getElementById('lNPts').value=5;   document.getElementById('lNPtsVal').textContent='5';
+    document.getElementById('lNoise').value=5;  document.getElementById('lNoiseVal').textContent='5 px';
+    document.getElementById('line-preset-panel').style.display='block';
+    this.imgC.style.cursor='default';
+    this._updateHandlesFromParams();
+    this._regenPoints();
+    this.setStatus('⚙ Preset mode — drag handles or adjust sliders');
+    this.render();
+  }
+
+  detectMulti(maxPeaks=4) {
+    if(this.points.length<2){this.setStatus('Need at least 2 points');return;}
+    const acc=this.computeAccum();
+    // Deep copy for NMS destructive suppression
+    const a2=acc.map(row=>[...row]);
+    this.detected=[];
+    const SUPP_T=18, SUPP_R=20; // suppression window in bins
+    for(let k=0;k<maxPeaks;k++){
+      let maxV=0,maxT=0,maxR=0;
+      for(let t=0;t<THETA_STEPS;t++) for(let r=0;r<RHO_STEPS;r++)
+        if(a2[t][r]>maxV){maxV=a2[t][r];maxT=t;maxR=r;}
+      if(maxV<2) break;
+      const theta=(maxT/THETA_STEPS)*Math.PI;
+      const rho=DIAG*(1-2*maxR/(RHO_STEPS-1));
+      this.detected.push({theta,rho,theta_idx:maxT,rho_idx:maxR,votes:maxV});
+      // NMS: zero out neighborhood
+      for(let dt=-SUPP_T;dt<=SUPP_T;dt++) for(let dr=-SUPP_R;dr<=SUPP_R;dr++){
+        const t2=maxT+dt, r2=maxR+dr;
+        if(t2>=0&&t2<THETA_STEPS&&r2>=0&&r2<RHO_STEPS) a2[t2][r2]=0;
+      }
+    }
+    const n=this.detected.length;
+    this.setStatus(`✅ ${n} line${n>1?'s':''} detected in Hough space`,true);
+    this.render();
+  }
+
+  presetRectangle() {
+    this.clear(false);
+    const cx=W/2, cy=H/2, hw=110, hh=90;
+    const PPS=8, noise=4; // points per side
+    const rnd=()=>(Math.random()-0.5)*2*noise;
+    const pts=[];
+    for(let i=0;i<PPS;i++){
+      const t=i/(PPS-1);
+      pts.push({x:cx-hw+t*2*hw+rnd(), y:cy-hh+rnd()});           // top
+      pts.push({x:cx-hw+t*2*hw+rnd(), y:cy+hh+rnd()});           // bottom
+      pts.push({x:cx-hw+rnd(),        y:cy-hh+t*2*hh+rnd()});    // left
+      pts.push({x:cx+hw+rnd(),        y:cy-hh+t*2*hh+rnd()});    // right
+    }
+    this.points=pts.filter(p=>p.x>=4&&p.x<=W-4&&p.y>=4&&p.y<=H-4);
+    this.showAccum=true;
+    this.detectMulti(4);
+    this.setStatus('Rectangle: 4 sides → 4 peaks in Hough space ✅',true);
+  }
+
+  presetCirclePoints() {
+    this.clear(false);
+    const cx=W/2, cy=H/2, r=120, nPts=20, noise=4;
+    const rnd=()=>(Math.random()-0.5)*2*noise;
+    this.points=Array.from({length:nPts},(_,i)=>{
+      const ang=(i/nPts)*2*Math.PI;
+      return {x:cx+r*Math.cos(ang)+rnd(), y:cy+r*Math.sin(ang)+rnd()};
+    });
+    this.showAccum=true;
+    this.detectMulti(8);
+    this.setStatus('Circle points: many sinusoids → peaks = lines through ≥2 points ✅',true);
+  }
+
+  toggleAccum() { this.showAccum=!this.showAccum; this.render(); }
+
+  clear(doRender=true) {
+    this.points=[]; this.detected=[]; this.htHover=null; this.dragging=null;
+    this.presetActive=false;
+    this.handles={p1:null,p2:null};
+    this.imgC.style.cursor='crosshair';
+    document.getElementById('line-preset-panel').style.display='none';
+    this.updateBadges();
+    this.setStatus('Click on Image Space to add points | or use "Load Preset" for an adjustable line');
+    if(doRender) this.render();
+  }
+
+  updateBadges() {
+    const el=document.getElementById('line-badges'); el.innerHTML='';
+    this.points.forEach((p,i)=>{
+      const col=PALETTE[i%PALETTE.length];
+      const b=document.createElement('span'); b.className='badge';
+      b.style.cssText=`background:${col}22;border:1px solid ${col};color:${col}`;
+      b.textContent=`P${i+1}(${Math.round(p.x-W/2)},${Math.round(H/2-p.y)})`;
+      el.appendChild(b);
+    });
+  }
+
+  setStatus(msg,good=false){
+    const el=document.getElementById('line-status');
+    el.textContent=msg; el.className='status-msg'+(good?' ok':'');
+  }
+  updateStatus(){
+    const n=this.points.length;
+    if(n===0) this.setStatus('Click on Image Space to add points');
+    else if(n===1) this.setStatus('1 point — observe the sinusoid in Hough Space. Add more!');
+    else this.setStatus(`${n} points — click "Detect Line" to find the intersection`);
+  }
+}
+
+// ============================================================
+// CIRCLE HOUGH TRANSFORM
+// ============================================================
+class CircleHTViz {
+  constructor() {
+    this.imgC = document.getElementById('cImgC');
+    this.htC  = document.getElementById('cHtC');
+    this.iCtx = this.imgC.getContext('2d');
+    this.hCtx = this.htC.getContext('2d');
+
+    this.points   = [];
+    this.detected = [];
+    this.radius   = 90;
+    this.htHover  = null;
+
+    // Preset mode
+    this.presetActive = false;
+    this.presetCx  = 210;
+    this.presetCy  = 210;
+    this.presetNPts  = 7;
+    this.presetNoise = 5;
+    this.centerHandle = null;
+    this.edgeHandle   = null;
+    this.edgeAngle    = 0;   // angle of edge handle from center
+    this.dragging     = null;  // null | 'center' | 'edge'
+    this.imgHover     = null;
+
+    this.imgC.addEventListener('mousedown', e=>this._onImgDown(e));
+    this.imgC.addEventListener('mousemove', e=>this._onImgHover(e));
+    this.imgC.addEventListener('mouseleave',()=>{ this.imgHover=null; if(this.presetActive) this.render(); });
+    this.htC.addEventListener('mousemove',  e=>this._onHtHover(e));
+    this.htC.addEventListener('mouseleave', ()=>{ this.htHover=null; this.render(); });
+    document.addEventListener('mousemove',  e=>this._onDrag(e));
+    document.addEventListener('mouseup',    ()=>{ this.dragging=null; });
+
+    this.render();
+  }
+
+  _canvasPos(e, canvas) {
+    const r=canvas.getBoundingClientRect();
+    return {x:(e.clientX-r.left)*(W/r.width), y:(e.clientY-r.top)*(H/r.height)};
+  }
+
+  setRadius(v) {
+    this.radius=parseInt(v);
+    document.getElementById('rVal').textContent=this.radius;
+    this.detected=[];
+    if(this.presetActive){ this._updateEdgeHandle(); this._regenPoints(); }
+    this.render();
+  }
+
+  _updateEdgeHandle() {
+    this.edgeHandle={
+      x: this.presetCx + this.radius*Math.cos(this.edgeAngle),
+      y: this.presetCy + this.radius*Math.sin(this.edgeAngle)
+    };
+  }
+
+  _updateCenterHandle() { this.centerHandle={x:this.presetCx, y:this.presetCy}; }
+
+  _onImgDown(e) {
+    const pos=this._canvasPos(e,this.imgC);
+    if(this.presetActive) {
+      if(dist(pos,this.centerHandle)<14){ this.dragging='center'; return; }
+      if(dist(pos,this.edgeHandle)<14){  this.dragging='edge';   return; }
+    }
+    // Always allow adding points by clicking (outside handles)
+    this.points.push(pos); this.detected=[];
+    this.updateBadges(); this.updateStatus(); this.render();
+  }
+
+  _onImgHover(e) {
+    if(!this.presetActive) return;
+    const pos=this._canvasPos(e,this.imgC);
+    const near=dist(pos,this.centerHandle)<14?'center':dist(pos,this.edgeHandle)<14?'edge':null;
+    if(near!==this.imgHover){
+      this.imgHover=near;
+      this.imgC.style.cursor=near?'move':'crosshair';
+      this.render();
+    }
+  }
+
+  _onDrag(e) {
+    if(!this.dragging||!this.presetActive) return;
+    const pos=this._canvasPos(e,this.imgC);
+    pos.x=Math.max(5,Math.min(W-5,pos.x));
+    pos.y=Math.max(5,Math.min(H-5,pos.y));
+
+    if(this.dragging==='center') {
+      this.presetCx=pos.x; this.presetCy=pos.y;
+      this._updateCenterHandle(); this._updateEdgeHandle();
+    } else if(this.dragging==='edge') {
+      const dx=pos.x-this.presetCx, dy=pos.y-this.presetCy;
+      const newR=Math.round(Math.sqrt(dx*dx+dy*dy));
+      if(newR>=15&&newR<=200){
+        this.radius=newR;
+        document.getElementById('rSlider').value=newR;
+        document.getElementById('rVal').textContent=newR;
+      }
+      this.edgeAngle=Math.atan2(dy,dx);
+      this._updateEdgeHandle();
+    }
+    this._syncSliders(); this._regenPoints(); this.render();
+  }
+
+  _onHtHover(e) {
+    const pos=this._canvasPos(e,this.htC);
+    this.htHover={a:pos.x, b:pos.y};
+    this.render();
+  }
+
+  _syncSliders() {
+    document.getElementById('cCx').value=Math.round(this.presetCx);
+    document.getElementById('cCxVal').textContent=Math.round(this.presetCx)+' px';
+    document.getElementById('cCy').value=Math.round(this.presetCy);
+    document.getElementById('cCyVal').textContent=Math.round(this.presetCy)+' px';
+  }
+
+  _regenPoints() {
+    this.points=generateCirclePoints(this.presetCx,this.presetCy,this.radius,this.presetNPts,this.presetNoise);
+    this.detected=[];
+    this.updateBadges();
+  }
+
+  onCxSlider(v) {
+    this.presetCx=parseInt(v); document.getElementById('cCxVal').textContent=v+' px';
+    this._updateCenterHandle(); this._updateEdgeHandle();
+    this._regenPoints(); this.render();
+  }
+  onCySlider(v) {
+    this.presetCy=parseInt(v); document.getElementById('cCyVal').textContent=v+' px';
+    this._updateCenterHandle(); this._updateEdgeHandle();
+    this._regenPoints(); this.render();
+  }
+  onNPtsSlider(v) {
+    this.presetNPts=parseInt(v); document.getElementById('cNPtsVal').textContent=v;
+    this._regenPoints(); this.render();
+  }
+  onNoiseSlider(v) {
+    this.presetNoise=parseInt(v); document.getElementById('cNoiseVal').textContent=v+' px';
+    this._regenPoints(); this.render();
+  }
+
+  computeAccum() {
+    const acc=Array.from({length:W},()=>new Float32Array(H));
+    const ASTEPS=720;
+    for(const p of this.points) {
+      for(let ti=0;ti<ASTEPS;ti++){
+        const ang=(ti/ASTEPS)*2*Math.PI;
+        const a=Math.round(p.x+this.radius*Math.cos(ang));
+        const b=Math.round(p.y+this.radius*Math.sin(ang));
+        if(a>=0&&a<W&&b>=0&&b<H) acc[a][b]++;
+      }
+    }
+    return acc;
+  }
+
+  render() { this.drawImageSpace(); this.drawHoughSpace(); }
+
+  drawImageSpace() {
+    const ctx=this.iCtx;
+    ctx.fillStyle='#08081a'; ctx.fillRect(0,0,W,H);
+    drawGrid(ctx);
+
+    // Preset mode: show target circle outline
+    if(this.presetActive){
+      ctx.strokeStyle='rgba(251,191,36,0.2)'; ctx.lineWidth=2; ctx.setLineDash([8,5]);
+      ctx.beginPath(); ctx.arc(this.presetCx,this.presetCy,this.radius,0,Math.PI*2);
+      ctx.stroke(); ctx.setLineDash([]);
+    }
+
+    // Hover preview from Hough space
+    if(this.htHover){
+      ctx.strokeStyle='rgba(167,139,250,0.4)'; ctx.lineWidth=1.5; ctx.setLineDash([5,4]);
+      ctx.beginPath(); ctx.arc(this.htHover.a,this.htHover.b,this.radius,0,Math.PI*2);
+      ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle='rgba(167,139,250,0.5)';
+      ctx.beginPath(); ctx.arc(this.htHover.a,this.htHover.b,4,0,Math.PI*2); ctx.fill();
+    }
+
+    // Detected circles
+    for(const d of this.detected){
+      const gr=ctx.createRadialGradient(d.a,d.b,0,d.a,d.b,this.radius+10);
+      gr.addColorStop(0,'rgba(250,204,21,0)');
+      gr.addColorStop(0.85,'rgba(250,204,21,0.15)');
+      gr.addColorStop(1,'rgba(250,204,21,0)');
+      ctx.fillStyle=gr; ctx.beginPath(); ctx.arc(d.a,d.b,this.radius+10,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle='rgba(250,204,21,0.9)'; ctx.lineWidth=2.5; ctx.setLineDash([10,4]);
+      ctx.beginPath(); ctx.arc(d.a,d.b,this.radius,0,Math.PI*2); ctx.stroke(); ctx.setLineDash([]);
+      ctx.strokeStyle='#facc15'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(d.a-12,d.b); ctx.lineTo(d.a+12,d.b);
+                       ctx.moveTo(d.a,d.b-12); ctx.lineTo(d.a,d.b+12); ctx.stroke();
+      ctx.fillStyle='#facc15'; ctx.font='bold 11px monospace';
+      ctx.fillText(`(${Math.round(d.a)},${Math.round(d.b)})`,d.a+14,d.b-6);
+    }
+
+    // Points
+    for(let i=0;i<this.points.length;i++){
+      const {x,y}=this.points[i]; const col=PALETTE[i%PALETTE.length];
+      ctx.fillStyle=col; ctx.strokeStyle='#fff'; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.arc(x,y,7,0,Math.PI*2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle=col; ctx.font='bold 10px monospace';
+      ctx.fillText(`P${i+1}`,x+9,y-7);
+    }
+
+    // Preset handles
+    if(this.presetActive&&this.centerHandle&&this.edgeHandle){
+      // Radius line
+      ctx.strokeStyle='rgba(251,191,36,0.4)'; ctx.lineWidth=1.5; ctx.setLineDash([3,3]);
+      ctx.beginPath(); ctx.moveTo(this.centerHandle.x,this.centerHandle.y);
+      ctx.lineTo(this.edgeHandle.x,this.edgeHandle.y); ctx.stroke(); ctx.setLineDash([]);
+
+      const cSize=this.imgHover==='center'?12:10;
+      const eSize=this.imgHover==='edge'?12:10;
+      drawHandle(ctx,this.centerHandle.x,this.centerHandle.y,'#fbbf24','diamond',cSize);
+      drawHandle(ctx,this.edgeHandle.x,this.edgeHandle.y,'#60a5fa','circle',eSize);
+
+      // Param readout
+      ctx.fillStyle='rgba(251,191,36,0.85)'; ctx.font='bold 11px monospace';
+      ctx.fillText(`a=${Math.round(this.presetCx)} b=${Math.round(this.presetCy)} r=${this.radius}px`,8,H-8);
+    }
+  }
+
+  drawHoughSpace() {
+    const ctx=this.hCtx;
+    ctx.fillStyle='#08081a'; ctx.fillRect(0,0,W,H);
+    drawGrid(ctx);
+
+    if(this.points.length>0){
+      const acc=this.computeAccum();
+      let maxV=1;
+      for(let a=0;a<W;a++) for(let b=0;b<H;b++) if(acc[a][b]>maxV) maxV=acc[a][b];
+      const imgData=ctx.createImageData(W,H); const d=imgData.data;
+      for(let b=0;b<H;b++) for(let a=0;a<W;a++){
+        const v=acc[a][b];
+        if(v>0){const[rr,gg,bb]=hotmap(v/maxV);const idx=(b*W+a)*4;d[idx]=rr;d[idx+1]=gg;d[idx+2]=bb;d[idx+3]=255;}
+      }
+      ctx.putImageData(imgData,0,0);
+
+      for(let i=0;i<this.points.length;i++){
+        const{x,y}=this.points[i]; const col=PALETTE[i%PALETTE.length];
+        ctx.strokeStyle=col; ctx.lineWidth=1.8; ctx.globalAlpha=0.7;
+        ctx.beginPath(); ctx.arc(x,y,this.radius,0,Math.PI*2); ctx.stroke();
+        ctx.globalAlpha=1;
+      }
+    }
+
+    for(const d of this.detected){
+      const gr=ctx.createRadialGradient(d.a,d.b,0,d.a,d.b,18);
+      gr.addColorStop(0,'rgba(250,204,21,0.7)'); gr.addColorStop(1,'rgba(250,204,21,0)');
+      ctx.fillStyle=gr; ctx.beginPath(); ctx.arc(d.a,d.b,18,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='white'; ctx.strokeStyle='#facc15'; ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.arc(d.a,d.b,7,0,Math.PI*2); ctx.fill(); ctx.stroke();
+    }
+
+    if(this.htHover){
+      const{a,b}=this.htHover;
+      ctx.strokeStyle='rgba(167,139,250,0.5)'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+      ctx.beginPath(); ctx.moveTo(a,0); ctx.lineTo(a,H); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0,b); ctx.lineTo(W,b); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle='rgba(167,139,250,0.9)'; ctx.font='11px monospace';
+      ctx.fillText(`a=${Math.round(a)}, b=${Math.round(b)}`,Math.min(a+6,W-90),Math.max(b-6,14));
+    }
+
+    ctx.fillStyle='#334155'; ctx.font='10px monospace';
+    ctx.fillText('a (center-x) →',W/2-42,H-4);
+    ctx.save(); ctx.translate(13,H/2); ctx.rotate(-Math.PI/2);
+    ctx.fillText('b (center-y)',-28,0); ctx.restore();
+  }
+
+  detect() {
+    if(this.points.length<3){this.setStatus('Need at least 3 points');return;}
+    const acc=this.computeAccum();
+    let maxV=0,maxA=0,maxB=0;
+    for(let a=0;a<W;a++) for(let b=0;b<H;b++) if(acc[a][b]>maxV){maxV=acc[a][b];maxA=a;maxB=b;}
+    if(maxV>=2){
+      this.detected=[{a:maxA,b:maxB,votes:maxV}];
+      this.setStatus(`✅ Circle detected! center=(${maxA},${maxB}), r=${this.radius}px (votes:${maxV}/${this.points.length})`,true);
+    }
+    this.render();
+  }
+
+  preset() {
+    this.clear(false);
+    this.presetActive=true;
+    this.presetCx=210; this.presetCy=210;
+    this.presetNPts=7; this.presetNoise=5;
+    this.edgeAngle=0;
+    document.getElementById('cCx').value=210;    document.getElementById('cCxVal').textContent='210 px';
+    document.getElementById('cCy').value=210;    document.getElementById('cCyVal').textContent='210 px';
+    document.getElementById('cNPts').value=7;    document.getElementById('cNPtsVal').textContent='7';
+    document.getElementById('cNoise').value=5;   document.getElementById('cNoiseVal').textContent='5 px';
+    document.getElementById('circ-preset-panel').style.display='block';
+    this.imgC.style.cursor='crosshair';
+    this._updateCenterHandle(); this._updateEdgeHandle();
+    this._regenPoints();
+    this.setStatus('⚙ Preset mode — drag handles/sliders | click canvas to add extra points');
+    this.render();
+  }
+
+  clear(doRender=true) {
+    this.points=[]; this.detected=[]; this.htHover=null; this.dragging=null;
+    this.presetActive=false; this.centerHandle=null; this.edgeHandle=null;
+    this.imgC.style.cursor='crosshair';
+    document.getElementById('circ-preset-panel').style.display='none';
+    this.updateBadges();
+    this.setStatus('Click in image space to add points on circle | or use "Load Example" to create an adjustable circle');
+    if(doRender) this.render();
+  }
+
+  updateBadges() {
+    const el=document.getElementById('circ-badges'); el.innerHTML='';
+    this.points.forEach((p,i)=>{
+      const col=PALETTE[i%PALETTE.length];
+      const b=document.createElement('span'); b.className='badge';
+      b.style.cssText=`background:${col}22;border:1px solid ${col};color:${col}`;
+      b.textContent=`P${i+1}(${Math.round(p.x)},${Math.round(p.y)})`;
+      el.appendChild(b);
+    });
+  }
+
+  setStatus(msg,good=false){
+    const el=document.getElementById('circ-status');
+    el.textContent=msg; el.className='status-msg'+(good?' ok':'');
+  }
+  updateStatus(){
+    const n=this.points.length;
+    if(n===0) this.setStatus('Click in image space to add points');
+    else if(n<3) this.setStatus(`${n} point(s) — add ${3-n} more to enable circle detection`);
+    else this.setStatus(`${n} points — click "Detect Circle" to run`);
+  }
+}
+
+// ============================================================
+// TAB SWITCHING & INIT
+// ============================================================
+function switchTab(tab) {
+  document.getElementById('line-section').classList.toggle('visible',tab==='line');
+  document.getElementById('circle-section').classList.toggle('visible',tab==='circle');
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>{
+    b.classList.toggle('active',(tab==='line'&&i===0)||(tab==='circle'&&i===1));
+  });
+}
+
+const lineHT   = new LineHTViz();
+const circleHT = new CircleHTViz();
+
+// Add one random default point so Hough space is non-empty on load
+(function() {
+  const margin = 60;
+  lineHT.points.push({
+    x: margin + Math.random() * (W - 2*margin),
+    y: margin + Math.random() * (H - 2*margin)
+  });
+  lineHT.updateBadges();
+  lineHT.updateStatus();
+  lineHT.render();
+})();
+</script>
+</body>
+</html>
