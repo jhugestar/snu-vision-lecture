@@ -1,4 +1,4 @@
-# AI-Generated Demos for SNU Computer Vision Course
+# Vibe-Coded Vision Demo Series
 
 Interactive web-based demos for computer vision courses at Seoul National University.
 
