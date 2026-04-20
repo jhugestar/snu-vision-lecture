@@ -129,6 +129,31 @@ input[type=checkbox] { accent-color:#5577ff; cursor:pointer; }
   font-family:monospace;
 }
 .cov-cell.diag { color:#ffcc44; }
+
+/* ── Mobile ─────────────────────────────────── */
+@media (max-width: 768px) {
+  body { height:auto; overflow-y:auto; }
+  #app {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto auto;
+    grid-template-areas: "hdr" "view3d" "proj" "side";
+    height:auto;
+  }
+  header h1 { font-size:15px; }
+  .header-subtitle { display:none; }
+  .header-author { font-size:11px; }
+  #view3d { height:60vw; min-height:240px; }
+  #proj {
+    height:160px;
+    grid-template-columns: 1fr 1fr;
+  }
+  #side {
+    border-left:none;
+    border-top:1px solid #1a1a44;
+    overflow-y:visible;
+  }
+  .step-btns button { font-size:12px; padding:5px 10px; }
+}
 </style>
 </head>
 <body>
