@@ -14,6 +14,7 @@ Interactive web-based demos for computer vision courses at Seoul National Univer
 | Harris Corner Detection | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/corner/harris_viz.html) |
 | Hough Transform (Toy Examples) | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/hough-transform/hough_viz.html) |
 | Hough Transform (Real Image) | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/hough-transform/hough_viz_img.html) |
+| PCA (Principal Component Analysis) | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/pca/pca_demo.html) |
 
 
 ---

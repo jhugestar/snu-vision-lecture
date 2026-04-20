@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PCA Interactive Demo — Principal Component Analysis</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: #07071a;
+  color: #d0d0ee;
+  height: 100vh;
+  overflow: hidden;
+  user-select: none;
+}
+#app {
+  display: grid;
+  grid-template-columns: 1fr 310px;
+  grid-template-rows: 48px 1fr 210px;
+  height: 100vh;
+  grid-template-areas:
+    "hdr hdr"
+    "view3d side"
+    "proj  side";
+}
+header {
+  grid-area: hdr;
+  background: #0e0e28;
+  border-bottom: 1px solid #22225a;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 18px;
+  gap: 2px;
+}
+.header-row1 { display: flex; align-items: baseline; gap: 14px; }
+header h1 { font-size:20px; color:#7799ff; font-weight:700; letter-spacing:.5px; }
+.header-subtitle { font-size:13px; color:#5566aa; }
+.header-author { font-size:12px; color:#6677bb; }
+.header-author a { color:#7799ff; text-decoration:none; }
+.header-author a:hover { text-decoration:underline; }
+#view3d {
+  grid-area: view3d;
+  position: relative;
+  background: #040410;
+  overflow: hidden;
+}
+#canvas3d { display:block; width:100%; height:100%; }
+#view3d-info {
+  position:absolute; top:9px; left:10px;
+  font-size:12px; color:#44446a; pointer-events:none;
+}
+#step-label {
+  position:absolute; bottom:12px; left:50%; transform:translateX(-50%);
+  background: rgba(10,10,40,0.85);
+  border:1px solid #33336a;
+  border-radius:20px;
+  padding:5px 18px;
+  font-size:13px; color:#9999dd;
+  pointer-events:none;
+}
+#proj {
+  grid-area: proj;
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  border-top: 1px solid #1a1a44;
+}
+#proj > div { position:relative; }
+#proj > div:first-child { border-right:1px solid #1a1a44; }
+.proj-label {
+  position:absolute; top:7px; left:8px;
+  font-size:12px; color:#7788aa; pointer-events:none; z-index:1;
+}
+#side {
+  grid-area: side;
+  background: #0e0e28;
+  border-left: 1px solid #1a1a44;
+  overflow-y: auto;
+  padding: 12px 14px 20px;
+}
+.sec-title {
+  font-size:11px; text-transform:uppercase; letter-spacing:1.2px;
+  color:#7788cc; margin-bottom:9px; font-weight:700;
+}
+.row { display:flex; align-items:center; gap:8px; margin-bottom:7px; }
+.lbl { font-size:13px; color:#aabbcc; width:66px; flex-shrink:0; }
+input[type=range] { flex:1; accent-color:#5577ff; height:14px; cursor:pointer; }
+.val { font-size:13px; color:#aabbee; width:36px; text-align:right; }
+.divider { border:none; border-top:1px solid #1a1a44; margin:12px 0; }
+.btn {
+  background:#1a1a44; border:1px solid #333377; color:#8899cc;
+  padding:6px 14px; border-radius:4px; cursor:pointer; font-size:13px;
+  transition:background .15s;
+}
+.btn:hover { background:#252560; }
+.btn-hi { background:#253060; border-color:#4455aa; color:#bbccff; }
+.btn-hi:hover { background:#2d3870; }
+.btn-active { background:#1a3388 !important; border-color:#4466cc !important; color:#ccdeff !important; }
+
+/* Eigenvalue bars */
+.ev-row { display:flex; align-items:center; gap:7px; margin-bottom:6px; }
+.dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.ev-lbl { font-size:13px; width:32px; }
+.bar-bg { flex:1; height:8px; background:#1a1a3a; border-radius:4px; overflow:hidden; }
+.bar-fill { height:100%; border-radius:4px; transition:width .4s ease; }
+.ev-pct { font-size:13px; color:#aabbcc; width:42px; text-align:right; }
+
+.info-box {
+  background:#0a0a22; border:1px solid #1e1e44; border-radius:5px;
+  padding:9px 11px; font-size:12px; color:#aabbcc; line-height:1.65;
+}
+.info-box strong { color:#ccddf0; }
+.info-box code { color:#77aaff; font-family:monospace; }
+
+/* checkboxes */
+label { font-size:13px; color:#aabbcc; cursor:pointer; display:flex; align-items:center; gap:6px; margin-bottom:5px; }
+input[type=checkbox] { accent-color:#5577ff; cursor:pointer; }
+
+.step-btns { display:flex; gap:5px; flex-wrap:wrap; }
+
+.cov-grid {
+  display:grid; grid-template-columns:repeat(3,1fr);
+  gap:2px; margin-top:5px;
+}
+.cov-cell {
+  background:#0c0c28; border:1px solid #1e1e44; border-radius:3px;
+  text-align:center; font-size:12px; padding:4px 2px; color:#8899cc;
+  font-family:monospace;
+}
+.cov-cell.diag { color:#ffcc44; }
+</style>
+</head>
+<body>
+<div id="app">
+
+<header>
+  <div class="header-row1">
+    <h1>PCA — Principal Component Analysis</h1>
+    <span class="header-subtitle">Interactive Demo via SVD &nbsp;·&nbsp; drag to rotate · scroll to zoom</span>
+  </div>
+  <div class="header-author">
+    <a href="https://jhugestar.github.io/" target="_blank">Hanbyul Joo</a>
+    &nbsp;|&nbsp; Visual Computing Lab, Seoul National University
+  </div>
+</header>
+
+<div id="view3d">
+  <canvas id="canvas3d"></canvas>
+  <div id="view3d-info">3D Data Space &nbsp;·&nbsp; drag: rotate &nbsp;·&nbsp; wheel: zoom</div>
+  <div id="step-label">Step 0 – Original 3D Data</div>
+</div>
+
+<div id="proj">
+  <div>
+    <canvas id="canvas2d"></canvas>
+    <div class="proj-label">2D Projection: PC1 × PC2</div>
+  </div>
+  <div>
+    <canvas id="canvas1d"></canvas>
+    <div class="proj-label">1D Projection: PC1 axis only</div>
+  </div>
+</div>
+
+<div id="side">
+
+  <!-- DATA SHAPE -->
+  <div class="sec-title">Data Shape</div>
+
+  <div class="row">
+    <span class="lbl">Scale λ₁</span>
+    <input type="range" id="scale1" min="0.3" max="5" step="0.1" value="3.2">
+    <span class="val" id="v-scale1">3.2</span>
+  </div>
+  <div class="row">
+    <span class="lbl">Scale λ₂</span>
+    <input type="range" id="scale2" min="0.3" max="5" step="0.1" value="1.4">
+    <span class="val" id="v-scale2">1.4</span>
+  </div>
+  <div class="row">
+    <span class="lbl">Scale λ₃</span>
+    <input type="range" id="scale3" min="0.3" max="5" step="0.1" value="0.5">
+    <span class="val" id="v-scale3">0.5</span>
+  </div>
+
+  <hr class="divider">
+
+  <div class="row">
+    <span class="lbl">Rot X</span>
+    <input type="range" id="rotX" min="-180" max="180" step="1" value="30">
+    <span class="val" id="v-rotX">30°</span>
+  </div>
+  <div class="row">
+    <span class="lbl">Rot Y</span>
+    <input type="range" id="rotY" min="-180" max="180" step="1" value="45">
+    <span class="val" id="v-rotY">45°</span>
+  </div>
+  <div class="row">
+    <span class="lbl">Rot Z</span>
+    <input type="range" id="rotZ" min="-180" max="180" step="1" value="15">
+    <span class="val" id="v-rotZ">15°</span>
+  </div>
+
+  <hr class="divider">
+
+  <div class="row">
+    <span class="lbl">Samples</span>
+    <input type="range" id="npts" min="50" max="600" step="50" value="250">
+    <span class="val" id="v-npts">250</span>
+  </div>
+
+  <div style="margin:10px 0 4px;">
+    <button class="btn btn-hi" onclick="regenerate()">Regenerate Data</button>
+  </div>
+
+  <hr class="divider">
+
+  <!-- EIGENVALUES -->
+  <div class="sec-title">Explained Variance (Eigenvalues)</div>
+
+  <div class="ev-row">
+    <div class="dot" style="background:#ff4444;"></div>
+    <span class="ev-lbl" style="color:#ff6666;">PC1</span>
+    <div class="bar-bg"><div class="bar-fill" id="bar1" style="background:#ff4444; width:0%"></div></div>
+    <span class="ev-pct" id="pct1">—</span>
+  </div>
+  <div class="ev-row">
+    <div class="dot" style="background:#44ff88;"></div>
+    <span class="ev-lbl" style="color:#44ff88;">PC2</span>
+    <div class="bar-bg"><div class="bar-fill" id="bar2" style="background:#44ff88; width:0%"></div></div>
+    <span class="ev-pct" id="pct2">—</span>
+  </div>
+  <div class="ev-row">
+    <div class="dot" style="background:#4488ff;"></div>
+    <span class="ev-lbl" style="color:#6699ff;">PC3</span>
+    <div class="bar-bg"><div class="bar-fill" id="bar3" style="background:#4488ff; width:0%"></div></div>
+    <span class="ev-pct" id="pct3">—</span>
+  </div>
+
+  <div class="info-box" style="margin-top:10px;">
+    <strong>λ₁</strong> = <span id="ev1">—</span> &nbsp;
+    <strong>λ₂</strong> = <span id="ev2">—</span> &nbsp;
+    <strong>λ₃</strong> = <span id="ev3">—</span><br>
+    Cumulative (PC1+2): <span id="cumvar">—</span>%<br>
+    <br>
+    <code>Σ = V · diag(λ) · Vᵀ</code><br>
+    Columns of V = principal axes
+  </div>
+
+  <!-- COVARIANCE MATRIX -->
+  <div style="margin-top:10px;">
+    <div class="sec-title" style="margin-bottom:5px;">Covariance Matrix Σ</div>
+    <div class="cov-grid" id="cov-grid">
+      <div class="cov-cell diag">—</div><div class="cov-cell">—</div><div class="cov-cell">—</div>
+      <div class="cov-cell">—</div><div class="cov-cell diag">—</div><div class="cov-cell">—</div>
+      <div class="cov-cell">—</div><div class="cov-cell">—</div><div class="cov-cell diag">—</div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- VISUALIZATION OPTIONS -->
+  <div class="sec-title">Visualization Options</div>
+  <label><input type="checkbox" id="chkAxes" checked onchange="redrawOverlays()"> Show PC axes</label>
+  <label><input type="checkbox" id="chkEllipsoid" checked onchange="redrawOverlays()"> Covariance ellipsoid</label>
+  <label><input type="checkbox" id="chkProjPlane" onchange="redrawOverlays()"> Projection plane (PC1-PC2)</label>
+  <label><input type="checkbox" id="chkColor" checked onchange="redrawColors()"> Color by PC1 score</label>
+
+  <hr class="divider">
+
+  <!-- ANIMATION STEPS -->
+  <div class="sec-title">Dimensionality Reduction</div>
+  <div class="step-btns">
+    <button class="btn btn-active" id="btn0" onclick="goStep(0)">3D Original</button>
+    <button class="btn" id="btn1" onclick="goStep(1)">→ 2D</button>
+    <button class="btn" id="btn2" onclick="goStep(2)">→ 1D</button>
+    <button class="btn" id="btn3" onclick="goStep(3)">Recon. Error</button>
+  </div>
+
+  <div class="info-box" style="margin-top:10px;" id="step-info">
+    Variance decreases along PC1 → PC2 → PC3.<br>
+    PC axes are mutually orthogonal.
+  </div>
+
+</div><!-- /side -->
+</div><!-- /app -->
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ─────────────────────────────────────────────
+//  MATH
+// ─────────────────────────────────────────────
+function randn() {
+  const u = Math.max(1e-10, Math.random());
+  return Math.sqrt(-2*Math.log(u)) * Math.cos(2*Math.PI*Math.random());
+}
+
+function rotMat(rx, ry, rz) {
+  const [cx,sx] = [Math.cos(rx),Math.sin(rx)];
+  const [cy,sy] = [Math.cos(ry),Math.sin(ry)];
+  const [cz,sz] = [Math.cos(rz),Math.sin(rz)];
+  return [
+    [cy*cz,           -cy*sz,           sy    ],
+    [cx*sz+sx*sy*cz,   cx*cz-sx*sy*sz, -sx*cy ],
+    [sx*sz-cx*sy*cz,   sx*cz+cx*sy*sz,  cx*cy ]
+  ];
+}
+
+function mv(M, v) {
+  return [
+    M[0][0]*v[0]+M[0][1]*v[1]+M[0][2]*v[2],
+    M[1][0]*v[0]+M[1][1]*v[1]+M[1][2]*v[2],
+    M[2][0]*v[0]+M[2][1]*v[1]+M[2][2]*v[2]
+  ];
+}
+
+function dot(a,b) { return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]; }
+
+// Jacobi eigendecomposition for 3×3 symmetric matrix
+function jacobi3(A) {
+  let S = A.map(r=>[...r]);
+  let V = [[1,0,0],[0,1,0],[0,0,1]];
+  for (let iter=0; iter<300; iter++) {
+    let max=0, p=0, q=1;
+    for (let i=0;i<3;i++) for (let j=i+1;j<3;j++)
+      if (Math.abs(S[i][j])>max) { max=Math.abs(S[i][j]); p=i; q=j; }
+    if (max<1e-13) break;
+    const th = 0.5*Math.atan2(2*S[p][q], S[q][q]-S[p][p]);
+    const c=Math.cos(th), s=Math.sin(th);
+    const G=[[1,0,0],[0,1,0],[0,0,1]];
+    G[p][p]=c; G[q][q]=c; G[p][q]=s; G[q][p]=-s;
+    // S = Gᵀ S G
+    const nS=[[0,0,0],[0,0,0],[0,0,0]];
+    const nV=[[0,0,0],[0,0,0],[0,0,0]];
+    for (let i=0;i<3;i++) for (let j=0;j<3;j++) {
+      for (let k=0;k<3;k++) for (let l=0;l<3;l++) nS[i][j]+=G[k][i]*S[k][l]*G[l][j];
+      for (let k=0;k<3;k++) nV[i][j]+=V[i][k]*G[k][j];
+    }
+    S=nS; V=nV;
+  }
+  const vals=[S[0][0],S[1][1],S[2][2]];
+  const vecs=[[V[0][0],V[1][0],V[2][0]],[V[0][1],V[1][1],V[2][1]],[V[0][2],V[1][2],V[2][2]]];
+  const idx=[0,1,2].sort((a,b)=>vals[b]-vals[a]);
+  return { values:idx.map(i=>vals[i]), vectors:idx.map(i=>vecs[i]) };
+}
+
+function computePCA(pts) {
+  const n=pts.length;
+  const mean=[0,0,0];
+  for (const p of pts) { mean[0]+=p[0]; mean[1]+=p[1]; mean[2]+=p[2]; }
+  mean[0]/=n; mean[1]/=n; mean[2]/=n;
+  const c=pts.map(p=>[p[0]-mean[0],p[1]-mean[1],p[2]-mean[2]]);
+  const C=[[0,0,0],[0,0,0],[0,0,0]];
+  for (const p of c) for (let i=0;i<3;i++) for (let j=0;j<3;j++) C[i][j]+=p[i]*p[j];
+  for (let i=0;i<3;i++) for (let j=0;j<3;j++) C[i][j]/=(n-1);
+  const {values,vectors}=jacobi3(C);
+  const total=values.reduce((a,b)=>a+b,0);
+  const varRatio=values.map(v=>v/total);
+  const s2=c.map(p=>[dot(p,vectors[0]),dot(p,vectors[1])]);
+  const s1=c.map(p=>[dot(p,vectors[0])]);
+  return {mean,centered:c,cov:C,eigenvalues:values,eigenvectors:vectors,varRatio,scores2D:s2,scores1D:s1};
+}
+
+// ─────────────────────────────────────────────
+//  THREE.JS SCENE
+// ─────────────────────────────────────────────
+const canvas3d = document.getElementById('canvas3d');
+const view3dEl = document.getElementById('view3d');
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0a20);
+// fog removed — was hiding far points
+
+const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 200);
+camera.position.set(9, 6, 11);
+
+const renderer = new THREE.WebGLRenderer({canvas:canvas3d, antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+const controls = new OrbitControls(camera, canvas3d);
+controls.enableDamping=true; controls.dampingFactor=0.06;
+controls.minDistance=2; controls.maxDistance=40;
+
+// Grid
+const grid = new THREE.GridHelper(16, 16, 0x1a1a44, 0x111133);
+scene.add(grid);
+
+// World axes (thin, subtle)
+const axHelper = new THREE.AxesHelper(4);
+axHelper.material.opacity=0.18; axHelper.material.transparent=true;
+scene.add(axHelper);
+
+// Lighting for ellipsoid
+const ambLight = new THREE.AmbientLight(0x404080, 1.2);
+scene.add(ambLight);
+const dirLight = new THREE.DirectionalLight(0x8090ff, 1.0);
+dirLight.position.set(5,8,5);
+scene.add(dirLight);
+
+// Managed objects
+let ptsMesh=null, arrowGrp=new THREE.Group(), ellipMesh=null, ellipWire=null;
+let projPlane=null, projLineMesh=null;
+scene.add(arrowGrp);
+
+// ─────────────────────────────────────────────
+//  STATE
+// ─────────────────────────────────────────────
+let DATA=[], PCA=null, COLORS=null;
+let jitter=null; // for 1D canvas
+let currentStep=0;
+let animId=null;
+
+// ─────────────────────────────────────────────
+//  POINT CLOUD
+// ─────────────────────────────────────────────
+function buildColors(pts, pca) {
+  if (!document.getElementById('chkColor').checked)
+    return pts.map(()=>[0.4, 0.7, 1.0]);
+  const v = pca.scores1D.map(s=>s[0]);
+  const mn=Math.min(...v), mx=Math.max(...v), rng=mx-mn||1;
+  return v.map(x=>{
+    const t=(x-mn)/rng;
+    // vivid blue→cyan→lime→yellow→red
+    if (t<0.25) return [0,       t*4,       1      ];
+    if (t<0.5)  return [0,       1,         1-(t-0.25)*4];
+    if (t<0.75) return [(t-0.5)*4, 1,       0      ];
+    return              [1,       1-(t-0.75)*4, 0   ];
+  });
+}
+
+function createCloud(pts, colors) {
+  if (ptsMesh) scene.remove(ptsMesh);
+  const geo=new THREE.BufferGeometry();
+  const pos=new Float32Array(pts.length*3), col=new Float32Array(pts.length*3);
+  for (let i=0;i<pts.length;i++){
+    pos[i*3]=pts[i][0]; pos[i*3+1]=pts[i][1]; pos[i*3+2]=pts[i][2];
+    col[i*3]=colors[i][0]; col[i*3+1]=colors[i][1]; col[i*3+2]=colors[i][2];
+  }
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  geo.setAttribute('color',new THREE.BufferAttribute(col,3));
+  const mat=new THREE.PointsMaterial({size:0.16,vertexColors:true,transparent:false,opacity:1.0,sizeAttenuation:true});
+  ptsMesh=new THREE.Points(geo,mat);
+  scene.add(ptsMesh);
+}
+
+// ─────────────────────────────────────────────
+//  EIGENVECTOR ARROWS
+// ─────────────────────────────────────────────
+function makeSolidArrow(dir, length, color, shaftR, headR, headLen) {
+  // dir: THREE.Vector3 (normalized), length: total length
+  const group = new THREE.Group();
+  const mat = new THREE.MeshPhongMaterial({color, shininess:60, emissive:new THREE.Color(color).multiplyScalar(0.3)});
+
+  const shaftLen = length - headLen;
+  // Shaft cylinder: centered at origin, along +Y
+  const shaftGeo = new THREE.CylinderGeometry(shaftR, shaftR, shaftLen, 12);
+  shaftGeo.translate(0, shaftLen/2, 0); // base at origin, tip at shaftLen
+  group.add(new THREE.Mesh(shaftGeo, mat));
+
+  // Cone head
+  const coneGeo = new THREE.CylinderGeometry(0, headR, headLen, 12);
+  coneGeo.translate(0, shaftLen + headLen/2, 0);
+  group.add(new THREE.Mesh(coneGeo, mat));
+
+  // Orient group so +Y aligns with dir
+  group.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir);
+  return group;
+}
+
+function buildArrows(evecs, evals) {
+  arrowGrp.clear();
+  if (!document.getElementById('chkAxes').checked) return;
+  const cols=[0xff2222, 0x22ee66, 0x2266ff];
+  const labels=['PC1','PC2','PC3'];
+  const origin=new THREE.Vector3(0,0,0);
+
+  for (let i=0;i<3;i++){
+    const len = Math.min(Math.sqrt(Math.max(0,evals[i]))*1.7, 5.8);
+    const dir = new THREE.Vector3(...evecs[i]).normalize();
+
+    // Positive direction — solid, full opacity
+    const arrPos = makeSolidArrow(dir, len, cols[i], 0.055, 0.18, 0.4);
+    arrowGrp.add(arrPos);
+
+    // Negative direction — thinner, semi-transparent
+    const negDir = dir.clone().negate();
+    const negLen = len * 0.45;
+    const arrNeg = makeSolidArrow(negDir, negLen, cols[i], 0.03, 0.10, 0.22);
+    arrNeg.children.forEach(m => {
+      m.material = m.material.clone();
+      m.material.transparent = true;
+      m.material.opacity = 0.4;
+    });
+    arrowGrp.add(arrNeg);
+  }
+}
+
+// ─────────────────────────────────────────────
+//  COVARIANCE ELLIPSOID
+// ─────────────────────────────────────────────
+function buildEllipsoid(evecs, evals) {
+  if (ellipMesh) scene.remove(ellipMesh);
+  if (ellipWire) scene.remove(ellipWire);
+  ellipMesh=null; ellipWire=null;
+  if (!document.getElementById('chkEllipsoid').checked) return;
+
+  const sx=Math.sqrt(Math.max(0,evals[0]))*1.6;
+  const sy=Math.sqrt(Math.max(0,evals[1]))*1.6;
+  const sz=Math.sqrt(Math.max(0,evals[2]))*1.6;
+  const ev=evecs;
+  const M=new THREE.Matrix4().set(
+    ev[0][0]*sx, ev[1][0]*sy, ev[2][0]*sz, 0,
+    ev[0][1]*sx, ev[1][1]*sy, ev[2][1]*sz, 0,
+    ev[0][2]*sx, ev[1][2]*sy, ev[2][2]*sz, 0,
+    0,0,0,1
+  );
+  const geo=new THREE.SphereGeometry(1,40,20);
+  const mat=new THREE.MeshPhongMaterial({color:0x4488ff,transparent:true,opacity:0.18,side:THREE.DoubleSide,depthWrite:false,emissive:new THREE.Color(0x112266),emissiveIntensity:0.4});
+  ellipMesh=new THREE.Mesh(geo,mat);
+  ellipMesh.applyMatrix4(M);
+
+  const wGeo=new THREE.SphereGeometry(1,20,10);
+  const wMat=new THREE.MeshBasicMaterial({color:0x66aaff,wireframe:true,transparent:true,opacity:0.30,depthWrite:false});
+  ellipWire=new THREE.Mesh(wGeo,wMat);
+  ellipWire.applyMatrix4(M.clone());
+
+  scene.add(ellipMesh,ellipWire);
+}
+
+// ─────────────────────────────────────────────
+//  PROJECTION PLANE (PC1-PC2)
+// ─────────────────────────────────────────────
+function buildProjPlane(evecs) {
+  // Remove previous (projPlane is a Group now)
+  if (projPlane) scene.remove(projPlane);
+  projPlane=null;
+  if (!document.getElementById('chkProjPlane').checked) return;
+
+  const ev=evecs;
+  const n=new THREE.Vector3(...ev[2]); // PC3 = normal to plane
+  const sz=8;
+  const quat=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,1), n);
+
+  const grp=new THREE.Group();
+  grp.applyQuaternion(quat);
+
+  // Filled plane — more opaque
+  const fillGeo=new THREE.PlaneGeometry(sz,sz,1,1);
+  const fillMat=new THREE.MeshBasicMaterial({
+    color:0x2255bb, transparent:true, opacity:0.22,
+    side:THREE.DoubleSide, depthWrite:false
+  });
+  grp.add(new THREE.Mesh(fillGeo, fillMat));
+
+  // Grid lines on the plane
+  const gridDiv=8;
+  const step=sz/gridDiv;
+  const lineVerts=[];
+  for (let i=0;i<=gridDiv;i++){
+    const t=-sz/2+i*step;
+    lineVerts.push(-sz/2, t, 0,  sz/2, t, 0);  // horizontal
+    lineVerts.push(t, -sz/2, 0,  t,  sz/2, 0); // vertical
+  }
+  const gridGeo=new THREE.BufferGeometry();
+  gridGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(lineVerts),3));
+  const gridMat=new THREE.LineBasicMaterial({color:0x4488ff, transparent:true, opacity:0.35});
+  grp.add(new THREE.LineSegments(gridGeo, gridMat));
+
+  // Border edges
+  const borderVerts=new Float32Array([
+    -sz/2,-sz/2,0,  sz/2,-sz/2,0,
+     sz/2,-sz/2,0,  sz/2, sz/2,0,
+     sz/2, sz/2,0, -sz/2, sz/2,0,
+    -sz/2, sz/2,0, -sz/2,-sz/2,0
+  ]);
+  const borderGeo=new THREE.BufferGeometry();
+  borderGeo.setAttribute('position', new THREE.BufferAttribute(borderVerts,3));
+  const borderMat=new THREE.LineBasicMaterial({color:0x66aaff, transparent:true, opacity:0.7});
+  grp.add(new THREE.LineSegments(borderGeo, borderMat));
+
+  scene.add(grp);
+  projPlane=grp;
+}
+
+// ─────────────────────────────────────────────
+//  FULL REDRAW
+// ─────────────────────────────────────────────
+// Full rebuild (data changed) — resets point positions
+window.redraw = function() {
+  if (!PCA) return;
+  COLORS=buildColors(DATA,PCA);
+  createCloud(PCA.centered,COLORS);
+  buildArrows(PCA.eigenvectors,PCA.eigenvalues);
+  buildEllipsoid(PCA.eigenvectors,PCA.eigenvalues);
+  buildProjPlane(PCA.eigenvectors);
+  draw2D(); draw1D();
+};
+
+// Color-only update — updates vertex colors without moving points
+window.redrawColors = function() {
+  if (!PCA || !ptsMesh) return;
+  COLORS=buildColors(DATA,PCA);
+  const col=ptsMesh.geometry.attributes.color;
+  for (let i=0;i<COLORS.length;i++){
+    col.array[i*3]=COLORS[i][0]; col.array[i*3+1]=COLORS[i][1]; col.array[i*3+2]=COLORS[i][2];
+  }
+  col.needsUpdate=true;
+  draw2D(); draw1D();
+};
+
+// Overlay-only rebuild (checkbox toggle) — does NOT touch point positions
+window.redrawOverlays = function() {
+  if (!PCA) return;
+  buildArrows(PCA.eigenvectors,PCA.eigenvalues);
+  buildEllipsoid(PCA.eigenvectors,PCA.eigenvalues);
+  buildProjPlane(PCA.eigenvectors);
+  draw2D(); draw1D();
+};
+
+// ─────────────────────────────────────────────
+//  UI STATS UPDATE
+// ─────────────────────────────────────────────
+function updateStats() {
+  if (!PCA) return;
+  const {eigenvalues:ev,varRatio:vr,cov:C}=PCA;
+  ['1','2','3'].forEach((k,i)=>{
+    document.getElementById('bar'+k).style.width=(vr[i]*100).toFixed(1)+'%';
+    document.getElementById('pct'+k).textContent=(vr[i]*100).toFixed(1)+'%';
+    document.getElementById('ev'+k).textContent=ev[i].toFixed(3);
+  });
+  document.getElementById('cumvar').textContent=((vr[0]+vr[1])*100).toFixed(1);
+  // Covariance matrix cells
+  const cells=document.getElementById('cov-grid').querySelectorAll('.cov-cell');
+  let k=0;
+  for (let i=0;i<3;i++) for (let j=0;j<3;j++){
+    cells[k].textContent=C[i][j].toFixed(2);
+    k++;
+  }
+}
+
+// ─────────────────────────────────────────────
+//  2D PROJECTION CANVAS
+// ─────────────────────────────────────────────
+function draw2D() {
+  const cv=document.getElementById('canvas2d');
+  const ctx=cv.getContext('2d');
+  const W=cv.width, H=cv.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#0a0a20'; ctx.fillRect(0,0,W,H);
+  if (!PCA||!COLORS) return;
+
+  const s=PCA.scores2D;
+  const xs=s.map(p=>p[0]), ys=s.map(p=>p[1]);
+  const xR=Math.max(...xs.map(Math.abs))*1.25||1;
+  const yR=Math.max(...ys.map(Math.abs))*1.25||1;
+  const sc=Math.min(W*0.42/xR, H*0.42/yR);
+  const cx=W/2, cy=H/2;
+
+  // Grid lines (center axes)
+  ctx.strokeStyle='#2a2a55'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(cx,4); ctx.lineTo(cx,H-4);
+  ctx.moveTo(4,cy); ctx.lineTo(W-4,cy); ctx.stroke();
+
+  // Tick marks
+  ctx.strokeStyle='#33335a'; ctx.lineWidth=1;
+  for (let t=-6;t<=6;t+=1) {
+    const px=cx+t*sc; const py=cy-t*sc;
+    ctx.beginPath(); ctx.moveTo(px,cy-5); ctx.lineTo(px,cy+5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx-5,py); ctx.lineTo(cx+5,py); ctx.stroke();
+  }
+
+  // Points
+  for (let i=0;i<s.length;i++) {
+    const px=cx+s[i][0]*sc, py=cy-s[i][1]*sc;
+    const [r,g,b]=COLORS[i];
+    ctx.fillStyle=`rgba(${~~(r*255)},${~~(g*255)},${~~(b*255)},0.85)`;
+    ctx.beginPath(); ctx.arc(px,py,2.5,0,Math.PI*2); ctx.fill();
+  }
+
+  // Axis labels
+  ctx.fillStyle='#ff6666'; ctx.font='bold 13px monospace';
+  ctx.fillText('PC1 →', W-52, cy-8);
+  ctx.fillStyle='#44ff88';
+  ctx.save(); ctx.translate(cx+8, 16); ctx.fillText('↑ PC2', 0, 0); ctx.restore();
+
+  // Variance text — bright enough to read
+  ctx.fillStyle='#8899cc'; ctx.font='12px sans-serif';
+  ctx.fillText(`PC1: ${(PCA.varRatio[0]*100).toFixed(1)}%  ·  PC2: ${(PCA.varRatio[1]*100).toFixed(1)}%  →  ${((PCA.varRatio[0]+PCA.varRatio[1])*100).toFixed(1)}% variance retained`, 8, H-8);
+}
+
+// ─────────────────────────────────────────────
+//  1D PROJECTION CANVAS
+// ─────────────────────────────────────────────
+function draw1D() {
+  const cv=document.getElementById('canvas1d');
+  const ctx=cv.getContext('2d');
+  const W=cv.width, H=cv.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#0a0a20'; ctx.fillRect(0,0,W,H);
+  if (!PCA||!COLORS) return;
+
+  const vals=PCA.scores1D.map(s=>s[0]);
+  const xR=Math.max(...vals.map(Math.abs))*1.3||1;
+  const sc=(W*0.42)/xR;
+  const cx=W/2, cy=H/2;
+
+  // Center axis (vertical tick reference)
+  ctx.strokeStyle='#2a2a55'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(cx,4); ctx.lineTo(cx,H-4); ctx.stroke();
+
+  // PC1 axis line
+  ctx.strokeStyle='#ff4444'; ctx.lineWidth=2.5;
+  ctx.beginPath(); ctx.moveTo(22,cy); ctx.lineTo(W-22,cy); ctx.stroke();
+
+  // Arrow head
+  ctx.fillStyle='#ff4444';
+  ctx.beginPath(); ctx.moveTo(W-16,cy-6); ctx.lineTo(W-4,cy); ctx.lineTo(W-16,cy+6); ctx.fill();
+
+  ctx.fillStyle='#ff6666'; ctx.font='bold 13px monospace';
+  ctx.fillText('PC1', W-46, cy-10);
+
+  // Jitter points (stable jitter array)
+  if (!jitter || jitter.length!==vals.length)
+    jitter = vals.map(()=>(Math.random()-0.5)*H*0.55);
+
+  for (let i=0;i<vals.length;i++) {
+    const px=cx+vals[i]*sc, py=cy+jitter[i];
+    // line from point to axis
+    ctx.strokeStyle=`rgba(120,120,180,0.2)`; ctx.lineWidth=0.5;
+    ctx.beginPath(); ctx.moveTo(px,cy); ctx.lineTo(px,py); ctx.stroke();
+    const [r,g,b]=COLORS[i];
+    ctx.fillStyle=`rgba(${~~(r*255)},${~~(g*255)},${~~(b*255)},0.75)`;
+    ctx.beginPath(); ctx.arc(px,py,2.5,0,Math.PI*2); ctx.fill();
+  }
+
+  // KDE on axis
+  drawKDE(ctx,vals,sc,cx,cy,W,H);
+
+  ctx.fillStyle='#8899cc'; ctx.font='12px sans-serif';
+  ctx.fillText(`PC1: ${(PCA.varRatio[0]*100).toFixed(1)}% variance retained — optimal 1D projection`, 8, H-8);
+}
+
+function drawKDE(ctx, vals, sc, cx, cy, W, H) {
+  const bw=0.55, steps=120;
+  const lo=Math.min(...vals)-bw*3, hi=Math.max(...vals)+bw*3;
+  const dens=[];
+  for (let i=0;i<=steps;i++){
+    const x=lo+(hi-lo)*i/steps;
+    let d=0;
+    for (const v of vals){ const z=(x-v)/bw; d+=Math.exp(-0.5*z*z)/(bw*2.507); }
+    dens.push({x,d:d/vals.length});
+  }
+  const maxD=Math.max(...dens.map(d=>d.d));
+  const ys=(H*0.32)/maxD;
+  ctx.beginPath(); ctx.strokeStyle='rgba(255,200,60,0.9)'; ctx.lineWidth=1.5;
+  dens.forEach((d,i)=>{
+    const px=cx+d.x*sc, py=cy-d.d*ys;
+    i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+  });
+  ctx.stroke();
+  ctx.lineTo(cx+dens[steps].x*sc,cy);
+  ctx.lineTo(cx+dens[0].x*sc,cy);
+  ctx.closePath();
+  ctx.fillStyle='rgba(255,200,60,0.07)'; ctx.fill();
+}
+
+// ─────────────────────────────────────────────
+//  ANIMATION: DIMENSION REDUCTION
+// ─────────────────────────────────────────────
+const stepInfo=[
+  'PC axes are the directions of maximum variance. They are mutually orthogonal by construction.',
+  '2D projection: data projected onto the PC1–PC2 plane. Information along PC3 is discarded.',
+  '1D projection: data projected onto PC1 only — the single axis that preserves the most variance.',
+  'Reconstruction error: distance from original point to its 2D reconstruction. Longer line = more information lost. Decreases as λ₃ → 0.'
+];
+const stepLabels=[
+  'Step 0 – Original 3D Data + Principal Axes',
+  'Step 1 – 2D Projection (PC1 × PC2 plane)',
+  'Step 2 – 1D Projection (PC1 axis)',
+  'Step 3 – Reconstruction Error'
+];
+
+window.goStep = function(step) {
+  currentStep=step;
+  ['btn0','btn1','btn2','btn3'].forEach((id,i)=>{
+    document.getElementById(id).className='btn'+(i===step?' btn-active':'');
+  });
+  document.getElementById('step-label').textContent=stepLabels[step];
+  document.getElementById('step-info').textContent=stepInfo[step];
+  if (step===0) {
+    if (projLineMesh) { scene.remove(projLineMesh); projLineMesh=null; }
+    animateTo(PCA.centered.map(p=>[...p]), 800);
+  }
+  else if (step===1) {
+    if (projLineMesh) { scene.remove(projLineMesh); projLineMesh=null; }
+    animateTo2D(800);
+  }
+  else if (step===2) {
+    if (projLineMesh) { scene.remove(projLineMesh); projLineMesh=null; }
+    animateTo1D(800);
+  }
+  else if (step===3) showReconError();
+};
+
+function getPts3D() {
+  if (!ptsMesh) return [];
+  const arr=ptsMesh.geometry.attributes.position.array;
+  const out=[];
+  for (let i=0;i<arr.length/3;i++) out.push([arr[i*3],arr[i*3+1],arr[i*3+2]]);
+  return out;
+}
+
+function animateTo(targets, dur) {
+  if (!ptsMesh) return;
+  const pos=ptsMesh.geometry.attributes.position;
+  const from=[];
+  for (let i=0;i<targets.length;i++) from.push([pos.array[i*3],pos.array[i*3+1],pos.array[i*3+2]]);
+  const t0=performance.now();
+  function tick(now){
+    const t=Math.min((now-t0)/dur,1);
+    const e=t<0.5?2*t*t:-1+(4-2*t)*t;
+    for (let i=0;i<targets.length;i++){
+      pos.array[i*3]  =from[i][0]+(targets[i][0]-from[i][0])*e;
+      pos.array[i*3+1]=from[i][1]+(targets[i][1]-from[i][1])*e;
+      pos.array[i*3+2]=from[i][2]+(targets[i][2]-from[i][2])*e;
+    }
+    pos.needsUpdate=true;
+    if (t<1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+function animateTo2D(dur) {
+  if (!PCA) return;
+  const {centered,eigenvectors:ev}=PCA;
+  const tgt=centered.map(p=>{
+    const s1=dot(p,ev[0]), s2=dot(p,ev[1]);
+    return [s1*ev[0][0]+s2*ev[1][0], s1*ev[0][1]+s2*ev[1][1], s1*ev[0][2]+s2*ev[1][2]];
+  });
+  animateTo(tgt,dur);
+}
+
+function animateTo1D(dur) {
+  if (!PCA) return;
+  const {centered,eigenvectors:ev}=PCA;
+  const tgt=centered.map(p=>{
+    const s1=dot(p,ev[0]);
+    return [s1*ev[0][0], s1*ev[0][1], s1*ev[0][2]];
+  });
+  animateTo(tgt,dur);
+}
+
+function showReconError() {
+  if (!PCA || !ptsMesh) return;
+  const {centered,eigenvectors:ev,mean}=PCA;
+
+  // Animate points back to original (centered) positions
+  const orig=DATA.map(p=>[p[0]-mean[0],p[1]-mean[1],p[2]-mean[2]]);
+  animateTo(orig, 600);
+
+  setTimeout(()=>{
+    if (projLineMesh) { scene.remove(projLineMesh); projLineMesh=null; }
+
+    // Reconstructed points on PC1-PC2 plane
+    const pts2D=centered.map(p=>{
+      const s1=dot(p,ev[0]), s2=dot(p,ev[1]);
+      return [
+        s1*ev[0][0]+s2*ev[1][0],
+        s1*ev[0][1]+s2*ev[1][1],
+        s1*ev[0][2]+s2*ev[1][2]
+      ];
+    });
+
+    // Error magnitude per point (for color coding)
+    const errs=centered.map((p,i)=>{
+      const dx=p[0]-pts2D[i][0], dy=p[1]-pts2D[i][1], dz=p[2]-pts2D[i][2];
+      return Math.sqrt(dx*dx+dy*dy+dz*dz);
+    });
+    const maxErr=Math.max(...errs,0.001);
+
+    // Line segments: original ↔ reconstructed, color by error magnitude
+    const lineVerts=[], lineColors=[];
+    for (let i=0;i<centered.length;i++){
+      const t=errs[i]/maxErr; // 0=small error, 1=large
+      // Color: small=cyan, large=red
+      const r=t, g=1-t*0.7, b=1-t;
+      lineVerts.push(...centered[i], ...pts2D[i]);
+      lineColors.push(r,g,b, r,g,b);
+    }
+
+    const geo=new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(lineVerts),3));
+    geo.setAttribute('color',    new THREE.BufferAttribute(new Float32Array(lineColors),3));
+    projLineMesh=new THREE.LineSegments(geo, new THREE.LineBasicMaterial({vertexColors:true}));
+    scene.add(projLineMesh);
+
+    // Also show projected points as small dots on the plane
+    const dotGeo=new THREE.BufferGeometry();
+    const dotPos=new Float32Array(pts2D.length*3);
+    pts2D.forEach((p,i)=>{ dotPos[i*3]=p[0]; dotPos[i*3+1]=p[1]; dotPos[i*3+2]=p[2]; });
+    dotGeo.setAttribute('position', new THREE.BufferAttribute(dotPos,3));
+    const dotMesh=new THREE.Points(dotGeo, new THREE.PointsMaterial({color:0xffffff,size:0.07}));
+    projLineMesh.add(dotMesh); // attach so it gets removed together
+  }, 650);
+}
+
+// ─────────────────────────────────────────────
+//  GENERATE DATA
+// ─────────────────────────────────────────────
+function getSliderVal(id) { return parseFloat(document.getElementById(id).value); }
+
+window.regenerate = function() {
+  if (projLineMesh) { scene.remove(projLineMesh); projLineMesh=null; }
+  jitter=null;
+  const n=~~getSliderVal('npts');
+  const s1=getSliderVal('scale1'), s2=getSliderVal('scale2'), s3=getSliderVal('scale3');
+  const rx=getSliderVal('rotX')*Math.PI/180;
+  const ry=getSliderVal('rotY')*Math.PI/180;
+  const rz=getSliderVal('rotZ')*Math.PI/180;
+  const R=rotMat(rx,ry,rz);
+  DATA=[];
+  for (let i=0;i<n;i++) DATA.push(mv(R,[randn()*s1,randn()*s2,randn()*s3]));
+  PCA=computePCA(DATA);
+  updateStats();
+  redraw();
+  // Re-apply current step
+  if (currentStep===1) animateTo2D(400);
+  else if (currentStep===2) animateTo1D(400);
+};
+
+// ─────────────────────────────────────────────
+//  RESIZE
+// ─────────────────────────────────────────────
+function resize() {
+  const W=view3dEl.clientWidth, H=view3dEl.clientHeight;
+  renderer.setSize(W,H,false);
+  camera.aspect=W/H; camera.updateProjectionMatrix();
+
+  const projEl=document.getElementById('proj');
+  const pH=projEl.clientHeight, pW=projEl.clientWidth;
+  const c2=document.getElementById('canvas2d');
+  c2.width=~~(pW/2); c2.height=pH;
+  const c1=document.getElementById('canvas1d');
+  c1.width=~~(pW/2); c1.height=pH;
+  draw2D(); draw1D();
+}
+
+// ─────────────────────────────────────────────
+//  SLIDER WIRING
+// ─────────────────────────────────────────────
+function wireSlider(id, fmt) {
+  const sl=document.getElementById(id);
+  const vl=document.getElementById('v-'+id);
+  sl.addEventListener('input',()=>{
+    vl.textContent=fmt(parseFloat(sl.value));
+    regenerate();
+  });
+}
+wireSlider('scale1', v=>v.toFixed(1));
+wireSlider('scale2', v=>v.toFixed(1));
+wireSlider('scale3', v=>v.toFixed(1));
+wireSlider('rotX',   v=>v.toFixed(0)+'°');
+wireSlider('rotY',   v=>v.toFixed(0)+'°');
+wireSlider('rotZ',   v=>v.toFixed(0)+'°');
+wireSlider('npts',   v=>v.toFixed(0));
+
+// ─────────────────────────────────────────────
+//  RENDER LOOP
+// ─────────────────────────────────────────────
+(function loop(){
+  requestAnimationFrame(loop);
+  controls.update();
+  renderer.render(scene,camera);
+})();
+
+// ─────────────────────────────────────────────
+//  INIT
+// ─────────────────────────────────────────────
+window.addEventListener('resize', ()=>{ resize(); });
+resize();
+regenerate();
+
+</script>
+</body>
+</html>
