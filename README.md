@@ -15,6 +15,7 @@ Interactive web-based demos for computer vision courses at Seoul National Univer
 | Hough Transform (Toy Examples) | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/hough-transform/hough_viz.html) |
 | Hough Transform (Real Image) | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/hough-transform/hough_viz_img.html) |
 | PCA (Principal Component Analysis) | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/pca/pca_demo.html) |
+| Eigenface | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/eigenface/eigenface_demo.html) |
 
 
 ---

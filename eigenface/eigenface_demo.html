@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Eigenface Demo</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: #07071a;
+  color: #d0d0ee;
+  height: 100vh;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* ── Loading Screen ─────────────────────────────── */
+#loading {
+  position: fixed; inset: 0;
+  background: #07071a;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100;
+}
+.loading-box {
+  background: #0e0e28; border: 1px solid #2a2a5a;
+  border-radius: 10px; padding: 32px 40px;
+  max-width: 520px; text-align: center;
+}
+.loading-title { font-size: 26px; color: #7799ff; font-weight: 700; margin-bottom: 12px; }
+#load-msg { color: #8899cc; font-size: 16px; }
+#load-error { text-align: left; font-size: 15px; color: #cc9999; line-height: 1.8; }
+#load-error code {
+  background: #1a1a44; color: #aaccff;
+  padding: 1px 6px; border-radius: 3px; font-family: monospace;
+}
+#load-error ol { margin: 8px 0 8px 20px; }
+#load-error a { color: #6688ff; }
+
+/* ── App Layout ─────────────────────────────────── */
+#app {
+  display: grid;
+  grid-template-rows: 52px 1fr;
+  height: 100vh;
+}
+header {
+  background: #0e0e28;
+  border-bottom: 1px solid #22225a;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 0 16px; gap: 2px;
+}
+.header-row1 { display: flex; align-items: baseline; gap: 12px; }
+header h1  { font-size: 22px; color: #7799ff; font-weight: 700; }
+.subtitle  { font-size: 14px; color: #5566aa; }
+.author    { font-size: 12px; color: #6677bb; }
+.author a  { color: #7799ff; text-decoration: none; }
+.author a:hover { text-decoration: underline; }
+
+#main-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  overflow: hidden;
+}
+
+/* ── Left Sidebar ───────────────────────────────── */
+#left-panel {
+  background: #0a0a22;
+  border-right: 1px solid #1a1a44;
+  padding: 12px 12px 16px;
+  overflow-y: auto;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.panel-title {
+  font-size: 12px; text-transform: uppercase; letter-spacing: 1.2px;
+  color: #6677bb; font-weight: 700;
+  display: flex; align-items: center; gap: 8px;
+}
+.badge {
+  font-size: 11px; color: #ffcc44; background: #1a1a3a;
+  padding: 1px 7px; border-radius: 10px; text-transform: none; letter-spacing: 0;
+}
+
+/* Mean face */
+#mean-canvas {
+  width: 128px; height: 128px;
+  image-rendering: auto; display: block; border-radius: 4px;
+}
+
+/* Eigenface grid */
+#eigenface-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+}
+.ef-item {
+  cursor: pointer; border-radius: 3px;
+  border: 1px solid transparent;
+  transition: border-color .15s;
+  overflow: hidden; position: relative;
+}
+.ef-item:hover  { border-color: #4466aa; }
+.ef-item.active { border-color: #ffcc44; }
+.ef-item canvas { width: 100%; display: block; image-rendering: auto; }
+.ef-item .ef-lbl {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: rgba(0,0,0,.55); color: #aabbee;
+  font-size: 11px; text-align: center; padding: 1px 0;
+}
+
+/* Variance formula */
+.var-explain {
+  background: #0a0a22; border: 1px solid #1a1a3a;
+  border-radius: 5px; padding: 7px 8px;
+  display: flex; flex-direction: column; gap: 5px;
+}
+.var-step {
+  display: flex; flex-direction: column; gap: 2px;
+}
+.var-label {
+  font-size: 11px; color: #4466aa; text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+.var-math { color: #aabbee; }
+.var-math .katex { font-size: 0.88em; }
+
+/* Variance chart */
+#variance-canvas {
+  width: 100%; height: 90px; display: block; border-radius: 4px;
+}
+
+/* ── Right Panel ────────────────────────────────── */
+#right-panel {
+  display: flex; flex-direction: column;
+  padding: 10px 14px;
+  overflow: hidden; gap: 8px;
+}
+
+/* Sample strip */
+#sample-strip {
+  display: flex; gap: 5px; overflow-x: auto; padding-bottom: 4px; flex-shrink: 0;
+}
+#sample-strip::-webkit-scrollbar { height: 4px; }
+#sample-strip::-webkit-scrollbar-thumb { background: #2a2a5a; border-radius: 2px; }
+.sample-thumb {
+  cursor: pointer; border-radius: 3px; flex-shrink: 0;
+  border: 2px solid transparent; transition: border-color .15s; overflow: hidden;
+}
+.sample-thumb:hover  { border-color: #4466aa; }
+.sample-thumb.active { border-color: #ffcc44; }
+.sample-thumb canvas { width: 52px; height: 52px; display: block; image-rendering: auto; }
+.thumb-lbl { font-size: 11px; color: #6677aa; text-align: center; margin-top: 1px; }
+
+.upload-btn {
+  cursor: pointer; background: #1a1a44; border: 1px solid #3a3a77; color: #8899cc;
+  padding: 4px 12px; border-radius: 4px; font-size: 13px; margin-left: auto;
+  display: inline-block;
+  transition: background .15s;
+}
+.upload-btn:hover { background: #252560; }
+
+/* Main face row */
+#face-row {
+  display: flex; gap: 14px; flex-shrink: 0; align-items: center;
+}
+.face-panel { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.face-lbl    { font-size: 14px; color: #8899bb; font-weight: 600; }
+.face-canvas { image-rendering: auto; border-radius: 5px; display: block; }
+.face-info   { font-size: 12px; color: #6677aa; text-align: center; }
+
+/* Formula */
+#formula {
+  font-size: 12px; color: #6688cc; font-family: monospace;
+  background: #0a0a22; border: 1px solid #1e1e44;
+  border-radius: 5px; padding: 6px 10px; flex-shrink: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Formula box */
+#formula-box {
+  background: #0a0a22; border: 1px solid #1e1e44;
+  border-radius: 5px; padding: 7px 14px;
+  flex-shrink: 0; overflow-x: auto;
+  color: #7799ff;
+}
+#formula-box .katex { font-size: 1.05em; }
+
+/* Slider row */
+#slider-row {
+  display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+}
+#slider-row label { font-size: 14px; color: #8899bb; white-space: nowrap; }
+#k-slider { flex: 1; accent-color: #5577ff; cursor: pointer; }
+.k-num  { font-size: 17px; color: #ffcc44; font-weight: 700; width: 28px; text-align: center; }
+.k-info { font-size: 14px; color: #7788aa; }
+
+/* Progressive strip */
+#progress-strip {
+  display: flex; gap: 8px; flex-shrink: 0; align-items: flex-start;
+}
+.prog-item { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.prog-item canvas { image-rendering: auto; border-radius: 3px; display: block; }
+.prog-lbl { font-size: 12px; color: #6677aa; text-align: center; }
+.prog-var { font-size: 11px; color: #ffaa33; text-align: center; }
+
+/* Coefficient bars */
+#coeff-section {
+  flex: 1; overflow-y: auto; min-height: 0;
+}
+#coeff-section::-webkit-scrollbar { width: 4px; }
+#coeff-section::-webkit-scrollbar-thumb { background: #2a2a5a; border-radius: 2px; }
+.coeff-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 4px; cursor: pointer; border-radius: 3px;
+  padding: 2px 4px; transition: background .12s;
+}
+.coeff-row:hover  { background: #111130; }
+.coeff-row.active { background: #1a1a44; }
+.coeff-lbl   { font-size: 13px; color: #7788aa; width: 36px; flex-shrink: 0; text-align: right; }
+.coeff-track {
+  flex: 1; height: 16px; background: #111130; border-radius: 3px;
+  position: relative; overflow: hidden;
+}
+.coeff-bar-pos, .coeff-bar-neg {
+  position: absolute; top: 0; height: 100%; border-radius: 2px; transition: width .2s;
+}
+.coeff-bar-pos { left: 50%; background: #3366ff; }
+.coeff-bar-neg { right: 50%; background: #ff4444; transform-origin: right; }
+.coeff-center-line {
+  position: absolute; left: 50%; top: 0; bottom: 0;
+  width: 1px; background: #2a2a5a;
+}
+.coeff-val    { font-size: 13px; color: #8899cc; width: 52px; text-align: right; font-family: monospace; flex-shrink: 0; }
+.coeff-ef     { width: 24px; height: 24px; border-radius: 2px; flex-shrink: 0; image-rendering: auto; }
+
+/* Detail popup */
+#detail-panel {
+  position: fixed; right: 16px; bottom: 16px;
+  background: #0e0e28; border: 1px solid #2a2a5a; border-radius: 8px;
+  padding: 12px; display: none; z-index: 50; min-width: 260px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.5);
+}
+#detail-panel .dp-title { font-size: 15px; color: #7799ff; font-weight: 700; margin-bottom: 8px; }
+#detail-panel .dp-row   { display: flex; gap: 10px; align-items: flex-start; }
+#detail-panel .dp-info  { font-size: 13px; color: #8899bb; line-height: 1.8; }
+#detail-panel .dp-info strong { color: #ccddf0; }
+#detail-close {
+  position: absolute; top: 6px; right: 10px;
+  cursor: pointer; color: #5566aa; font-size: 16px;
+}
+#detail-close:hover { color: #aabbff; }
+
+/* ── Detection Preview ──────────────────────────── */
+#detect-preview {
+  position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%);
+  background: #0e0e28; border: 1px solid #2a2a5a; border-radius: 10px;
+  padding: 16px; z-index: 200; display: none;
+  box-shadow: 0 12px 36px rgba(0,0,0,.7); min-width: 320px;
+}
+#detect-preview .dp2-title {
+  font-size: 14px; color: #7799ff; font-weight: 700; margin-bottom: 10px;
+}
+#detect-preview .dp2-row { display: flex; gap: 14px; align-items: flex-start; }
+#detect-preview .dp2-col { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+#detect-preview .dp2-lbl { font-size: 12px; color: #7788aa; }
+#detect-status {
+  font-size: 12px; color: #aabbcc; margin-top: 10px; line-height: 1.6;
+}
+#detect-ok {
+  margin-top: 10px; background: #1a3388; border: 1px solid #4466cc;
+  color: #ccdeff; padding: 5px 18px; border-radius: 4px;
+  cursor: pointer; font-size: 13px; display: block; width: 100%;
+}
+#detect-ok:hover { background: #2244aa; }
+.det-spinner {
+  width: 20px; height: 20px; border: 2px solid #2a2a5a;
+  border-top-color: #5577ff; border-radius: 50%;
+  animation: spin .7s linear infinite; display: inline-block;
+  vertical-align: middle; margin-right: 6px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- ── Loading Screen ───────────────────────────────────── -->
+<div id="loading">
+  <div class="loading-box">
+    <div class="loading-title">Eigenface Demo</div>
+    <div id="load-msg" style="margin-bottom:10px;">Loading <code style="font-family:monospace;color:#aaccff">eigenfaces_data.json</code>…</div>
+    <div id="load-error" style="display:none;">
+      <strong style="color:#ff8888;">Could not load eigenfaces_data.json</strong>
+      <ol style="margin-top:8px;">
+        <li>Install deps: <code>pip install scikit-learn numpy</code></li>
+        <li>Prepare data: <code>python prepare_eigenfaces.py</code></li>
+        <li>Serve files: <code>python -m http.server 8080</code></li>
+        <li>Open: <a href="http://localhost:8080/eigenface_demo.html">http://localhost:8080/eigenface_demo.html</a></li>
+      </ol>
+      <div style="margin-top:10px; color:#8899bb;">
+        Or load the JSON directly:
+        <input type="file" id="json-picker" accept=".json" style="display:block;margin-top:6px;color:#aabbee;">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Main App ─────────────────────────────────────────── -->
+<div id="app" style="display:none;">
+  <header>
+    <div class="header-row1">
+      <h1>Eigenface Demo</h1>
+      <span class="subtitle">PCA on face images &nbsp;·&nbsp; Olivetti dataset (64×64, 400 images, 40 subjects)</span>
+    </div>
+    <div class="author">
+      <a href="https://jhugestar.github.io/" target="_blank">Hanbyul Joo</a>
+      &nbsp;|&nbsp; Visual Computing Lab, Seoul National University
+    </div>
+  </header>
+
+  <div id="main-layout">
+
+    <!-- ── LEFT SIDEBAR ──────────────────────────── -->
+    <div id="left-panel">
+
+      <div class="panel-title">Mean Face (μ)</div>
+      <canvas id="mean-canvas" width="64" height="64"></canvas>
+
+      <div class="panel-title">
+        Top-20 Eigenfaces
+        <span class="badge" id="ef-badge">—</span>
+      </div>
+      <div id="eigenface-grid"></div>
+
+      <div class="panel-title" style="margin-top:4px;">Explained Variance</div>
+      <canvas id="variance-canvas" width="256" height="88"></canvas>
+      <div style="font-size:12px;color:#5566aa;">
+        <span style="color:#4488ff;">■</span> per component &nbsp;
+        <span style="color:#ffcc44;">—</span> cumulative
+      </div>
+
+      <!-- Variance formula explanation -->
+      <div class="panel-title" style="margin-top:8px;">How Variance is Computed</div>
+      <div class="var-explain">
+        <div class="var-step">
+          <span class="var-label">1. Center data</span>
+          <span class="var-math" id="vf1"></span>
+        </div>
+        <div class="var-step">
+          <span class="var-label">2. SVD</span>
+          <span class="var-math" id="vf2"></span>
+        </div>
+        <div class="var-step">
+          <span class="var-label">3. Eigenvalue</span>
+          <span class="var-math" id="vf3"></span>
+        </div>
+        <div class="var-step">
+          <span class="var-label">4. Total var</span>
+          <span class="var-math" id="vf4"></span>
+        </div>
+        <div class="var-step">
+          <span class="var-label">5. Ratio</span>
+          <span class="var-math" id="vf5"></span>
+        </div>
+      </div>
+
+    </div><!-- /left-panel -->
+
+    <!-- ── RIGHT PANEL ───────────────────────────── -->
+    <div id="right-panel">
+
+      <!-- Sample strip -->
+      <div class="panel-title">
+        Sample Faces (click to select)
+        <label class="upload-btn">
+          ＋ Upload Face
+          <input type="file" id="face-upload" accept="image/*" style="display:none;">
+        </label>
+      </div>
+      <div id="sample-strip"></div>
+
+      <!-- Face trio + formula -->
+      <div id="face-row">
+        <div class="face-panel">
+          <div class="face-lbl">Input</div>
+          <canvas id="canvas-input" class="face-canvas" width="64" height="64"
+                  style="width:160px;height:160px;"></canvas>
+          <div class="face-info" id="info-input">—</div>
+        </div>
+        <div style="color:#3344aa;font-size:22px;">=</div>
+        <div class="face-panel">
+          <div class="face-lbl">Mean Face (μ)</div>
+          <canvas id="canvas-mean2" class="face-canvas" width="64" height="64"
+                  style="width:100px;height:100px;"></canvas>
+        </div>
+        <div style="color:#3344aa;font-size:22px;">+</div>
+        <div class="face-panel">
+          <div class="face-lbl">Reconstruction</div>
+          <canvas id="canvas-recon" class="face-canvas" width="64" height="64"
+                  style="width:160px;height:160px;"></canvas>
+          <div class="face-info" id="info-recon">—</div>
+        </div>
+        <div style="color:#3344aa;font-size:22px;">+</div>
+        <div class="face-panel">
+          <div class="face-lbl">Residual</div>
+          <canvas id="canvas-residual" class="face-canvas" width="64" height="64"
+                  style="width:160px;height:160px;"></canvas>
+          <div class="face-info" id="info-residual">—</div>
+        </div>
+      </div>
+
+      <!-- Formula -->
+      <div id="formula-box">
+        <span id="formula-katex"></span>
+      </div>
+
+      <!-- Slider -->
+      <div id="slider-row">
+        <label>Components k =</label>
+        <input type="range" id="k-slider" min="1" max="50" value="20">
+        <span class="k-num" id="k-num">20</span>
+        <span class="k-info" id="k-info">—</span>
+      </div>
+
+      <!-- Progressive reconstruction -->
+      <div class="panel-title">Progressive Reconstruction</div>
+      <div id="progress-strip"></div>
+
+      <!-- Coefficient bars -->
+      <div class="panel-title" style="margin-top:4px;">
+        Eigenface Coefficients &nbsp;<span style="color:#5566aa;font-size:12px;text-transform:none;letter-spacing:0;">click row to inspect</span>
+      </div>
+      <div id="coeff-section">
+        <div id="coeff-chart"></div>
+      </div>
+
+    </div><!-- /right-panel -->
+  </div>
+</div><!-- /app -->
+
+<!-- ── Detection Preview Modal ───────────────────────────── -->
+<div id="detect-preview">
+  <div class="dp2-title">Face Detection &amp; Preprocessing</div>
+  <div class="dp2-row">
+    <div class="dp2-col">
+      <div class="dp2-lbl">Original (detected)</div>
+      <canvas id="dp2-original" style="border-radius:5px; image-rendering:auto;"></canvas>
+    </div>
+    <div style="display:flex;align-items:center;color:#3344aa;font-size:20px;">→</div>
+    <div class="dp2-col">
+      <div class="dp2-lbl">Cropped &amp; Grayscale (64×64)</div>
+      <canvas id="dp2-cropped" width="64" height="64"
+              style="width:128px;height:128px;border-radius:5px;image-rendering:auto;"></canvas>
+    </div>
+  </div>
+  <div id="detect-status">Detecting face…</div>
+  <button id="detect-ok">Use This Face</button>
+</div>
+
+<!-- ── Detail Panel ──────────────────────────────────────── -->
+<div id="detail-panel">
+  <span id="detail-close" title="close">✕</span>
+  <div class="dp-title" id="dp-title">PC1</div>
+  <div class="dp-row">
+    <div>
+      <div style="font-size:12px;color:#5566aa;margin-bottom:3px;">Eigenface</div>
+      <canvas id="dp-ef-canvas" width="64" height="64" style="width:96px;height:96px;border-radius:4px;image-rendering:auto;"></canvas>
+    </div>
+    <div>
+      <div style="font-size:12px;color:#5566aa;margin-bottom:3px;">Contribution (c·ef)</div>
+      <canvas id="dp-contrib-canvas" width="64" height="64" style="width:96px;height:96px;border-radius:4px;image-rendering:auto;"></canvas>
+    </div>
+    <div class="dp-info" id="dp-info"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════
+let DATA = null;
+let currentCoeffs  = null;   // Float32Array (n_components)
+let currentFaceRaw = null;   // Float32Array (4096), values in [0,1]
+let activeEfIdx    = -1;
+let faceModelReady = false;  // face-api.js model loaded?
+let pendingCroppedRaw = null; // preprocessed pixels waiting for confirmation
+
+// ═══════════════════════════════════════════════════════
+//  CANVAS HELPERS
+// ═══════════════════════════════════════════════════════
+function renderUint8(canvas, pixels) {
+  // pixels: Array of integers 0-255, length 64×64
+  const ctx = canvas.getContext('2d');
+  const img = ctx.createImageData(64, 64);
+  for (let i = 0; i < 4096; i++) {
+    const v = pixels[i] | 0;
+    img.data[i*4] = v; img.data[i*4+1] = v; img.data[i*4+2] = v; img.data[i*4+3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+function renderFloat01(canvas, arr) {
+  // arr: iterable of floats in [0,1] — clamp to [0,1]
+  const ctx = canvas.getContext('2d');
+  const img = ctx.createImageData(64, 64);
+  for (let i = 0; i < 4096; i++) {
+    const v = Math.round(Math.min(Math.max(arr[i], 0), 1) * 255);
+    img.data[i*4] = v; img.data[i*4+1] = v; img.data[i*4+2] = v; img.data[i*4+3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+function renderNormalized(canvas, arr) {
+  // Normalize arr to [0,1] then render
+  let lo = Infinity, hi = -Infinity;
+  for (const v of arr) { if (v < lo) lo = v; if (v > hi) hi = v; }
+  const rng = hi - lo || 1;
+  const ctx = canvas.getContext('2d');
+  const img = ctx.createImageData(64, 64);
+  for (let i = 0; i < 4096; i++) {
+    const v = Math.round((arr[i] - lo) / rng * 255);
+    img.data[i*4] = v; img.data[i*4+1] = v; img.data[i*4+2] = v; img.data[i*4+3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+function renderResidual(canvas, orig, recon) {
+  // Red = positive error, Blue = negative error, Black = zero
+  let maxErr = 0;
+  const diff = new Float32Array(4096);
+  for (let i = 0; i < 4096; i++) {
+    diff[i] = orig[i] - recon[i];
+    if (Math.abs(diff[i]) > maxErr) maxErr = Math.abs(diff[i]);
+  }
+  maxErr = maxErr || 1;
+  const ctx = canvas.getContext('2d');
+  const img = ctx.createImageData(64, 64);
+  for (let i = 0; i < 4096; i++) {
+    const t = diff[i] / maxErr; // -1..1
+    img.data[i*4]   = t > 0 ? Math.round(t * 255) : 0;
+    img.data[i*4+1] = 0;
+    img.data[i*4+2] = t < 0 ? Math.round(-t * 255) : 0;
+    img.data[i*4+3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+function renderContribution(canvas, coeff, efIdx) {
+  // Show c_i × eigenface_i, normalized for display
+  const ef  = DATA.eigenfaces_raw[efIdx];
+  const arr = new Float32Array(4096);
+  for (let i = 0; i < 4096; i++) arr[i] = coeff * ef[i];
+  renderNormalized(canvas, arr);
+}
+
+// ═══════════════════════════════════════════════════════
+//  PCA OPERATIONS
+// ═══════════════════════════════════════════════════════
+function projectFace(rawPixels) {
+  // rawPixels: Array|Float32Array of 4096 floats in [0,1]
+  const mean = DATA.mean_face_raw;
+  const efs  = DATA.eigenfaces_raw;
+  const n    = DATA.n_components;
+  const coeffs = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    let dot = 0;
+    const ef = efs[i];
+    for (let j = 0; j < 4096; j++) dot += (rawPixels[j] - mean[j]) * ef[j];
+    coeffs[i] = dot;
+  }
+  return coeffs;
+}
+
+function reconstructFace(coeffs, k) {
+  // Returns Float32Array (4096) in roughly [0,1] range
+  const mean = DATA.mean_face_raw;
+  const efs  = DATA.eigenfaces_raw;
+  const result = new Float32Array(4096);
+  for (let j = 0; j < 4096; j++) result[j] = mean[j];
+  const kk = Math.min(k, coeffs.length, DATA.n_components);
+  for (let i = 0; i < kk; i++) {
+    const c = coeffs[i], ef = efs[i];
+    for (let j = 0; j < 4096; j++) result[j] += c * ef[j];
+  }
+  return result;
+}
+
+function mse(a, b) {
+  let s = 0;
+  for (let i = 0; i < a.length; i++) { const d = a[i]-b[i]; s += d*d; }
+  return s / a.length;
+}
+
+function cumVar(k) {
+  return DATA.explained_variance_ratio.slice(0, k).reduce((a, b) => a + b, 0);
+}
+
+// ═══════════════════════════════════════════════════════
+//  BUILD UI
+// ═══════════════════════════════════════════════════════
+function buildMeanFace() {
+  renderUint8(document.getElementById('mean-canvas'), DATA.mean_face_disp);
+  renderUint8(document.getElementById('canvas-mean2'), DATA.mean_face_disp);
+}
+
+function buildEigenfaceGrid() {
+  const grid = document.getElementById('eigenface-grid');
+  grid.innerHTML = '';
+  for (let i = 0; i < 20; i++) {
+    const item = document.createElement('div');
+    item.className = 'ef-item';
+    item.dataset.idx = i;
+
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = 64;
+    renderUint8(cv, DATA.eigenfaces_disp[i]);
+
+    const lbl = document.createElement('div');
+    lbl.className = 'ef-lbl';
+    lbl.textContent = `PC${i+1}`;
+
+    item.appendChild(cv);
+    item.appendChild(lbl);
+    item.addEventListener('click', () => showDetail(i));
+    grid.appendChild(item);
+  }
+  // badge: top-20 variance
+  const v20 = cumVar(20);
+  document.getElementById('ef-badge').textContent = `top-20: ${(v20*100).toFixed(0)}% var`;
+}
+
+function buildSampleStrip() {
+  const strip = document.getElementById('sample-strip');
+  strip.innerHTML = '';
+  for (let i = 0; i < DATA.n_samples; i++) {
+    const wrap = document.createElement('div');
+    wrap.className = 'sample-thumb';
+    wrap.dataset.idx = i;
+
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = 64;
+    renderUint8(cv, DATA.sample_faces_disp[i]);
+
+    const lbl = document.createElement('div');
+    lbl.className = 'thumb-lbl';
+    lbl.textContent = `S${DATA.sample_labels[i]+1}`;
+
+    wrap.appendChild(cv);
+    wrap.appendChild(lbl);
+    wrap.addEventListener('click', () => selectSample(i));
+    strip.appendChild(wrap);
+  }
+}
+
+function buildVarianceChart() {
+  const canvas = document.getElementById('variance-canvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const ev  = DATA.explained_variance_ratio;
+  const n   = Math.min(30, ev.length);
+  const pad = 8;
+  const bw  = (W - pad) / n;
+
+  ctx.fillStyle = '#0a0a22';
+  ctx.fillRect(0, 0, W, H);
+
+  const maxEv = ev[0];
+  ctx.fillStyle = '#3366ff';
+  for (let i = 0; i < n; i++) {
+    const bh = (ev[i] / maxEv) * (H - pad*2 - 12);
+    ctx.fillRect(i*bw + pad/2 + 1, H - bh - pad - 12, bw - 2, bh);
+  }
+
+  // Cumulative line
+  const total = ev.slice(0, n).reduce((a, b) => a+b, 0);
+  ctx.beginPath();
+  ctx.strokeStyle = '#ffcc44';
+  ctx.lineWidth = 1.5;
+  let cum = 0;
+  for (let i = 0; i < n; i++) {
+    cum += ev[i];
+    const x = i * bw + pad/2 + bw/2;
+    const y = H - (cum / total) * (H - pad*2 - 12) - pad - 12;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+
+  // Axis labels
+  ctx.fillStyle = '#445566';
+  ctx.font = '11px sans-serif';
+  ctx.fillText('1', pad/2 + 1, H - 2);
+  ctx.fillText(`${n}`, (n-1)*bw + pad/2, H - 2);
+  ctx.fillStyle = '#ffcc44';
+  ctx.fillText(`${(total*100).toFixed(0)}% total`, W - 58, 12);
+}
+
+function buildProgressStrip() {
+  const strip = document.getElementById('progress-strip');
+  strip.innerHTML = '';
+  const ks = [1, 3, 5, 10, 20, 50];
+  ks.forEach(k => {
+    const item = document.createElement('div');
+    item.className = 'prog-item';
+
+    const cv = document.createElement('canvas');
+    cv.id = `prog-${k}`;
+    cv.width = cv.height = 64;
+    cv.style.cssText = 'width:72px;height:72px;border-radius:3px;';
+
+    const lbl = document.createElement('div');
+    lbl.className = 'prog-lbl';
+    lbl.textContent = `k = ${k}`;
+
+    const varlbl = document.createElement('div');
+    varlbl.className = 'prog-var';
+    varlbl.id = `prog-var-${k}`;
+    const cv_ = cumVar(Math.min(k, DATA.n_components));
+    varlbl.textContent = `${(cv_*100).toFixed(0)}% var`;
+
+    item.appendChild(cv);
+    item.appendChild(lbl);
+    item.appendChild(varlbl);
+    strip.appendChild(item);
+  });
+}
+
+function buildCoeffChart() {
+  const chart = document.getElementById('coeff-chart');
+  chart.innerHTML = '';
+  const n = Math.min(20, DATA.n_components);
+  for (let i = 0; i < n; i++) {
+    const row = document.createElement('div');
+    row.className = 'coeff-row';
+    row.dataset.idx = i;
+
+    // mini eigenface thumbnail
+    const efCv = document.createElement('canvas');
+    efCv.className = 'coeff-ef';
+    efCv.width = efCv.height = 64;
+    renderUint8(efCv, DATA.eigenfaces_disp[i]);
+
+    const lbl = document.createElement('div');
+    lbl.className = 'coeff-lbl';
+    lbl.textContent = `PC${i+1}`;
+
+    const track = document.createElement('div');
+    track.className = 'coeff-track';
+
+    const center = document.createElement('div');
+    center.className = 'coeff-center-line';
+
+    const barPos = document.createElement('div');
+    barPos.className = 'coeff-bar-pos';
+    barPos.id = `bpos-${i}`;
+    barPos.style.width = '0';
+
+    const barNeg = document.createElement('div');
+    barNeg.className = 'coeff-bar-neg';
+    barNeg.id = `bneg-${i}`;
+    barNeg.style.width = '0';
+
+    track.appendChild(center);
+    track.appendChild(barPos);
+    track.appendChild(barNeg);
+
+    const val = document.createElement('div');
+    val.className = 'coeff-val';
+    val.id = `cval-${i}`;
+    val.textContent = '—';
+
+    row.appendChild(efCv);
+    row.appendChild(lbl);
+    row.appendChild(track);
+    row.appendChild(val);
+    row.addEventListener('click', () => showDetail(i));
+    chart.appendChild(row);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  UPDATE FUNCTIONS
+// ═══════════════════════════════════════════════════════
+function updateRecon() {
+  if (!currentCoeffs || !currentFaceRaw) return;
+
+  const k     = +document.getElementById('k-slider').value;
+  const recon = reconstructFace(currentCoeffs, k);
+  const err   = mse(currentFaceRaw, recon);
+  const cv    = cumVar(k);
+
+  renderFloat01(document.getElementById('canvas-recon'), recon);
+  renderResidual(document.getElementById('canvas-residual'), currentFaceRaw, recon);
+
+  document.getElementById('k-num').textContent  = k;
+  document.getElementById('k-info').textContent = `— ${(cv*100).toFixed(1)}% variance retained`;
+  document.getElementById('info-recon').textContent    = `k=${k}, ${(cv*100).toFixed(1)}% var`;
+  document.getElementById('info-residual').textContent = `MSE = ${err.toFixed(5)}`;
+
+  updateProgressStrip();
+  updateCoeffBars();
+  updateFormula(k);
+}
+
+function renderVarianceFormulas() {
+  if (typeof katex === 'undefined') {
+    setTimeout(renderVarianceFormulas, 100); return;
+  }
+  const render = (id, tex) =>
+    katex.render(tex, document.getElementById(id), { throwOnError: false, displayMode: false });
+
+  render('vf1', 'X_c = X - \\mu');
+  render('vf2', 'X_c = U \\Sigma V^T');
+  render('vf3', '\\lambda_i = \\sigma_i^2 \\,/\\, (n-1)');
+  render('vf4', '\\mathrm{Var}_{\\mathrm{total}} = \\sum_j \\mathrm{Var}(x_j)');
+  render('vf5', 'r_i = \\lambda_i \\,/\\, \\mathrm{Var}_{\\mathrm{total}}');
+}
+
+function updateFormula(k) {
+  const el = document.getElementById('formula-katex');
+  if (!el || typeof katex === 'undefined') return;
+
+  // Build: \hat{x} = \mu + c_1 e_1 + c_2 e_2 + \cdots + c_k e_k
+  const kk = Math.min(k, 3);
+  let terms = '';
+  for (let i = 0; i < kk; i++) {
+    const c = currentCoeffs ? currentCoeffs[i].toFixed(1) : `c_{${i+1}}`;
+    terms += ` + (${c})\\,\\mathbf{e}_{${i+1}}`;
+  }
+  if (k > 3) terms += ` + \\cdots + c_{${k}}\\,\\mathbf{e}_{${k}}`;
+
+  const tex = `\\hat{x} = \\mu${terms}`;
+  katex.render(tex, el, { throwOnError: false, displayMode: false });
+}
+
+function updateProgressStrip() {
+  if (!currentCoeffs) return;
+  [1, 3, 5, 10, 20, 50].forEach(k => {
+    const cv = document.getElementById(`prog-${k}`);
+    if (cv) renderFloat01(cv, reconstructFace(currentCoeffs, Math.min(k, DATA.n_components)));
+  });
+}
+
+function updateCoeffBars() {
+  if (!currentCoeffs) return;
+  const n    = Math.min(20, DATA.n_components);
+  const maxA = Math.max(...Array.from(currentCoeffs.slice(0, n)).map(Math.abs), 1);
+  for (let i = 0; i < n; i++) {
+    const c   = currentCoeffs[i];
+    const pct = (Math.abs(c) / maxA * 48).toFixed(1) + '%';
+    const bp  = document.getElementById(`bpos-${i}`);
+    const bn  = document.getElementById(`bneg-${i}`);
+    const vl  = document.getElementById(`cval-${i}`);
+    if (c >= 0) {
+      bp.style.width = pct;  bn.style.width = '0';
+      bp.style.background = '#3366ff';
+    } else {
+      bn.style.width = pct;  bp.style.width = '0';
+      bn.style.background = '#ff4444';
+    }
+    if (vl) vl.textContent = c.toFixed(2);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  FACE SELECTION
+// ═══════════════════════════════════════════════════════
+function selectSample(idx) {
+  document.querySelectorAll('.sample-thumb').forEach((el, i) =>
+    el.classList.toggle('active', i === idx));
+
+  currentFaceRaw = DATA.sample_faces_raw[idx];
+  currentCoeffs  = new Float32Array(DATA.sample_coeffs[idx]);
+
+  renderFloat01(document.getElementById('canvas-input'), currentFaceRaw);
+  document.getElementById('info-input').textContent =
+    `Subject ${DATA.sample_labels[idx]+1}`;
+
+  updateRecon();
+}
+
+// ── Face Detection & Alignment Helpers ─────────────────
+async function loadFaceDetectionModels() {
+  try {
+    const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
+    await Promise.all([
+      faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+      faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
+    ]);
+    faceModelReady = true;
+  } catch(e) {
+    console.warn('face-api.js model load failed:', e);
+    faceModelReady = false;
+  }
+}
+
+// Average position of a set of landmark points
+function eyeCenter(pts, indices) {
+  let x = 0, y = 0;
+  for (const i of indices) { x += pts[i].x; y += pts[i].y; }
+  return { x: x / indices.length, y: y / indices.length };
+}
+
+// Contrast stretch: map 5th–95th percentile → [0, 1]
+// This normalizes brightness/contrast to match the Olivetti training distribution.
+function normalizeContrast(raw) {
+  const sorted = new Float32Array(raw).sort((a, b) => a - b);
+  const lo  = sorted[Math.floor(raw.length * 0.05)];
+  const hi  = sorted[Math.floor(raw.length * 0.95)];
+  const rng = hi - lo || 1;
+  const out = new Float32Array(raw.length);
+  for (let i = 0; i < raw.length; i++) {
+    out[i] = Math.min(1, Math.max(0, (raw[i] - lo) / rng));
+  }
+  return out;
+}
+
+// Eye-based face alignment → 64×64 canvas.
+//
+// Strategy: crop a square region centred slightly below the eye midpoint
+//   (to include forehead + chin), then rotate it to make the eye line
+//   horizontal, and scale it to exactly 64×64.
+//
+// Calibrated for the Olivetti dataset:
+//   IOD ≈ 24 px in a 64 px image  →  cropFactor = 64 / 24 ≈ 2.67
+//   Eyes at y ≈ 26 (41 % from top) →  vertical offset = (32-26)/64 = 0.094 of image
+//     expressed as fraction of IOD: 0.094 × cropFactor ≈ 0.25
+function alignFaceToEyes(img, eyeL, eyeR) {
+  const iod = Math.hypot(eyeR.x - eyeL.x, eyeR.y - eyeL.y);
+  if (iod < 4) return null; // degenerate detection
+
+  const eyeMidX = (eyeL.x + eyeR.x) / 2;
+  const eyeMidY = (eyeL.y + eyeR.y) / 2;
+  const angle   = Math.atan2(eyeR.y - eyeL.y, eyeR.x - eyeL.x); // eye-line tilt
+
+  // Square crop that places the face the same way as in Olivetti:
+  //   • crop size = IOD × 2.0  (gives ~32 px IOD in 64 px output — tight face crop)
+  //   • crop centre is 0.19 × IOD below the eye midpoint
+  //     formula: offset_frac = (32 - target_eye_y) × cropFactor / 64
+  //              = 6 × 2.0 / 64 ≈ 0.19
+  const cropSize    = iod * 2.0;
+  const cropCenterX = eyeMidX;
+  //const cropCenterY = eyeMidY + 0.19 * iod;
+  const cropCenterY = eyeMidY + 0.5 * iod;
+  const scale       = 64 / cropSize;
+
+  const out = document.createElement('canvas');
+  out.width = out.height = 64;
+  const ctx = out.getContext('2d');
+  // Dark fill for any out-of-image border (Olivetti has a dark background)
+  ctx.fillStyle = '#282828';
+  ctx.fillRect(0, 0, 64, 64);
+  ctx.save();
+  ctx.translate(32, 32);       // pivot at output centre
+  ctx.rotate(-angle);          // de-rotate the eye tilt
+  ctx.scale(scale, scale);     // scale so cropSize → 64 px
+  ctx.drawImage(img, -cropCenterX, -cropCenterY); // centre the face
+  ctx.restore();
+  return out;
+}
+
+async function uploadFace(file) {
+  // Show detection preview modal
+  const modal    = document.getElementById('detect-preview');
+  const statusEl = document.getElementById('detect-status');
+  const okBtn    = document.getElementById('detect-ok');
+  modal.style.display = 'block';
+  okBtn.disabled = true;
+  statusEl.innerHTML = '<span class="det-spinner"></span> Loading image…';
+
+  const img = new Image();
+  const url = URL.createObjectURL(file);
+  await new Promise(res => { img.onload = res; img.src = url; });
+  URL.revokeObjectURL(url);
+
+  // Draw original (scaled to ≤256px) in dp2-original
+  const origCanvas = document.getElementById('dp2-original');
+  const maxDim = 256;
+  const sc = Math.min(maxDim / img.width, maxDim / img.height, 1);
+  const dw = Math.round(img.width * sc);
+  const dh = Math.round(img.height * sc);
+  origCanvas.width  = dw;
+  origCanvas.height = dh;
+  origCanvas.style.width  = dw + 'px';
+  origCanvas.style.height = dh + 'px';
+  const origCtx = origCanvas.getContext('2d');
+  origCtx.drawImage(img, 0, 0, dw, dh);
+
+  let aligned64 = null; // 64×64 canvas with the result
+
+  if (faceModelReady) {
+    statusEl.innerHTML = '<span class="det-spinner"></span> Detecting face &amp; landmarks…';
+    try {
+      const result = await faceapi
+        .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.4 }))
+        .withFaceLandmarks(true);  // true = use tiny 68-pt landmark model
+
+      if (result) {
+        const pts  = result.landmarks.positions;
+        // Left eye: pts 36-41, Right eye: pts 42-47
+        const eyeL = eyeCenter(pts, [36,37,38,39,40,41]);
+        const eyeR = eyeCenter(pts, [42,43,44,45,46,47]);
+
+        // Draw face box + eye markers on preview
+        const sx = dw / img.width, sy = dh / img.height;
+        const box = result.detection.box;
+        origCtx.strokeStyle = '#ffcc44';
+        origCtx.lineWidth = 2;
+        origCtx.strokeRect(box.x*sx, box.y*sy, box.width*sx, box.height*sy);
+        origCtx.fillStyle = '#00ffaa';
+        [[eyeL, 4], [eyeR, 4]].forEach(([e, r]) => {
+          origCtx.beginPath();
+          origCtx.arc(e.x*sx, e.y*sy, r, 0, Math.PI*2);
+          origCtx.fill();
+        });
+        // Draw line between eyes
+        origCtx.strokeStyle = '#00ffaa';
+        origCtx.lineWidth = 1.5;
+        origCtx.beginPath();
+        origCtx.moveTo(eyeL.x*sx, eyeL.y*sy);
+        origCtx.lineTo(eyeR.x*sx, eyeR.y*sy);
+        origCtx.stroke();
+
+        aligned64 = alignFaceToEyes(img, eyeL, eyeR);
+        statusEl.innerHTML = '✓ Face aligned (eye landmarks → rotation + scale + crop) + contrast stretched';
+      } else {
+        statusEl.innerHTML = '⚠ No face detected — using center crop';
+      }
+    } catch(e) {
+      console.warn('Detection failed:', e);
+      statusEl.innerHTML = '⚠ Detection error — using center crop';
+    }
+  } else {
+    statusEl.innerHTML = '⚠ Face model not ready — using center crop';
+  }
+
+  // Fallback: center square crop → 64×64
+  if (!aligned64) {
+    const side = Math.min(img.width, img.height);
+    aligned64 = document.createElement('canvas');
+    aligned64.width = aligned64.height = 64;
+    aligned64.getContext('2d').drawImage(
+      img,
+      Math.round((img.width  - side) / 2),
+      Math.round((img.height - side) / 2),
+      side, side, 0, 0, 64, 64);
+  }
+
+  // Grayscale Float32Array [0,1]
+  const px  = aligned64.getContext('2d').getImageData(0, 0, 64, 64).data;
+  const raw = new Float32Array(4096);
+  for (let i = 0; i < 4096; i++) {
+    raw[i] = (0.299*px[i*4] + 0.587*px[i*4+1] + 0.114*px[i*4+2]) / 255;
+  }
+
+  // Stretch contrast to match the Olivetti intensity distribution
+  const normalized = normalizeContrast(raw);
+
+  renderFloat01(document.getElementById('dp2-cropped'), normalized);
+  pendingCroppedRaw = normalized;
+  okBtn.disabled = false;
+}
+
+// ═══════════════════════════════════════════════════════
+//  DETAIL PANEL
+// ═══════════════════════════════════════════════════════
+function showDetail(idx) {
+  activeEfIdx = idx;
+  document.querySelectorAll('.ef-item').forEach((el, i) =>
+    el.classList.toggle('active', i === idx));
+  document.querySelectorAll('.coeff-row').forEach((el, i) =>
+    el.classList.toggle('active', i === idx));
+
+  renderUint8(document.getElementById('dp-ef-canvas'), DATA.eigenfaces_disp[idx]);
+
+  const coeff = currentCoeffs ? currentCoeffs[idx] : 0;
+  if (currentCoeffs) {
+    renderContribution(document.getElementById('dp-contrib-canvas'), coeff, idx);
+  } else {
+    renderUint8(document.getElementById('dp-contrib-canvas'), DATA.eigenfaces_disp[idx]);
+  }
+
+  const ev = DATA.explained_variance_ratio[idx];
+  document.getElementById('dp-title').textContent = `PC${idx+1}`;
+  document.getElementById('dp-info').innerHTML = `
+    <strong>Eigenvalue rank:</strong> ${idx+1}<br>
+    <strong>Variance explained:</strong> ${(ev*100).toFixed(2)}%<br>
+    <strong>Cumulative:</strong> ${(cumVar(idx+1)*100).toFixed(1)}%<br>
+    <strong>Coefficient:</strong> ${coeff.toFixed(4)}<br>
+    <strong>Singular value:</strong> ${DATA.singular_values[idx].toFixed(2)}
+  `;
+
+  document.getElementById('detail-panel').style.display = 'block';
+}
+
+// ═══════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════
+function initApp() {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('app').style.display = '';
+
+  buildMeanFace();
+  buildEigenfaceGrid();
+  buildSampleStrip();
+  buildVarianceChart();
+  buildProgressStrip();
+  buildCoeffChart();
+
+  document.getElementById('k-slider').addEventListener('input', updateRecon);
+  document.getElementById('face-upload').addEventListener('change', e => {
+    if (e.target.files[0]) uploadFace(e.target.files[0]);
+  });
+  document.getElementById('detail-close').addEventListener('click', () => {
+    document.getElementById('detail-panel').style.display = 'none';
+    activeEfIdx = -1;
+    document.querySelectorAll('.ef-item, .coeff-row').forEach(el =>
+      el.classList.remove('active'));
+  });
+
+  // Confirm face detection and apply
+  document.getElementById('detect-ok').addEventListener('click', () => {
+    if (!pendingCroppedRaw) return;
+    document.getElementById('detect-preview').style.display = 'none';
+    document.querySelectorAll('.sample-thumb').forEach(el => el.classList.remove('active'));
+    currentFaceRaw = pendingCroppedRaw;
+    currentCoeffs  = projectFace(pendingCroppedRaw);
+    renderFloat01(document.getElementById('canvas-input'), pendingCroppedRaw);
+    document.getElementById('info-input').textContent = 'Uploaded (face crop)';
+    pendingCroppedRaw = null;
+    updateRecon();
+  });
+
+  // Render variance formula explanation
+  renderVarianceFormulas();
+
+  // Load face detection models in the background (non-blocking)
+  loadFaceDetectionModels();
+
+  // Select first sample by default
+  selectSample(0);
+}
+
+async function loadData() {
+  try {
+    const resp = await fetch('eigenfaces_data.json');
+    if (!resp.ok) throw new Error(resp.statusText);
+    DATA = await resp.json();
+    initApp();
+  } catch (e) {
+    document.getElementById('load-msg').style.display = 'none';
+    document.getElementById('load-error').style.display = 'block';
+  }
+}
+
+// JSON file picker fallback
+document.getElementById('json-picker').addEventListener('change', async e => {
+  if (!e.target.files[0]) return;
+  const text = await e.target.files[0].text();
+  DATA = JSON.parse(text);
+  initApp();
+});
+
+loadData();
+</script>
+</body>
+</html>
