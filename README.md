@@ -17,6 +17,7 @@ Interactive web-based demos for computer vision courses at Seoul National Univer
 | PCA (Principal Component Analysis) | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/pca/pca_demo.html) |
 | Eigenface | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/eigenface/eigenface_demo.html) |
 | Clustering & Segmentation | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/clustering/clustering.html) |
+| RANSAC (Line Fitting & Homography) | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/3dvision-ransac/ransac_demo.html) |
 
 
 ---
