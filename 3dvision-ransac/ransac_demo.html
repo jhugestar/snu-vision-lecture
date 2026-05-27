@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RANSAC Interactive Demo</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background: #f5f7fa;
+    color: #1f2937;
+  }
+  .container {
+    max-width: 1280px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    overflow: hidden;
+  }
+  header {
+    padding: 24px 32px;
+    background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+    color: white;
+  }
+  header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+  header p { margin: 6px 0 0 0; font-size: 14px; opacity: 0.9; }
+
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid #e5e7eb;
+    background: #fafafa;
+  }
+  .tab {
+    flex: 0 0 auto;
+    padding: 14px 28px;
+    border: none;
+    background: transparent;
+    font-size: 15px;
+    font-weight: 500;
+    color: #6b7280;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all 0.15s;
+  }
+  .tab:hover { color: #1f2937; background: #f3f4f6; }
+  .tab.active {
+    color: #1e3a8a;
+    border-bottom-color: #3b82f6;
+    background: white;
+  }
+
+  .panel { display: none; padding: 24px 32px; }
+  .panel.active { display: block; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 24px;
+  }
+  .layout-wide {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 24px;
+  }
+
+  .sidebar {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 18px;
+  }
+  .sidebar h3 {
+    margin: 0 0 14px 0;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #6b7280;
+    font-weight: 600;
+  }
+  .control { margin-bottom: 14px; }
+  .control label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: #374151;
+    margin-bottom: 6px;
+  }
+  .control label .val {
+    color: #1e3a8a;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .control input[type=range] {
+    width: 100%;
+    -webkit-appearance: none;
+    height: 4px;
+    background: #d1d5db;
+    border-radius: 2px;
+    outline: none;
+  }
+  .control input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: #3b82f6;
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+
+  .btn-group { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+  .btn-row { display: flex; gap: 8px; }
+  button.action {
+    flex: 1;
+    padding: 9px 12px;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  button.action.primary { background: #3b82f6; color: white; }
+  button.action.primary:hover { background: #2563eb; }
+  button.action.secondary { background: #e5e7eb; color: #1f2937; }
+  button.action.secondary:hover { background: #d1d5db; }
+  button.action.danger { background: #ef4444; color: white; }
+  button.action.danger:hover { background: #dc2626; }
+  button.action:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid #e5e7eb;
+  }
+  .stat {
+    background: white;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+  }
+  .stat .lbl { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em; }
+  .stat .num { font-size: 18px; font-weight: 700; color: #1e3a8a; font-variant-numeric: tabular-nums; }
+
+  .canvas-area { display: flex; flex-direction: column; gap: 12px; }
+  .canvases { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  canvas {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    display: block;
+  }
+  .canvas-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .canvas-title { font-size: 13px; color: #6b7280; font-weight: 500; }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    padding: 10px 14px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #374151;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .swatch { width: 14px; height: 14px; border-radius: 50%; }
+  .swatch-line { width: 22px; height: 3px; border-radius: 2px; }
+
+  .status {
+    font-size: 13px;
+    color: #6b7280;
+    padding: 8px 12px;
+    background: #f3f4f6;
+    border-radius: 6px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .status.done { background: #d1fae5; color: #065f46; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>RANSAC Interactive Demo</h1>
+    <p>RANdom SAmple Consensus — visualizing line fitting and homography estimation</p>
+    <p style="margin-top:6px;font-size:13px;opacity:0.85;">Hanbyul Joo &nbsp;|&nbsp; Visual Computing Lab, Seoul National University &nbsp;|&nbsp; <a href="https://github.com/jhugestar/snu-vision-lecture" target="_blank" style="color:#bfdbfe;text-decoration:none;">More Demos ↗</a></p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="line">1. Line Fitting</button>
+    <button class="tab" data-tab="homo">2. Homography Estimation</button>
+  </div>
+
+  <!-- ============== LINE FITTING TAB ============== -->
+  <div class="panel active" id="panel-line">
+    <div class="layout">
+      <div class="sidebar">
+        <h3>Data Generation</h3>
+        <div class="control">
+          <label># of points <span class="val" id="line-num-val">150</span></label>
+          <input type="range" id="line-num" min="30" max="400" step="10" value="150">
+        </div>
+        <div class="control">
+          <label>Outlier ratio <span class="val" id="line-out-val">50%</span></label>
+          <input type="range" id="line-out" min="0" max="90" step="5" value="50">
+        </div>
+        <div class="control">
+          <label>Noise (σ, px) <span class="val" id="line-noise-val">3</span></label>
+          <input type="range" id="line-noise" min="0" max="20" step="0.5" value="3">
+        </div>
+
+        <h3 style="margin-top:18px">RANSAC Settings</h3>
+        <div class="control">
+          <label>Inlier threshold (px) <span class="val" id="line-thr-val">8</span></label>
+          <input type="range" id="line-thr" min="1" max="30" step="1" value="8">
+        </div>
+        <div class="control">
+          <label>Max iterations <span class="val" id="line-max-val">500</span></label>
+          <input type="range" id="line-max" min="10" max="2000" step="10" value="500">
+        </div>
+
+        <div class="btn-group">
+          <button class="action primary" id="line-regen">Generate New Data</button>
+          <div class="btn-row">
+            <button class="action secondary" id="line-step">Step</button>
+            <button class="action secondary" id="line-run">Continue</button>
+          </div>
+          <div class="btn-row">
+            <button class="action secondary" id="line-stop">Stop</button>
+            <button class="action danger" id="line-reset">Reset</button>
+          </div>
+        </div>
+
+        <div class="stats">
+          <div class="stat"><div class="lbl">Iter</div><div class="num" id="line-iter">0</div></div>
+          <div class="stat"><div class="lbl">Cur Inliers</div><div class="num" id="line-cur">0</div></div>
+          <div class="stat"><div class="lbl">Best Inliers</div><div class="num" id="line-best">0</div></div>
+          <div class="stat"><div class="lbl">Total Points</div><div class="num" id="line-total">0</div></div>
+        </div>
+      </div>
+
+      <div class="canvas-area">
+        <div class="canvases">
+          <div class="canvas-wrap">
+            <canvas id="line-canvas" width="780" height="520"></canvas>
+          </div>
+        </div>
+        <div class="legend">
+          <div class="legend-item"><div class="swatch" style="background:#9ca3af"></div>data point</div>
+          <div class="legend-item"><div class="swatch" style="background:#f59e0b;border:2px solid #b45309"></div>minimal sample (this iter)</div>
+          <div class="legend-item"><div class="swatch" style="background:#10b981"></div>inliers of current hypothesis</div>
+          <div class="legend-item"><div class="swatch-line" style="background:#9ca3af"></div>ground-truth line</div>
+          <div class="legend-item"><div class="swatch-line" style="background:#f59e0b"></div>current hypothesis</div>
+          <div class="legend-item"><div class="swatch-line" style="background:#1e3a8a"></div>best so far</div>
+        </div>
+        <div class="status" id="line-status">Click "Generate New Data" to start.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============== HOMOGRAPHY TAB ============== -->
+  <div class="panel" id="panel-homo">
+    <div class="layout">
+      <div class="sidebar">
+        <h3>Data Generation</h3>
+        <div class="control">
+          <label># of matches <span class="val" id="h-num-val">80</span></label>
+          <input type="range" id="h-num" min="20" max="200" step="5" value="80">
+        </div>
+        <div class="control">
+          <label>Outlier ratio <span class="val" id="h-out-val">40%</span></label>
+          <input type="range" id="h-out" min="0" max="80" step="5" value="40">
+        </div>
+        <div class="control">
+          <label>Noise (σ, px) <span class="val" id="h-noise-val">2</span></label>
+          <input type="range" id="h-noise" min="0" max="15" step="0.5" value="2">
+        </div>
+        <div class="control">
+          <label>Warp strength <span class="val" id="h-warp-val">30</span></label>
+          <input type="range" id="h-warp" min="0" max="60" step="2" value="30">
+        </div>
+
+        <h3 style="margin-top:18px">RANSAC Settings</h3>
+        <div class="control">
+          <label>Inlier threshold (px) <span class="val" id="h-thr-val">6</span></label>
+          <input type="range" id="h-thr" min="1" max="20" step="1" value="6">
+        </div>
+        <div class="control">
+          <label>Max iterations <span class="val" id="h-max-val">600</span></label>
+          <input type="range" id="h-max" min="10" max="2000" step="10" value="600">
+        </div>
+
+        <div class="btn-group">
+          <button class="action primary" id="h-regen">Generate New Data</button>
+          <div class="btn-row">
+            <button class="action secondary" id="h-step">Step</button>
+            <button class="action secondary" id="h-run">Continue</button>
+          </div>
+          <div class="btn-row">
+            <button class="action secondary" id="h-stop">Stop</button>
+            <button class="action danger" id="h-reset">Reset</button>
+          </div>
+        </div>
+
+        <div class="stats">
+          <div class="stat"><div class="lbl">Iter</div><div class="num" id="h-iter">0</div></div>
+          <div class="stat"><div class="lbl">Cur Inliers</div><div class="num" id="h-cur">0</div></div>
+          <div class="stat"><div class="lbl">Best Inliers</div><div class="num" id="h-best">0</div></div>
+          <div class="stat"><div class="lbl">Total Matches</div><div class="num" id="h-total">0</div></div>
+        </div>
+      </div>
+
+      <div class="canvas-area">
+        <div class="canvases">
+          <div class="canvas-wrap">
+            <div class="canvas-title">Source image (point A coordinates)</div>
+            <canvas id="h-canvas-src" width="440" height="420"></canvas>
+          </div>
+          <div class="canvas-wrap">
+            <div class="canvas-title">Target image (point B coordinates)</div>
+            <canvas id="h-canvas-dst" width="440" height="420"></canvas>
+          </div>
+        </div>
+        <div class="legend">
+          <div class="legend-item"><div class="swatch" style="background:#9ca3af"></div>match</div>
+          <div class="legend-item"><div class="swatch" style="background:#f59e0b;border:2px solid #b45309"></div>4-point sample</div>
+          <div class="legend-item"><div class="swatch" style="background:#10b981"></div>current inliers</div>
+          <div class="legend-item"><div class="swatch-line" style="background:#9ca3af;border:1px dashed #9ca3af;background:transparent;height:1px;border-top:2px dashed #9ca3af"></div>GT-warped quad</div>
+          <div class="legend-item"><div class="swatch-line" style="background:#1e3a8a"></div>quad warped by best Ĥ</div>
+          <div class="legend-item"><div class="swatch-line" style="background:#eab308"></div>quad warped by current Ĥ (this iter)</div>
+        </div>
+        <div class="status" id="h-status">Click "Generate New Data" to start.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// Utility
+// ============================================================
+function gauss() {
+  // Box-Muller
+  let u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+function rand(a, b) { return a + Math.random() * (b - a); }
+
+// ============================================================
+// Tabs
+// ============================================================
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('panel-' + t.dataset.tab).classList.add('active');
+  });
+});
+
+// ============================================================
+// LINE FITTING RANSAC
+// ============================================================
+const LineDemo = (() => {
+  const canvas = document.getElementById('line-canvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  let points = [];
+  let gtLine = null;
+  let bestModel = null, bestInliers = [];
+  let curSample = null, curModel = null, curInliers = [];
+  let iter = 0;
+  let running = false, rafId = null;
+  let done = false;
+
+  function genData() {
+    const n = +document.getElementById('line-num').value;
+    const outRatio = +document.getElementById('line-out').value / 100;
+    const noise = +document.getElementById('line-noise').value;
+
+    // GT line: random angle, passes through center
+    const angle = rand(-Math.PI/3, Math.PI/3);
+    const cx = W/2, cy = H/2;
+    const dx = Math.cos(angle), dy = Math.sin(angle);
+    // Normal form: -dy*x + dx*y + c = 0
+    const a = -dy, b = dx;
+    const c = -(a*cx + b*cy);
+    gtLine = {a, b, c, p: {x: cx, y: cy}, d: {x: dx, y: dy}};
+
+    const numOut = Math.floor(n * outRatio);
+    const numIn = n - numOut;
+    points = [];
+    const extent = Math.min(W, H) * 0.42;
+    for (let i = 0; i < numIn; i++) {
+      const t = rand(-extent, extent);
+      const off = gauss() * noise;
+      points.push({
+        x: cx + dx * t + off * (-dy),
+        y: cy + dy * t + off * dx,
+        gt: true
+      });
+    }
+    for (let i = 0; i < numOut; i++) {
+      points.push({ x: rand(20, W-20), y: rand(20, H-20), gt: false });
+    }
+
+    iter = 0;
+    bestModel = null; bestInliers = [];
+    curSample = null; curModel = null; curInliers = [];
+    done = false;
+    updateStats();
+    setStatus(`Generated ${n} points (inliers: ${numIn}, outliers: ${numOut}). Press Step or Continue.`);
+    draw();
+  }
+
+  function fitLineFrom2(p1, p2) {
+    const dx = p2.x - p1.x, dy = p2.y - p1.y;
+    const norm = Math.hypot(dx, dy);
+    if (norm < 1e-6) return null;
+    const a = -dy / norm, b = dx / norm;
+    const c = -(a * p1.x + b * p1.y);
+    return {a, b, c};
+  }
+  function distLine(line, p) {
+    return Math.abs(line.a * p.x + line.b * p.y + line.c);
+  }
+
+  function step() {
+    if (points.length < 2) return;
+    const thr = +document.getElementById('line-thr').value;
+    const i1 = Math.floor(Math.random() * points.length);
+    let i2 = Math.floor(Math.random() * points.length);
+    while (i2 === i1) i2 = Math.floor(Math.random() * points.length);
+    const p1 = points[i1], p2 = points[i2];
+    const model = fitLineFrom2(p1, p2);
+    if (!model) return;
+    curSample = [p1, p2];
+    curModel = model;
+    curInliers = points.filter(p => distLine(model, p) < thr);
+    if (curInliers.length > bestInliers.length) {
+      bestInliers = curInliers;
+      bestModel = model;
+    }
+    iter++;
+    updateStats();
+  }
+
+  function refit(model, inliers) {
+    // Total least squares (PCA) on inliers
+    if (inliers.length < 2) return model;
+    let mx = 0, my = 0;
+    for (const p of inliers) { mx += p.x; my += p.y; }
+    mx /= inliers.length; my /= inliers.length;
+    let sxx = 0, syy = 0, sxy = 0;
+    for (const p of inliers) {
+      const dx = p.x - mx, dy = p.y - my;
+      sxx += dx*dx; syy += dy*dy; sxy += dx*dy;
+    }
+    // Eigenvector of [[sxx,sxy],[sxy,syy]] with smaller eigenvalue = normal
+    const tr = sxx + syy;
+    const det = sxx*syy - sxy*sxy;
+    const disc = Math.sqrt(Math.max(0, tr*tr/4 - det));
+    const lambdaMin = tr/2 - disc;
+    // Normal: ( sxy, lambdaMin - sxx )  (or perpendicular form)
+    let nx, ny;
+    if (Math.abs(sxy) > 1e-9) {
+      nx = lambdaMin - syy;
+      ny = sxy;
+    } else {
+      nx = sxx < syy ? 1 : 0;
+      ny = sxx < syy ? 0 : 1;
+    }
+    const nn = Math.hypot(nx, ny);
+    if (nn < 1e-9) return model;
+    nx /= nn; ny /= nn;
+    return { a: nx, b: ny, c: -(nx*mx + ny*my) };
+  }
+
+  function finish() {
+    running = false;
+    done = true;
+    if (bestInliers.length >= 2) {
+      bestModel = refit(bestModel, bestInliers);
+    }
+    setStatus(`Done! ${iter} iters, best inliers ${bestInliers.length}/${points.length}. Final line refit on inliers via total least squares.`, true);
+    draw();
+    updateStats();
+  }
+
+  function run() {
+    if (running) return;
+    running = true;
+    setStatus('Running RANSAC...');
+    const stepsPerFrame = 3;
+    const maxIter = +document.getElementById('line-max').value;
+    function loop() {
+      if (!running) return;
+      for (let k = 0; k < stepsPerFrame; k++) step();
+      draw();
+      if (iter >= maxIter) {
+        finish();
+        return;
+      }
+      rafId = requestAnimationFrame(loop);
+    }
+    loop();
+  }
+
+  function stop() {
+    running = false;
+    if (rafId) cancelAnimationFrame(rafId);
+    setStatus(`Paused (iter ${iter}, best ${bestInliers.length})`);
+  }
+
+  function reset() {
+    running = false;
+    if (rafId) cancelAnimationFrame(rafId);
+    iter = 0;
+    bestModel = null; bestInliers = [];
+    curSample = null; curModel = null; curInliers = [];
+    done = false;
+    updateStats();
+    setStatus('RANSAC state reset. (points retained)');
+    draw();
+  }
+
+  function updateStats() {
+    document.getElementById('line-iter').textContent = iter;
+    document.getElementById('line-cur').textContent = curInliers.length;
+    document.getElementById('line-best').textContent = bestInliers.length;
+    document.getElementById('line-total').textContent = points.length;
+  }
+  function setStatus(msg, isDone=false) {
+    const el = document.getElementById('line-status');
+    el.textContent = msg;
+    el.classList.toggle('done', isDone);
+  }
+
+  function drawLineFull(line, color, dash=[], width=2) {
+    if (!line) return;
+    // Find intersections with canvas boundary
+    const pts = [];
+    const {a, b, c} = line;
+    // x = 0
+    if (Math.abs(b) > 1e-9) { const y = -(a*0 + c)/b; if (y >= 0 && y <= H) pts.push({x:0, y}); }
+    // x = W
+    if (Math.abs(b) > 1e-9) { const y = -(a*W + c)/b; if (y >= 0 && y <= H) pts.push({x:W, y}); }
+    // y = 0
+    if (Math.abs(a) > 1e-9) { const x = -(b*0 + c)/a; if (x >= 0 && x <= W) pts.push({x, y:0}); }
+    // y = H
+    if (Math.abs(a) > 1e-9) { const x = -(b*H + c)/a; if (x >= 0 && x <= W) pts.push({x, y:H}); }
+    if (pts.length < 2) return;
+    ctx.strokeStyle = color;
+    ctx.setLineDash(dash);
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    ctx.lineTo(pts[1].x, pts[1].y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  function draw() {
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, W, H);
+    // Grid
+    ctx.strokeStyle = '#f3f4f6';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < W; x += 40) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    for (let y = 0; y < H; y += 40) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+
+    // GT line (faint)
+    drawLineFull(gtLine, '#d1d5db', [4,4], 2);
+
+    // Inlier set of current/best
+    const inlierSet = new Set(done ? bestInliers : curInliers);
+
+    // All points
+    for (const p of points) {
+      if (inlierSet.has(p)) continue;
+      ctx.fillStyle = '#9ca3af';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 3, 0, 2*Math.PI);
+      ctx.fill();
+    }
+    // Inliers on top
+    for (const p of inlierSet) {
+      ctx.fillStyle = '#10b981';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 4, 0, 2*Math.PI);
+      ctx.fill();
+    }
+
+    // Current hypothesis line
+    if (!done) drawLineFull(curModel, '#f59e0b', [6,4], 2);
+    // Best line (or final)
+    drawLineFull(bestModel, '#1e3a8a', [], done ? 3 : 2);
+
+    // Current sample
+    if (!done && curSample) {
+      for (const p of curSample) {
+        ctx.fillStyle = '#f59e0b';
+        ctx.strokeStyle = '#b45309';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 7, 0, 2*Math.PI);
+        ctx.fill();
+        ctx.stroke();
+      }
+    }
+
+    // Info overlay (top-left)
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.fillRect(10, 10, 220, 64);
+    ctx.strokeStyle = '#e5e7eb';
+    ctx.strokeRect(10, 10, 220, 64);
+    ctx.fillStyle = '#1f2937';
+    ctx.font = '12px -apple-system, sans-serif';
+    ctx.fillText(`Iteration: ${iter}`, 20, 28);
+    ctx.fillText(`Current inliers: ${curInliers.length}`, 20, 46);
+    ctx.fillText(`Best inliers so far: ${bestInliers.length}`, 20, 64);
+  }
+
+  // Bindings
+  document.getElementById('line-num').addEventListener('input', e => document.getElementById('line-num-val').textContent = e.target.value);
+  document.getElementById('line-out').addEventListener('input', e => document.getElementById('line-out-val').textContent = e.target.value + '%');
+  document.getElementById('line-noise').addEventListener('input', e => document.getElementById('line-noise-val').textContent = e.target.value);
+  document.getElementById('line-thr').addEventListener('input', e => document.getElementById('line-thr-val').textContent = e.target.value);
+  document.getElementById('line-max').addEventListener('input', e => document.getElementById('line-max-val').textContent = e.target.value);
+
+  document.getElementById('line-regen').addEventListener('click', genData);
+  document.getElementById('line-step').addEventListener('click', () => {
+    if (done) return;
+    if (points.length === 0) genData();
+    step(); draw();
+    setStatus(`Step ${iter}: sampled 2 points → ${curInliers.length} inliers (best ${bestInliers.length})`);
+  });
+  document.getElementById('line-run').addEventListener('click', () => {
+    if (done) return;
+    if (points.length === 0) genData();
+    run();
+  });
+  document.getElementById('line-stop').addEventListener('click', stop);
+  document.getElementById('line-reset').addEventListener('click', reset);
+
+  // Init
+  genData();
+  return {};
+})();
+
+// ============================================================
+// HOMOGRAPHY RANSAC
+// ============================================================
+const HomoDemo = (() => {
+  const csrc = document.getElementById('h-canvas-src');
+  const cdst = document.getElementById('h-canvas-dst');
+  const ctxS = csrc.getContext('2d');
+  const ctxD = cdst.getContext('2d');
+  const Ws = csrc.width, Hs = csrc.height;
+  const Wd = cdst.width, Hd = cdst.height;
+
+  // The "source quad" (rectangle) lives inside src canvas; gtH maps it to a quad in dst.
+  let srcQuad = null, dstQuad = null;
+  let gtH = null;
+  let pairs = []; // {src:{x,y}, dst:{x,y}, gt:bool}
+  let bestH = null, bestInliers = [];
+  let curSample = null, curH = null, curInliers = [];
+  let iter = 0;
+  let running = false, rafId = null;
+  let done = false;
+
+  // Solve 8x8 linear system A x = b
+  function gaussSolve(A, b) {
+    const n = A.length;
+    const M = A.map((r, i) => [...r, b[i]]);
+    for (let i = 0; i < n; i++) {
+      let mv = Math.abs(M[i][i]), mr = i;
+      for (let k = i+1; k < n; k++) {
+        if (Math.abs(M[k][i]) > mv) { mv = Math.abs(M[k][i]); mr = k; }
+      }
+      if (mv < 1e-12) return null;
+      [M[i], M[mr]] = [M[mr], M[i]];
+      for (let k = i+1; k < n; k++) {
+        const f = M[k][i] / M[i][i];
+        for (let j = i; j <= n; j++) M[k][j] -= f * M[i][j];
+      }
+    }
+    const x = new Array(n);
+    for (let i = n-1; i >= 0; i--) {
+      let s = M[i][n];
+      for (let j = i+1; j < n; j++) s -= M[i][j] * x[j];
+      x[i] = s / M[i][i];
+    }
+    return x;
+  }
+
+  function solveH(src, dst) {
+    if (src.length !== 4) return null;
+    const A = [], b = [];
+    for (let i = 0; i < 4; i++) {
+      const {x, y} = src[i];
+      const {x: u, y: v} = dst[i];
+      A.push([x, y, 1, 0, 0, 0, -x*u, -y*u]); b.push(u);
+      A.push([0, 0, 0, x, y, 1, -x*v, -y*v]); b.push(v);
+    }
+    const h = gaussSolve(A, b);
+    if (!h) return null;
+    return [[h[0], h[1], h[2]], [h[3], h[4], h[5]], [h[6], h[7], 1]];
+  }
+
+  function applyH(H, p) {
+    const x = H[0][0]*p.x + H[0][1]*p.y + H[0][2];
+    const y = H[1][0]*p.x + H[1][1]*p.y + H[1][2];
+    const w = H[2][0]*p.x + H[2][1]*p.y + H[2][2];
+    if (Math.abs(w) < 1e-12) return null;
+    return { x: x/w, y: y/w };
+  }
+
+  function genData() {
+    const n = +document.getElementById('h-num').value;
+    const outRatio = +document.getElementById('h-out').value / 100;
+    const noise = +document.getElementById('h-noise').value;
+    const warp = +document.getElementById('h-warp').value;
+
+    // Source quad: a centered rectangle
+    const margin = 60;
+    srcQuad = [
+      { x: margin, y: margin },
+      { x: Ws - margin, y: margin },
+      { x: Ws - margin, y: Hs - margin },
+      { x: margin, y: Hs - margin },
+    ];
+    // Destination quad: source quad perturbed
+    dstQuad = srcQuad.map(p => ({
+      x: p.x + gauss() * warp + rand(-warp, warp) * 0.5,
+      y: p.y + gauss() * warp + rand(-warp, warp) * 0.5,
+    }));
+    gtH = solveH(srcQuad, dstQuad);
+
+    pairs = [];
+    const numIn = n - Math.floor(n * outRatio);
+    const numOut = n - numIn;
+
+    // Inlier correspondences
+    for (let i = 0; i < numIn; i++) {
+      const sp = { x: rand(margin*0.5, Ws - margin*0.5), y: rand(margin*0.5, Hs - margin*0.5) };
+      const tp = applyH(gtH, sp);
+      if (!tp) { i--; continue; }
+      tp.x += gauss() * noise;
+      tp.y += gauss() * noise;
+      pairs.push({ src: sp, dst: tp, gt: true });
+    }
+    // Outliers: random dst
+    for (let i = 0; i < numOut; i++) {
+      const sp = { x: rand(margin*0.5, Ws - margin*0.5), y: rand(margin*0.5, Hs - margin*0.5) };
+      const tp = { x: rand(20, Wd-20), y: rand(20, Hd-20) };
+      pairs.push({ src: sp, dst: tp, gt: false });
+    }
+
+    iter = 0;
+    bestH = null; bestInliers = [];
+    curSample = null; curH = null; curInliers = [];
+    done = false;
+    updateStats();
+    setStatus(`Generated ${n} matches (inliers: ${numIn}, outliers: ${numOut}).`);
+    draw();
+  }
+
+  function step() {
+    if (pairs.length < 4) return;
+    const thr = +document.getElementById('h-thr').value;
+    // Sample 4 distinct
+    const idx = [];
+    while (idx.length < 4) {
+      const i = Math.floor(Math.random() * pairs.length);
+      if (!idx.includes(i)) idx.push(i);
+    }
+    const sample = idx.map(i => pairs[i]);
+    const H = solveH(sample.map(s => s.src), sample.map(s => s.dst));
+    if (!H) return;
+    // Reprojection error
+    const inliers = [];
+    for (const p of pairs) {
+      const proj = applyH(H, p.src);
+      if (!proj) continue;
+      const d = Math.hypot(proj.x - p.dst.x, proj.y - p.dst.y);
+      if (d < thr) inliers.push(p);
+    }
+    curSample = sample;
+    curH = H;
+    curInliers = inliers;
+    if (inliers.length > bestInliers.length) {
+      bestInliers = inliers;
+      bestH = H;
+    }
+    iter++;
+    updateStats();
+  }
+
+  function refitDLT(inliers) {
+    // Solve homogeneous system via simple SVD-ish: stack 2N x 9 and find null vector.
+    // Use power iteration on A^T A to find smallest eigenvalue eigenvector.
+    if (inliers.length < 4) return null;
+    const rows = [];
+    for (const p of inliers) {
+      const {x, y} = p.src;
+      const {x: u, y: v} = p.dst;
+      rows.push([-x, -y, -1, 0, 0, 0, x*u, y*u, u]);
+      rows.push([0, 0, 0, -x, -y, -1, x*v, y*v, v]);
+    }
+    // Compute AtA (9x9)
+    const N = 9;
+    const AtA = Array.from({length:N}, () => new Array(N).fill(0));
+    for (const r of rows) {
+      for (let i = 0; i < N; i++) {
+        for (let j = 0; j < N; j++) {
+          AtA[i][j] += r[i] * r[j];
+        }
+      }
+    }
+    // Find eigenvector with smallest eigenvalue: inverse power iteration would need an inverse.
+    // Easier: largest eigenvalue of (cI - AtA)^k. We use shifted power iteration.
+    // Or: do Jacobi rotations. Implement small Jacobi eigensolver.
+    const {V, d} = jacobi(AtA);
+    // smallest eigenvalue index
+    let mi = 0;
+    for (let i = 1; i < N; i++) if (d[i] < d[mi]) mi = i;
+    const h = V.map(row => row[mi]);
+    // Normalize so h[8] != 0
+    if (Math.abs(h[8]) < 1e-12) return null;
+    const s = h[8];
+    return [
+      [h[0]/s, h[1]/s, h[2]/s],
+      [h[3]/s, h[4]/s, h[5]/s],
+      [h[6]/s, h[7]/s, 1],
+    ];
+  }
+
+  // Jacobi eigenvalue algorithm for symmetric matrix
+  function jacobi(A) {
+    const n = A.length;
+    const M = A.map(r => [...r]);
+    const V = Array.from({length:n}, (_,i) => { const r = new Array(n).fill(0); r[i] = 1; return r; });
+    const maxIter = 100;
+    for (let it = 0; it < maxIter; it++) {
+      // Find largest off-diagonal
+      let p = 0, q = 1, mx = Math.abs(M[0][1]);
+      for (let i = 0; i < n; i++) {
+        for (let j = i+1; j < n; j++) {
+          if (Math.abs(M[i][j]) > mx) { mx = Math.abs(M[i][j]); p = i; q = j; }
+        }
+      }
+      if (mx < 1e-10) break;
+      const theta = (M[q][q] - M[p][p]) / (2 * M[p][q]);
+      let t;
+      if (theta >= 0) t = 1 / (theta + Math.sqrt(1 + theta*theta));
+      else t = 1 / (theta - Math.sqrt(1 + theta*theta));
+      const c = 1 / Math.sqrt(1 + t*t);
+      const s = t * c;
+      // Rotate
+      const Mpp = M[p][p], Mqq = M[q][q], Mpq = M[p][q];
+      M[p][p] = Mpp - t * Mpq;
+      M[q][q] = Mqq + t * Mpq;
+      M[p][q] = M[q][p] = 0;
+      for (let i = 0; i < n; i++) {
+        if (i !== p && i !== q) {
+          const Mip = M[i][p], Miq = M[i][q];
+          M[i][p] = M[p][i] = c * Mip - s * Miq;
+          M[i][q] = M[q][i] = s * Mip + c * Miq;
+        }
+        const Vip = V[i][p], Viq = V[i][q];
+        V[i][p] = c * Vip - s * Viq;
+        V[i][q] = s * Vip + c * Viq;
+      }
+    }
+    const d = M.map((r,i) => r[i]);
+    return {V, d};
+  }
+
+  function finish() {
+    running = false;
+    done = true;
+    if (bestInliers.length >= 4) {
+      const refined = refitDLT(bestInliers);
+      if (refined) bestH = refined;
+    }
+    setStatus(`Done! ${iter} iters, best inliers ${bestInliers.length}/${pairs.length}. Final Ĥ refit on inliers via DLT.`, true);
+    draw();
+    updateStats();
+  }
+
+  function run() {
+    if (running) return;
+    running = true;
+    setStatus('Running RANSAC...');
+    const stepsPerFrame = 4;
+    const maxIter = +document.getElementById('h-max').value;
+    function loop() {
+      if (!running) return;
+      for (let k = 0; k < stepsPerFrame; k++) step();
+      draw();
+      if (iter >= maxIter) { finish(); return; }
+      rafId = requestAnimationFrame(loop);
+    }
+    loop();
+  }
+
+  function stop() {
+    running = false;
+    if (rafId) cancelAnimationFrame(rafId);
+    setStatus(`Paused (iter ${iter}, best ${bestInliers.length})`);
+  }
+
+  function reset() {
+    running = false;
+    if (rafId) cancelAnimationFrame(rafId);
+    iter = 0;
+    bestH = null; bestInliers = [];
+    curSample = null; curH = null; curInliers = [];
+    done = false;
+    updateStats();
+    setStatus('RANSAC state reset. (matches retained)');
+    draw();
+  }
+
+  function updateStats() {
+    document.getElementById('h-iter').textContent = iter;
+    document.getElementById('h-cur').textContent = curInliers.length;
+    document.getElementById('h-best').textContent = bestInliers.length;
+    document.getElementById('h-total').textContent = pairs.length;
+  }
+  function setStatus(msg, isDone=false) {
+    const el = document.getElementById('h-status');
+    el.textContent = msg;
+    el.classList.toggle('done', isDone);
+  }
+
+  function drawQuad(ctx, q, color, dash=[], width=2) {
+    if (!q) return;
+    ctx.strokeStyle = color;
+    ctx.setLineDash(dash);
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(q[0].x, q[0].y);
+    for (let i = 1; i < 4; i++) ctx.lineTo(q[i].x, q[i].y);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  function drawPanel(ctx, W, H, getPoint, sampleSet, inlierSet, quadGt, quadEst) {
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, W, H);
+    // grid
+    ctx.strokeStyle = '#f3f4f6';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+    for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+
+    // GT outline (faint)
+    if (quadGt) drawQuad(ctx, quadGt, '#d1d5db', [4,4], 2);
+    // Estimated (best/final) outline
+    if (quadEst) drawQuad(ctx, quadEst, '#1e3a8a', [], done ? 3 : 2);
+
+    // Points: non-inliers
+    for (const p of pairs) {
+      if (inlierSet.has(p)) continue;
+      const pt = getPoint(p);
+      ctx.fillStyle = '#9ca3af';
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, 3, 0, 2*Math.PI);
+      ctx.fill();
+    }
+    // Inliers
+    for (const p of inlierSet) {
+      const pt = getPoint(p);
+      ctx.fillStyle = '#10b981';
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, 4, 0, 2*Math.PI);
+      ctx.fill();
+    }
+    // Sample
+    if (!done && sampleSet) {
+      for (const p of sampleSet) {
+        const pt = getPoint(p);
+        ctx.fillStyle = '#f59e0b';
+        ctx.strokeStyle = '#b45309';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 7, 0, 2*Math.PI);
+        ctx.fill();
+        ctx.stroke();
+      }
+    }
+  }
+
+  function draw() {
+    const inlierSet = new Set(done ? bestInliers : curInliers);
+    const sampleSet = curSample || [];
+    // Source panel: GT outline = srcQuad itself
+    drawPanel(ctxS, Ws, Hs, p => p.src, sampleSet, inlierSet, srcQuad, srcQuad);
+    // Dest panel: GT outline = dstQuad; estimated outline = best H applied to srcQuad
+    let estQuad = null;
+    const HtoUse = done ? bestH : (bestH || null);
+    if (HtoUse) {
+      estQuad = srcQuad.map(p => applyH(HtoUse, p)).filter(Boolean);
+      if (estQuad.length !== 4) estQuad = null;
+    }
+    drawPanel(ctxD, Wd, Hd, p => p.dst, sampleSet, inlierSet, dstQuad, estQuad);
+
+    // Current iteration's H quad (yellow) — only while running, not at final
+    if (!done && curH) {
+      const curQuad = srcQuad.map(p => applyH(curH, p)).filter(Boolean);
+      if (curQuad.length === 4) drawQuad(ctxD, curQuad, '#eab308', [6,4], 2);
+    }
+
+    // Info overlay (on target)
+    ctxD.fillStyle = 'rgba(255,255,255,0.85)';
+    ctxD.fillRect(10, 10, 200, 64);
+    ctxD.strokeStyle = '#e5e7eb';
+    ctxD.strokeRect(10, 10, 200, 64);
+    ctxD.fillStyle = '#1f2937';
+    ctxD.font = '12px -apple-system, sans-serif';
+    ctxD.fillText(`Iteration: ${iter}`, 20, 28);
+    ctxD.fillText(`Current inliers: ${curInliers.length}`, 20, 46);
+    ctxD.fillText(`Best inliers so far: ${bestInliers.length}`, 20, 64);
+  }
+
+  // Bindings
+  document.getElementById('h-num').addEventListener('input', e => document.getElementById('h-num-val').textContent = e.target.value);
+  document.getElementById('h-out').addEventListener('input', e => document.getElementById('h-out-val').textContent = e.target.value + '%');
+  document.getElementById('h-noise').addEventListener('input', e => document.getElementById('h-noise-val').textContent = e.target.value);
+  document.getElementById('h-warp').addEventListener('input', e => document.getElementById('h-warp-val').textContent = e.target.value);
+  document.getElementById('h-thr').addEventListener('input', e => document.getElementById('h-thr-val').textContent = e.target.value);
+  document.getElementById('h-max').addEventListener('input', e => document.getElementById('h-max-val').textContent = e.target.value);
+
+  document.getElementById('h-regen').addEventListener('click', genData);
+  document.getElementById('h-step').addEventListener('click', () => {
+    if (done) return;
+    if (pairs.length === 0) genData();
+    step(); draw();
+    setStatus(`Step ${iter}: sampled 4 matches → ${curInliers.length} inliers (best ${bestInliers.length})`);
+  });
+  document.getElementById('h-run').addEventListener('click', () => {
+    if (done) return;
+    if (pairs.length === 0) genData();
+    run();
+  });
+  document.getElementById('h-stop').addEventListener('click', stop);
+  document.getElementById('h-reset').addEventListener('click', reset);
+
+  genData();
+  return {};
+})();
+</script>
+</body>
+</html>
