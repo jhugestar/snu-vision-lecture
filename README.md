@@ -18,6 +18,8 @@ Interactive web-based demos for computer vision courses at Seoul National Univer
 | Eigenface | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/eigenface/eigenface_demo.html) |
 | Clustering & Segmentation | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/clustering/clustering.html) |
 | RANSAC (Line Fitting & Homography) | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/3dvision-ransac/ransac_demo.html) |
+| Visual Hull Reconstruction | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/3dvision-visualhull/visual_hull.html) |
+| Pinhole Camera Model & Two-View Geometry | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/3dvision-pinholecamera/pinhole_camera_demo.html) |
 
 
 ---

@@ -1,0 +1,638 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Visual Hull Reconstruction — Interactive Visualizer</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#171b22; --panel2:#1e232c; --line:#2a3039;
+    --txt:#e6e9ef; --muted:#9aa4b2; --accent:#4fd1c5; --accent2:#f0883e;
+    --good:#3ddc97; --bad:#f0883e;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;}
+  #app{display:flex;height:100vh;width:100vw;overflow:hidden}
+  /* ---- left control panel ---- */
+  #panel{width:320px;min-width:320px;height:100%;overflow-y:auto;background:var(--panel);
+    border-right:1px solid var(--line);padding:16px 16px 40px}
+  #panel h1{font-size:16px;margin:4px 0 2px;letter-spacing:.2px}
+  #panel .sub{font-size:11.5px;color:var(--muted);margin-bottom:14px;line-height:1.5}
+  .group{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:12px}
+  .group h2{font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:0 0 10px}
+  .row{display:flex;align-items:center;justify-content:space-between;margin:9px 0;font-size:12.5px}
+  .row label{color:var(--txt)}
+  .val{color:var(--accent);font-variant-numeric:tabular-nums;font-size:12px;min-width:44px;text-align:right}
+  input[type=range]{width:100%;accent-color:var(--accent);margin-top:2px}
+  .slider{display:block;margin:9px 0}
+  .slider .lab{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:2px}
+  .btns{display:flex;gap:6px}
+  .btns button, select{background:#242a34;color:var(--txt);border:1px solid var(--line);
+    border-radius:7px;padding:7px 10px;font-size:12.5px;cursor:pointer;flex:1;transition:.12s}
+  .btns button:hover{border-color:var(--accent)}
+  .btns button.active{background:var(--accent);color:#08201d;border-color:var(--accent);font-weight:600}
+  select{width:100%}
+  .chk{display:flex;align-items:center;gap:8px;font-size:12.5px;margin:8px 0;cursor:pointer;user-select:none}
+  .chk input{accent-color:var(--accent);width:15px;height:15px}
+  .metric{display:flex;justify-content:space-between;font-size:12.5px;margin:7px 0;font-variant-numeric:tabular-nums}
+  .metric b{color:var(--accent);font-weight:600}
+  .bar{height:7px;border-radius:4px;background:#2a3039;overflow:hidden;margin-top:3px}
+  .bar > i{display:block;height:100%}
+  .legend{font-size:11.5px;color:var(--muted);line-height:1.7;margin-top:4px}
+  .dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+  /* ---- main ---- */
+  #main{flex:1;position:relative;min-width:0}
+  #view{position:absolute;inset:0}
+  #hint{position:absolute;left:12px;top:10px;font-size:11.5px;color:var(--muted);
+    background:rgba(14,17,22,.6);padding:5px 9px;border-radius:6px;pointer-events:none}
+  /* ---- silhouette strip ---- */
+  #shelf{position:absolute;right:12px;bottom:12px;display:flex;gap:8px;flex-wrap:wrap;max-width:60%;justify-content:flex-end}
+  .cam{background:rgba(23,27,34,.92);border:1px solid var(--line);border-radius:8px;padding:6px;text-align:center}
+  .cam canvas{display:block;image-rendering:pixelated;border-radius:4px;background:#0b0e13}
+  .cam .t{font-size:10.5px;color:var(--muted);margin-top:4px}
+  #busy{position:absolute;left:50%;top:12px;transform:translateX(-50%);font-size:11.5px;
+    color:var(--accent);background:rgba(14,17,22,.7);padding:4px 10px;border-radius:6px;opacity:0;transition:.2s}
+  code{background:#242a34;padding:1px 5px;border-radius:4px;font-size:11px;color:var(--accent)}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="panel">
+    <h1>🧊 Visual Hull Reconstruction</h1>
+    <div class="sub" style="margin:4px 0 12px;padding-bottom:12px;border-bottom:1px solid var(--line)">Hanbyul Joo &nbsp;|&nbsp; Visual Computing Lab, Seoul National University &nbsp;|&nbsp; <a href="https://github.com/jhugestar/snu-vision-lecture" target="_blank" style="color:var(--accent);text-decoration:none;">More Demos ↗</a></div>
+    <div class="sub">Reconstruct a 3D shape by back-projecting each camera's <b>foreground mask (silhouette)</b> and carving voxels. Drag to rotate, scroll to zoom.</div>
+
+    <div class="group">
+      <h2>1 · Object (Ground Truth)</h2>
+      <select id="shape">
+        <option value="sphere">Sphere</option>
+        <option value="cube">Cube</option>
+        <option value="pyramid" selected>Pyramid</option>
+        <option value="torus">Torus (has a hole)</option>
+        <option value="bunny">Bunny-ish</option>
+      </select>
+      <div class="legend" style="margin-top:8px">Shapes with <b>concavities or holes</b> (torus, bunny) can't be fully recovered by a visual hull — good for showing its limits.</div>
+    </div>
+
+    <div class="group">
+      <h2>2 · Number of Cameras</h2>
+      <div class="btns" id="ncam">
+        <button data-n="2">2 views</button>
+        <button data-n="3" class="active">3 views</button>
+        <button data-n="5">5 views</button>
+      </div>
+      <div class="slider">
+        <div class="lab"><span>Ring azimuth</span><span class="val" id="azV">0°</span></div>
+        <input type="range" id="az" min="0" max="360" value="0" step="1"/>
+      </div>
+      <div class="slider">
+        <div class="lab"><span>Ring elevation</span><span class="val" id="elV">15°</span></div>
+        <input type="range" id="el" min="-70" max="70" value="15" step="1"/>
+      </div>
+      <div class="slider">
+        <div class="lab"><span>Ring distance</span><span class="val" id="radV">3.4</span></div>
+        <input type="range" id="rad" min="2.2" max="5.5" value="3.4" step="0.05"/>
+      </div>
+      <div class="slider">
+        <div class="lab"><span>Field of view (FOV)</span><span class="val" id="fovV">45°</span></div>
+        <input type="range" id="fov" min="25" max="75" value="45" step="1"/>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>3 · Reconstruction Resolution (Voxel Grid)</h2>
+      <div class="slider">
+        <div class="lab"><span>Grid resolution</span><span class="val" id="resV">32³</span></div>
+        <input type="range" id="res" min="16" max="52" value="32" step="4"/>
+      </div>
+      <div class="legend">Higher resolution → finer shape but more computation. Reconstruction updates live as you drag.</div>
+    </div>
+
+    <div class="group">
+      <h2>4 · Display Options</h2>
+      <label class="chk"><input type="checkbox" id="tGT" checked> Ground truth (semi-transparent)</label>
+      <label class="chk"><input type="checkbox" id="tHull" checked> Reconstructed visual hull voxels</label>
+      <label class="chk"><input type="checkbox" id="tFP"> Highlight errors (false positives)</label>
+      <label class="chk"><input type="checkbox" id="tFrust" checked> Cameras &amp; frustums</label>
+      <label class="chk"><input type="checkbox" id="tPlane" checked> Silhouette on camera image planes</label>
+      <label class="chk"><input type="checkbox" id="tSpin"> Auto-rotate</label>
+      <div class="legend" style="margin-top:6px">
+        <span class="dot" style="background:#3ddc97"></span>Voxel matching the true shape<br>
+        <span class="dot" style="background:#f0883e"></span>Hull over-estimation (error) voxel
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>5 · Reconstruction Quality</h2>
+      <div class="metric"><span>Hull voxels</span><b id="mHull">–</b></div>
+      <div class="metric"><span>Ground-truth voxels</span><b id="mGT">–</b></div>
+      <div class="metric"><span>Precision</span><b id="mPrec">–</b></div>
+      <div class="bar"><i id="barP" style="width:0;background:var(--accent)"></i></div>
+      <div class="metric" style="margin-top:9px"><span>Recall</span><b id="mRec">–</b></div>
+      <div class="bar"><i id="barR" style="width:0;background:var(--good)"></i></div>
+      <div class="legend" style="margin-top:8px">A visual hull always <b>contains</b> the true shape → Recall ≈ 100%. Adding more cameras (or spreading them wider) raises <b>Precision</b>.</div>
+    </div>
+
+    <div class="sub" style="margin-top:14px">💡 Try it: check Precision with 2 cameras, then switch to 5. On the torus, set ring elevation to 0° to watch the hole disappear (reconstruction failure).</div>
+  </div>
+
+  <div id="main">
+    <div id="view"></div>
+    <div id="hint">🖱️ Drag: rotate · Scroll: zoom · Right-drag: pan</div>
+    <div id="busy">Reconstructing…</div>
+    <div id="shelf"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+if(typeof THREE==='undefined'){
+  document.getElementById('view').innerHTML =
+    '<div style="padding:40px;color:#f0883e;font-size:14px;line-height:1.7">'+
+    '⚠️ Failed to load Three.js — this file needs an internet connection on first run (CDN).<br>'+
+    'Please connect to the internet and refresh.</div>';
+  throw new Error('three.js not loaded');
+}
+(function(){
+'use strict';
+
+// ---------------------------------------------------------------------------
+//  Shape definitions:  inside(x,y,z)->bool  +  buildMesh()->THREE.Object3D
+// ---------------------------------------------------------------------------
+function ellipInside(x,y,z, cx,cy,cz, rx,ry,rz){
+  const a=(x-cx)/rx, b=(y-cy)/ry, c=(z-cz)/rz;
+  return a*a+b*b+c*c < 1;
+}
+const SHAPES = {
+  sphere:{
+    inside:(x,y,z)=> x*x+y*y+z*z < 0.75*0.75,
+    mesh:()=> new THREE.Mesh(new THREE.SphereGeometry(0.75,40,28), gtMat())
+  },
+  cube:{
+    inside:(x,y,z)=> Math.abs(x)<0.6 && Math.abs(y)<0.6 && Math.abs(z)<0.6,
+    mesh:()=> new THREE.Mesh(new THREE.BoxGeometry(1.2,1.2,1.2), gtMat())
+  },
+  torus:{
+    // hole axis along Y :  q=sqrt(x^2+z^2)
+    inside:(x,y,z)=>{ const q=Math.sqrt(x*x+z*z)-0.5; return q*q+y*y < 0.23*0.23; },
+    mesh:()=>{ const m=new THREE.Mesh(new THREE.TorusGeometry(0.5,0.23,20,44), gtMat());
+               m.rotation.x=Math.PI/2; return m; }
+  },
+  pyramid:{
+    // square pyramid, base at y=-0.5 (half-width 0.6), apex at y=0.65
+    inside:(x,y,z)=>{
+      if(y<-0.5||y>0.65) return false;
+      const hw=0.6*(0.65-y)/1.15;
+      return Math.abs(x)<hw && Math.abs(z)<hw;
+    },
+    mesh:()=>{
+      // 4-sided cone = square pyramid; circumradius = halfWidth*sqrt(2)
+      const m=new THREE.Mesh(new THREE.ConeGeometry(0.6*Math.SQRT2,1.15,4), gtMat());
+      m.rotation.y=Math.PI/4;   // align flat faces with the x/z axes
+      m.position.y=0.075;       // cone is centered; shift so base=-0.5, apex=0.65
+      return m;
+    }
+  },
+  bunny:{
+    inside:(x,y,z)=>
+      ellipInside(x,y,z, 0,-0.12,0,  0.42,0.40,0.5)  ||   // body
+      ellipInside(x,y,z, 0, 0.34,0.16, 0.30,0.30,0.30) || // head
+      ellipInside(x,y,z,-0.13,0.68,0.10, 0.09,0.26,0.11)||// ear L
+      ellipInside(x,y,z, 0.13,0.68,0.10, 0.09,0.26,0.11), // ear R
+    mesh:()=>{
+      const g=new THREE.Group(), M=gtMat();
+      const add=(cx,cy,cz,rx,ry,rz)=>{ const s=new THREE.Mesh(new THREE.SphereGeometry(1,20,16),M);
+        s.position.set(cx,cy,cz); s.scale.set(rx,ry,rz); g.add(s); };
+      add(0,-0.12,0, 0.42,0.40,0.5);
+      add(0,0.34,0.16, 0.30,0.30,0.30);
+      add(-0.13,0.68,0.10, 0.09,0.26,0.11);
+      add(0.13,0.68,0.10, 0.09,0.26,0.11);
+      return g;
+    }
+  }
+};
+function gtMat(){ return new THREE.MeshLambertMaterial({color:0x8fa3bf,transparent:true,
+  opacity:0.16,depthWrite:false,side:THREE.DoubleSide}); }
+
+// ---------------------------------------------------------------------------
+//  Scene setup
+// ---------------------------------------------------------------------------
+const viewEl = document.getElementById('view');
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+viewEl.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0e1116);
+
+const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
+camera.position.set(3.6, 2.6, 4.6);
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.target.set(0,0,0);
+
+scene.add(new THREE.AmbientLight(0xffffff,0.55));
+const dir1 = new THREE.DirectionalLight(0xffffff,0.85); dir1.position.set(4,6,5); scene.add(dir1);
+const dir2 = new THREE.DirectionalLight(0x88aaff,0.35); dir2.position.set(-5,-2,-4); scene.add(dir2);
+
+// world axes / floor grid for spatial reference
+const grid = new THREE.GridHelper(4, 16, 0x8a94a3, 0x5a6472);
+grid.position.y = -1.2; scene.add(grid);
+scene.add(new THREE.AxesHelper(0.6));
+
+// containers
+const gtGroup   = new THREE.Group(); scene.add(gtGroup);
+const camGroup  = new THREE.Group(); scene.add(camGroup);
+let hullMesh = null;
+
+// ---------------------------------------------------------------------------
+//  State
+// ---------------------------------------------------------------------------
+const state = {
+  shape:'pyramid', nCam:3, az:0, el:15, rad:3.4, fov:45, res:32,
+  showGT:true, showHull:true, showFP:false, showFrust:true, showPlane:true, spin:false
+};
+const SILRES = 88;            // silhouette image resolution (px)
+const WORK   = 2.2;           // working volume side length  [-1.1,1.1]
+const GTN    = 50;            // fine grid for silhouette generation
+
+// caches
+let gtPointsCache = null, gtPointsKey = '';   // Float32 list of GT-inside points (for silhouettes)
+let voxelKey = '';                            // recon grid cache key
+let voxCenters = null, voxGTin = null, voxCount = 0;
+
+// projection cameras (one per view)
+let projCams = [];
+let silBuffers = [];          // Uint8Array per camera
+const camThumbs = [];         // {canvas,ctx,label}
+
+// ---------------------------------------------------------------------------
+//  Build GT point list for silhouette splatting (depends on shape only)
+// ---------------------------------------------------------------------------
+function ensureGTPoints(){
+  const key = state.shape;
+  if(key===gtPointsKey && gtPointsCache) return;
+  gtPointsKey = key;
+  const inside = SHAPES[state.shape].inside;
+  const pts=[];
+  const n=GTN, h=WORK/2, step=WORK/n;
+  for(let i=0;i<n;i++){ const x=-h+(i+0.5)*step;
+    for(let j=0;j<n;j++){ const y=-h+(j+0.5)*step;
+      for(let k=0;k<n;k++){ const z=-h+(k+0.5)*step;
+        if(inside(x,y,z)) pts.push(x,y,z);
+      }}}
+  gtPointsCache = new Float32Array(pts);
+}
+
+// ---------------------------------------------------------------------------
+//  Build recon voxel centers + GT occupancy (depends on shape + res)
+// ---------------------------------------------------------------------------
+function ensureVoxels(){
+  const key = state.shape+'|'+state.res;
+  if(key===voxelKey && voxCenters) return;
+  voxelKey = key;
+  const inside = SHAPES[state.shape].inside;
+  const n=state.res, h=WORK/2, step=WORK/n;
+  const centers=new Float32Array(n*n*n*3);
+  const gtin=new Uint8Array(n*n*n);
+  let idx=0, gi=0;
+  for(let i=0;i<n;i++){ const x=-h+(i+0.5)*step;
+    for(let j=0;j<n;j++){ const y=-h+(j+0.5)*step;
+      for(let k=0;k<n;k++){ const z=-h+(k+0.5)*step;
+        centers[idx++]=x; centers[idx++]=y; centers[idx++]=z;
+        gtin[gi++] = inside(x,y,z)?1:0;
+      }}}
+  voxCenters=centers; voxGTin=gtin; voxCount=n*n*n;
+}
+
+// ---------------------------------------------------------------------------
+//  Camera ring -> projection cameras
+// ---------------------------------------------------------------------------
+function buildProjCams(){
+  projCams = [];
+  const n=state.nCam, az=state.az*Math.PI/180, el=state.el*Math.PI/180, R=state.rad;
+  for(let i=0;i<n;i++){
+    const a = az + i*2*Math.PI/n;
+    const c = new THREE.PerspectiveCamera(state.fov, 1, 0.05, 100);
+    c.position.set(
+      R*Math.cos(el)*Math.sin(a),
+      R*Math.sin(el),
+      R*Math.cos(el)*Math.cos(a)
+    );
+    c.lookAt(0,0,0);
+    c.updateMatrixWorld(true);
+    c.updateProjectionMatrix();
+    projCams.push(c);
+  }
+}
+
+// ---------------------------------------------------------------------------
+//  Silhouette generation : splat GT points into each camera image
+// ---------------------------------------------------------------------------
+const _v = new THREE.Vector3();
+const _fwd = new THREE.Vector3();
+function computeSilhouettes(){
+  ensureGTPoints();
+  const pts = gtPointsCache, res=SILRES;
+  silBuffers = [];
+  for(let ci=0; ci<projCams.length; ci++){
+    const cam = projCams[ci];
+    const buf = new Uint8Array(res*res);
+    cam.getWorldDirection(_fwd);
+    const cp = cam.position;
+    for(let p=0;p<pts.length;p+=3){
+      const x=pts[p], y=pts[p+1], z=pts[p+2];
+      // behind-camera guard
+      if((x-cp.x)*_fwd.x+(y-cp.y)*_fwd.y+(z-cp.z)*_fwd.z <= 0) continue;
+      _v.set(x,y,z).project(cam);
+      if(_v.x<-1||_v.x>1||_v.y<-1||_v.y>1) continue;
+      const px = ((_v.x+1)*0.5*res)|0;
+      const py = ((1-_v.y)*0.5*res)|0;
+      if(px<0||px>=res||py<0||py>=res) continue;
+      buf[py*res+px]=1;
+    }
+    dilate(buf,res,1);
+    silBuffers.push(buf);
+  }
+}
+function dilate(buf,res,iter){
+  for(let t=0;t<iter;t++){
+    const src=buf.slice();
+    for(let y=0;y<res;y++) for(let x=0;x<res;x++){
+      if(src[y*res+x]) continue;
+      if((x>0&&src[y*res+x-1])||(x<res-1&&src[y*res+x+1])||
+         (y>0&&src[(y-1)*res+x])||(y<res-1&&src[(y+1)*res+x]))
+        buf[y*res+x]=1;
+    }
+  }
+}
+function silAt(ci,ndcX,ndcY,res){
+  const px=((ndcX+1)*0.5*res)|0, py=((1-ndcY)*0.5*res)|0;
+  if(px<0||px>=res||py<0||py>=res) return false;
+  return silBuffers[ci][py*res+px]===1;
+}
+
+// ---------------------------------------------------------------------------
+//  Carve : keep voxels projecting inside every silhouette
+// ---------------------------------------------------------------------------
+const _mat = new THREE.Matrix4();
+const COL_GOOD = new THREE.Color(0x35e0a1);
+const COL_FP   = new THREE.Color(0xff9d47);
+const COL_FLAT = new THREE.Color(0x53e0d4);
+
+function carveAndBuild(){
+  ensureVoxels();
+  const res=SILRES, n=state.res, step=WORK/n, box=step*0.9;
+  const kept=[];                       // instance index -> {mat,color}
+  let hullN=0, gtN=0, correctN=0;
+  const nc=projCams.length;
+  const fwds=projCams.map(c=>{const f=new THREE.Vector3();c.getWorldDirection(f);return f;});
+
+  for(let vi=0; vi<voxCount; vi++){
+    if(voxGTin[vi]) gtN++;
+    const x=voxCenters[vi*3], y=voxCenters[vi*3+1], z=voxCenters[vi*3+2];
+    let inAll=true;
+    for(let ci=0; ci<nc; ci++){
+      const cam=projCams[ci], cp=cam.position, f=fwds[ci];
+      if((x-cp.x)*f.x+(y-cp.y)*f.y+(z-cp.z)*f.z<=0){ inAll=false; break; }
+      _v.set(x,y,z).project(cam);
+      if(!silAt(ci,_v.x,_v.y,res)){ inAll=false; break; }
+    }
+    if(!inAll) continue;
+    hullN++;
+    const good = voxGTin[vi]===1;
+    if(good) correctN++;
+    kept.push(x,y,z, good?1:0);
+  }
+
+  // (re)build instanced mesh
+  if(hullMesh){ scene.remove(hullMesh); hullMesh.geometry.dispose(); hullMesh.material.dispose(); hullMesh=null; }
+  const count = kept.length/4;
+  if(count>0 && state.showHull){
+    const geo=new THREE.BoxGeometry(box,box,box);
+    // white base + emissive lift so per-instance colors read clearly (setColorAt -> instanceColor)
+    const mat=new THREE.MeshLambertMaterial({color:0xffffff,emissive:0x111418,emissiveIntensity:1});
+    hullMesh=new THREE.InstancedMesh(geo,mat,count);
+    for(let m=0;m<count;m++){
+      _mat.makeTranslation(kept[m*4],kept[m*4+1],kept[m*4+2]);
+      hullMesh.setMatrixAt(m,_mat);
+      const good=kept[m*4+3]===1;
+      hullMesh.setColorAt(m, state.showFP ? (good?COL_GOOD:COL_FP) : COL_FLAT);
+    }
+    hullMesh.instanceMatrix.needsUpdate=true;
+    if(hullMesh.instanceColor) hullMesh.instanceColor.needsUpdate=true;
+    scene.add(hullMesh);
+  }
+
+  // metrics
+  const prec = hullN? correctN/hullN : 0;
+  const rec  = gtN?  correctN/gtN  : 0;
+  setMetric(hullN,gtN,prec,rec);
+}
+function setMetric(hullN,gtN,prec,rec){
+  document.getElementById('mHull').textContent=hullN.toLocaleString();
+  document.getElementById('mGT').textContent=gtN.toLocaleString();
+  document.getElementById('mPrec').textContent=(prec*100).toFixed(1)+'%';
+  document.getElementById('mRec').textContent=(rec*100).toFixed(1)+'%';
+  document.getElementById('barP').style.width=(prec*100).toFixed(0)+'%';
+  document.getElementById('barR').style.width=(rec*100).toFixed(0)+'%';
+}
+
+// ---------------------------------------------------------------------------
+//  Camera visuals : frustum lines + image plane with silhouette texture
+// ---------------------------------------------------------------------------
+const _yAxis = new THREE.Vector3(0,1,0);
+function addEdge(group,a,b,mat,radius){
+  const dir=new THREE.Vector3().subVectors(b,a);
+  const len=dir.length();
+  if(len<1e-6) return;
+  const geo=new THREE.CylinderGeometry(radius,radius,len,7);
+  const m=new THREE.Mesh(geo,mat);
+  m.position.copy(a).add(b).multiplyScalar(0.5);
+  m.quaternion.setFromUnitVectors(_yAxis, dir.normalize());
+  group.add(m);
+}
+function buildCamVisuals(){
+  // clear
+  while(camGroup.children.length){
+    const c=camGroup.children.pop();
+    c.traverse(o=>{ if(o.geometry)o.geometry.dispose(); if(o.material){ if(o.material.map)o.material.map.dispose(); o.material.dispose(); } });
+  }
+  const palette=[0x4fd1c5,0xf0883e,0xa78bfa,0x60a5fa,0xf472b6];
+  const planeDist=0.9, halfH=planeDist*Math.tan(state.fov*Math.PI/360), halfW=halfH;
+
+  for(let ci=0; ci<projCams.length; ci++){
+    const pc=projCams[ci], col=palette[ci%palette.length];
+    const g=new THREE.Group();
+
+    // camera body
+    const body=new THREE.Mesh(new THREE.SphereGeometry(0.05,12,10),
+      new THREE.MeshBasicMaterial({color:col}));
+    body.position.copy(pc.position); g.add(body);
+
+    // orientation basis
+    const q=pc.quaternion;
+    const right=new THREE.Vector3(1,0,0).applyQuaternion(q);
+    const up   =new THREE.Vector3(0,1,0).applyQuaternion(q);
+    const fwd  =new THREE.Vector3(0,0,-1).applyQuaternion(q);
+    const center=pc.position.clone().add(fwd.clone().multiplyScalar(planeDist));
+    const corner=(sx,sy)=> center.clone()
+      .add(right.clone().multiplyScalar(sx*halfW))
+      .add(up.clone().multiplyScalar(sy*halfH));
+    const c00=corner(-1,-1),c10=corner(1,-1),c11=corner(1,1),c01=corner(-1,1);
+
+    if(state.showFrust){
+      // thick frustum edges drawn as thin cylinders (WebGL ignores line width)
+      const em=new THREE.MeshBasicMaterial({color:col});
+      const edges=[
+        [pc.position,c00],[pc.position,c10],[pc.position,c11],[pc.position,c01],
+        [c00,c10],[c10,c11],[c11,c01],[c01,c00]
+      ];
+      for(const [a,b] of edges) addEdge(g,a,b,em,0.006);
+    }
+
+    if(state.showPlane){
+      // silhouette texture
+      const S=SILRES, cv=document.createElement('canvas'); cv.width=S; cv.height=S;
+      const cx=cv.getContext('2d'); drawSil(cx,silBuffers[ci],S,col);
+      const tex=new THREE.CanvasTexture(cv); tex.magFilter=THREE.NearestFilter; tex.minFilter=THREE.LinearFilter;
+      const pm=new THREE.Mesh(new THREE.PlaneGeometry(halfW*2,halfH*2),
+        new THREE.MeshBasicMaterial({map:tex,transparent:true,side:THREE.DoubleSide,depthWrite:false}));
+      pm.position.copy(center); pm.quaternion.copy(q);
+      g.add(pm);
+    }
+    camGroup.add(g);
+  }
+  // update thumbnails on shelf
+  drawThumbs(palette);
+}
+
+function drawSil(ctx,buf,S,col){
+  const c=new THREE.Color(col);
+  const r=(c.r*255)|0,gg=(c.g*255)|0,b=(c.b*255)|0;
+  const img=ctx.createImageData(S,S);
+  for(let y=0;y<S;y++)for(let x=0;x<S;x++){
+    const on=buf[y*S+x]===1, o=(y*S+x)*4;
+    if(on){ img.data[o]=r; img.data[o+1]=gg; img.data[o+2]=b; img.data[o+3]=235; }
+    else  { img.data[o]=14; img.data[o+1]=17; img.data[o+2]=22; img.data[o+3]=180; }
+  }
+  ctx.putImageData(img,0,0);
+}
+
+// ---------------------------------------------------------------------------
+//  Silhouette thumbnails (bottom-right shelf)
+// ---------------------------------------------------------------------------
+function drawThumbs(palette){
+  const shelf=document.getElementById('shelf');
+  shelf.innerHTML='';
+  const TS=96;
+  for(let ci=0; ci<projCams.length; ci++){
+    const wrap=document.createElement('div'); wrap.className='cam';
+    const cv=document.createElement('canvas'); cv.width=TS; cv.height=TS;
+    const ctx=cv.getContext('2d');
+    // upscale nearest from silBuffers
+    const S=SILRES, tmp=document.createElement('canvas'); tmp.width=S; tmp.height=S;
+    drawSil(tmp.getContext('2d'),silBuffers[ci],S,palette[ci%palette.length]);
+    ctx.imageSmoothingEnabled=false; ctx.drawImage(tmp,0,0,TS,TS);
+    wrap.appendChild(cv);
+    const t=document.createElement('div'); t.className='t'; t.textContent='Cam '+(ci+1)+' mask';
+    wrap.appendChild(t);
+    shelf.appendChild(wrap);
+  }
+}
+
+// ---------------------------------------------------------------------------
+//  GT mesh rebuild
+// ---------------------------------------------------------------------------
+function buildGT(){
+  while(gtGroup.children.length){
+    const c=gtGroup.children.pop();
+    c.traverse&&c.traverse(o=>{o.geometry&&o.geometry.dispose();o.material&&o.material.dispose();});
+    if(c.geometry)c.geometry.dispose(); if(c.material)c.material.dispose();
+  }
+  const obj=SHAPES[state.shape].mesh();
+  gtGroup.add(obj);
+  gtGroup.visible=state.showGT;
+}
+
+// ---------------------------------------------------------------------------
+//  Full recompute pipeline
+// ---------------------------------------------------------------------------
+let pending=false;
+function requestRecompute(){ if(!pending){ pending=true; requestAnimationFrame(runRecompute); } }
+function runRecompute(){
+  pending=false;
+  const busy=document.getElementById('busy'); busy.style.opacity=1;
+  buildProjCams();
+  computeSilhouettes();
+  carveAndBuild();
+  buildCamVisuals();
+  camGroup.visible = state.showFrust || state.showPlane;
+  gtGroup.visible = state.showGT;
+  // hide via opacity handled at build; ensure busy off next frame
+  requestAnimationFrame(()=>{ busy.style.opacity=0; });
+}
+
+// ---------------------------------------------------------------------------
+//  UI wiring
+// ---------------------------------------------------------------------------
+function bindSlider(id,valId,fmt,cb){
+  const s=document.getElementById(id), v=document.getElementById(valId);
+  const upd=()=>{ v.textContent=fmt(s.value); cb(parseFloat(s.value)); requestRecompute(); };
+  s.addEventListener('input',upd); return s;
+}
+document.getElementById('shape').addEventListener('change',e=>{
+  state.shape=e.target.value; buildGT(); requestRecompute();
+});
+document.querySelectorAll('#ncam button').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('#ncam button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active'); state.nCam=+b.dataset.n; requestRecompute();
+  });
+});
+bindSlider('az','azV',v=>Math.round(v)+'°',v=>state.az=v);
+bindSlider('el','elV',v=>Math.round(v)+'°',v=>state.el=v);
+bindSlider('rad','radV',v=>(+v).toFixed(2),v=>state.rad=v);
+bindSlider('fov','fovV',v=>Math.round(v)+'°',v=>state.fov=v);
+bindSlider('res','resV',v=>Math.round(v)+'³',v=>state.res=Math.round(v));
+const chk=(id,key,extra)=>{ document.getElementById(id).addEventListener('change',e=>{
+  state[key]=e.target.checked; if(extra)extra(); requestRecompute(); }); };
+chk('tGT','showGT');
+chk('tHull','showHull');
+chk('tFP','showFP');
+chk('tFrust','showFrust');
+chk('tPlane','showPlane');
+document.getElementById('tSpin').addEventListener('change',e=>state.spin=e.target.checked);
+
+// ---------------------------------------------------------------------------
+//  Resize + render loop
+// ---------------------------------------------------------------------------
+function resize(){
+  const w=viewEl.clientWidth,h=viewEl.clientHeight;
+  renderer.setSize(w,h); camera.aspect=w/h; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize',resize);
+
+function loop(){
+  requestAnimationFrame(loop);
+  if(state.spin){ camGroup; controls.autoRotate=true; controls.autoRotateSpeed=1.2; }
+  else controls.autoRotate=false;
+  controls.update();
+  renderer.render(scene,camera);
+}
+
+// ---------------------------------------------------------------------------
+//  Init
+// ---------------------------------------------------------------------------
+resize();
+buildGT();
+runRecompute();
+loop();
+
+})();
+</script>
+</body>
+</html>

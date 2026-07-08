@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pinhole Camera Model — Interactive Demo</title>
+<style>
+  :root{
+    --bg:#0f1420; --panel:#1a2030; --panel2:#232b3e; --accent:#4da3ff;
+    --text:#e6edf3; --muted:#8b97a8; --x:#ff6b6b; --y:#36d399; --z:#4da3ff;
+    --cam:#ffd166;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--bg);color:var(--text);padding:18px;}
+  h1{font-size:20px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:16px;}
+  .layout{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;}
+  .canvas-wrap{background:var(--panel2);border:1px solid #2e3a52;border-radius:10px;padding:10px;}
+  .canvas-wrap .cap{font-size:12px;color:var(--muted);margin-bottom:6px;}
+  canvas{display:block;border-radius:6px;background:#0b0f18;cursor:grab;}
+  canvas:active{cursor:grabbing;}
+  .side{width:300px;display:flex;flex-direction:column;gap:14px;}
+  .card{background:var(--panel2);border:1px solid #2e3a52;border-radius:10px;padding:14px;}
+  .card h3{margin:0 0 10px;font-size:13px;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;
+    display:flex;justify-content:space-between;align-items:center;}
+  .ctl{margin-bottom:11px;}
+  .ctl label{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px;}
+  .ctl label b{color:var(--text);font-variant-numeric:tabular-nums;}
+  input[type=range]{width:100%;accent-color:var(--accent);}
+  button{padding:8px 10px;border:1px solid #313c54;border-radius:7px;cursor:pointer;
+    font-weight:600;font-size:12px;background:var(--panel);color:var(--text);}
+  button:hover{background:#2a3346;}
+  .chk{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;cursor:pointer;}
+  .kmat{font-family:ui-monospace,Menlo,monospace;font-size:12px;line-height:1.5;
+    background:#0b0f18;border-radius:6px;padding:8px;display:inline-block;}
+  .kmat .v{color:var(--accent);}
+  .stats{font-size:12px;line-height:1.8;}
+  .stats .row{display:flex;justify-content:space-between;}
+  .stats .row span:last-child{font-variant-numeric:tabular-nums;color:var(--text);}
+  .legend{font-size:12px;line-height:1.7;}
+  .dot{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px;}
+  .tip{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5;}
+  .tabs{display:flex;gap:8px;margin-bottom:14px;}
+  .tab{padding:9px 20px;border-radius:8px 8px 0 0;cursor:pointer;background:var(--panel);
+    color:var(--muted);font-weight:600;border:1px solid transparent;border-bottom:none;user-select:none;}
+  .tab.active{background:var(--panel2);color:var(--accent);border-color:#2e3a52;}
+  .view{display:none;} .view.active{display:block;}
+</style>
+</head>
+<body>
+  <h1>Pinhole Camera Model — 3D → 2D Projection</h1>
+  <div class="sub" style="color:#8b97a8;margin-bottom:6px">Hanbyul Joo &nbsp;|&nbsp; Visual Computing Lab, Seoul National University &nbsp;|&nbsp; <a href="https://github.com/jhugestar/snu-vision-lecture" target="_blank" style="color:var(--accent);text-decoration:none;">More Demos ↗</a></div>
+  <div class="sub">Projection &nbsp; <span class="kmat" style="padding:2px 6px">x = K [R | t] X</span> &nbsp; — change the parameters and watch how the image on the right changes. Drag the world view on the left to rotate.</div>
+
+  <div class="tabs">
+    <div class="tab" data-tab="single">① Single Camera</div>
+    <div class="tab active" data-tab="two">② Two-View Geometry</div>
+  </div>
+
+  <div class="view" id="view-single">
+  <div class="layout">
+    <div class="canvas-wrap">
+      <div class="cap">World view (3D scene + camera + view frustum) — drag to rotate</div>
+      <canvas id="world" width="440" height="440"></canvas>
+    </div>
+    <div class="canvas-wrap">
+      <div class="cap">Camera image (sensor) — actual projection result</div>
+      <canvas id="image" width="440" height="440"></canvas>
+    </div>
+
+    <div class="side">
+      <div class="card">
+        <h3>Extrinsics <span style="color:var(--muted);font-weight:400;font-size:10px">[R | t]</span></h3>
+        <div class="ctl"><label>Azimuth <b id="azV">35°</b></label><input type="range" id="az" min="-180" max="180" value="35"></div>
+        <div class="ctl"><label>Elevation <b id="elV">18°</b></label><input type="range" id="el" min="-85" max="85" value="18"></div>
+        <div class="ctl"><label>Distance <b id="distV">6.0</b></label><input type="range" id="dist" min="20" max="160" value="60"></div>
+        <div class="ctl"><label>Roll <b id="rollV">0°</b></label><input type="range" id="roll" min="-180" max="180" value="0"></div>
+        <div class="tip">Move the camera's position and orientation while it keeps looking at the scene center.</div>
+      </div>
+
+      <div class="card">
+        <h3>Intrinsics <span style="color:var(--muted);font-weight:400;font-size:10px">K</span></h3>
+        <div class="ctl"><label>Focal length fₓ <b id="fxV">420</b></label><input type="range" id="fx" min="100" max="1400" value="420"></div>
+        <div class="ctl"><label>Focal length f_y <b id="fyV">420</b></label><input type="range" id="fy" min="100" max="1400" value="420"></div>
+        <label class="chk" style="margin:-4px 0 10px"><input type="checkbox" id="lock" checked> Lock fₓ = f_y</label>
+        <div class="ctl"><label>Principal point cₓ <b id="cxV">220</b></label><input type="range" id="cx" min="0" max="440" value="220"></div>
+        <div class="ctl"><label>Principal point c_y <b id="cyV">220</b></label><input type="range" id="cy" min="0" max="440" value="220"></div>
+        <div class="ctl"><label>Skew s <b id="skV">0</b></label><input type="range" id="sk" min="-50" max="50" value="0"></div>
+        <button id="reset" style="width:100%;margin-top:4px">⟲ Reset to defaults</button>
+      </div>
+
+      <div class="card">
+        <h3>K matrix / status</h3>
+        <div class="kmat" id="kmat"></div>
+        <div class="stats" style="margin-top:10px">
+          <div class="row"><span>Horizontal FOV</span><span id="fov">–</span></div>
+          <div class="row"><span>Camera position C</span><span id="campos">–</span></div>
+          <div class="row"><span>Visible points</span><span id="vis">–</span></div>
+        </div>
+      </div>
+
+      <div class="card legend">
+        <h3>Legend</h3>
+        <span class="dot" style="background:var(--x)"></span>X axis &nbsp;
+        <span class="dot" style="background:var(--y)"></span>Y axis &nbsp;
+        <span class="dot" style="background:var(--z)"></span>Z axis<br>
+        <span class="dot" style="background:var(--cam)"></span>Camera & view frustum<br>
+        <span style="color:var(--muted)">+ mark = principal point</span>
+      </div>
+    </div>
+  </div>
+  </div><!-- /view-single -->
+
+  <div class="view active" id="view-two">
+    <div class="layout">
+      <div class="canvas-wrap">
+        <div class="cap">World view — two cameras · baseline · epipolar plane (drag to rotate)</div>
+        <canvas id="world2" width="440" height="440"></canvas>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="canvas-wrap">
+          <div class="cap" style="color:#ffd166">Camera 1 — hover to draw the epipolar line in camera 2</div>
+          <canvas id="img1" width="320" height="320"></canvas>
+        </div>
+        <div class="canvas-wrap">
+          <div class="cap" style="color:#a78bfa">Camera 2 — hover to draw the epipolar line in camera 1</div>
+          <canvas id="img2" width="320" height="320"></canvas>
+        </div>
+      </div>
+      <div class="side">
+        <div class="card">
+          <h3 style="color:#ffd166">Camera 1</h3>
+          <div class="ctl"><label>Azimuth <b id="az1V">10°</b></label><input type="range" id="az1" min="-180" max="180" value="10"></div>
+          <div class="ctl"><label>Elevation <b id="el1V">14°</b></label><input type="range" id="el1" min="-85" max="85" value="14"></div>
+          <div class="ctl"><label>Distance <b id="d1V">6.0</b></label><input type="range" id="d1" min="30" max="120" value="60"></div>
+        </div>
+        <div class="card">
+          <h3 style="color:#a78bfa">Camera 2</h3>
+          <div class="ctl"><label>Azimuth <b id="az2V">55°</b></label><input type="range" id="az2" min="-180" max="180" value="55"></div>
+          <div class="ctl"><label>Elevation <b id="el2V">22°</b></label><input type="range" id="el2" min="-85" max="85" value="22"></div>
+          <div class="ctl"><label>Distance <b id="d2V">6.0</b></label><input type="range" id="d2" min="30" max="120" value="60"></div>
+        </div>
+        <div class="card">
+          <h3>Shared Intrinsics</h3>
+          <div class="ctl"><label>Focal length f <b id="f2V">300</b></label><input type="range" id="f2" min="120" max="900" value="300"></div>
+          <label class="chk"><input type="checkbox" id="allepi"> Show epipolar lines for all points</label>
+          <div class="stats" style="margin-top:10px">
+            <div class="row"><span>epipole e₁ (img1)</span><span id="epi1">–</span></div>
+            <div class="row"><span>epipole e₂ (img2)</span><span id="epi2">–</span></div>
+          </div>
+        </div>
+        <div class="card legend">
+          <h3>Legend / notes</h3>
+          <span class="dot" style="background:#ffd166"></span>Camera 1 &nbsp;
+          <span class="dot" style="background:#a78bfa"></span>Camera 2<br>
+          <span class="dot" style="background:#36d399"></span>Selected point · epipolar line · epipolar plane<br>
+          <span class="dot" style="background:#ff6b6b"></span>Epipole (image of the other camera's center)<br>
+          <div class="tip">Move the mouse over one image and the corresponding epipolar line appears in the other image. Hover over an actual 3D point and notice that its image in the other view always lies on the line (x₂ᵀ F x₁ = 0).</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ---------- vector / matrix utilities ---------- */
+const sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]];
+const add=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]];
+const scl=(a,s)=>[a[0]*s,a[1]*s,a[2]*s];
+const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const norm=a=>{const n=Math.hypot(a[0],a[1],a[2])||1e-9;return [a[0]/n,a[1]/n,a[2]/n];};
+const matVec=(R,v)=>[dot(R[0],v),dot(R[1],v),dot(R[2],v)];            // R v
+const matTVec=(R,v)=>[R[0][0]*v[0]+R[1][0]*v[1]+R[2][0]*v[2],         // R^T v
+                      R[0][1]*v[0]+R[1][1]*v[1]+R[2][1]*v[2],
+                      R[0][2]*v[0]+R[1][2]*v[1]+R[2][2]*v[2]];
+const rad=d=>d*Math.PI/180;
+
+/* ---------- build camera (look-at + roll) ----------
+   camera frame: x=right, y=down, z=forward (toward the scene)   */
+function makeCam(target, az, el, dist, roll, intr){
+  const dir=[Math.cos(rad(el))*Math.cos(rad(az)),
+             Math.cos(rad(el))*Math.sin(rad(az)),
+             Math.sin(rad(el))];
+  const eye=add(target, scl(dir, dist));
+  const f=norm(sub(target,eye));            // forward (+z_cam)
+  const worldUp=[0,0,1];
+  let right=norm(cross(worldUp,f));
+  let down=norm(cross(right,f));            // +y_cam (down)
+  // roll: rotate right/down about the f axis
+  const cr=Math.cos(rad(roll)), sr=Math.sin(rad(roll));
+  const r2=add(scl(right,cr), scl(down,sr));
+  const d2=add(scl(down,cr), scl(right,-sr));
+  const R=[r2,d2,f];                         // world->cam
+  return {eye,R,...intr};
+}
+
+/* project: 3D world point -> sensor(u,v). cz>0 means in front of the camera */
+function project(cam,X){
+  const Xc=matVec(cam.R, sub(X,cam.eye));
+  const cz=Xc[2];
+  if(cz<=1e-4) return {behind:true,cz};
+  const u=cam.fx*Xc[0]/cz + cam.s*Xc[1]/cz + cam.cx;
+  const v=cam.fy*Xc[1]/cz + cam.cy;
+  return {u,v,cz,behind:false};
+}
+
+/* ---------- scene definition ---------- */
+const TARGET=[0,0,0.6];
+// floor grid
+const grid=[];
+for(let i=-3;i<=3;i++){
+  grid.push([[-3,i,0],[3,i,0]]);
+  grid.push([[i,-3,0],[i,3,0]]);
+}
+// world axes
+const axes=[
+  {p:[1.8,0,0],c:'--x'},{p:[0,1.8,0],c:'--y'},{p:[0,0,1.8],c:'--z'}
+];
+// cube
+const s=0.6,h=1.2;
+const cubeV=[[-s,-s,0],[s,-s,0],[s,s,0],[-s,s,0],[-s,-s,h],[s,-s,h],[s,s,h],[-s,s,h]];
+const cubeF=[
+  {idx:[0,1,2,3],col:[120,140,170]}, // bottom
+  {idx:[4,5,6,7],col:[230,180,90]},  // top
+  {idx:[0,1,5,4],col:[230,110,110]}, // -y
+  {idx:[2,3,7,6],col:[110,200,150]}, // +y
+  {idx:[1,2,6,5],col:[120,160,230]}, // +x
+  {idx:[3,0,4,7],col:[200,140,210]}, // -x
+];
+const cubeE=[[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
+// extra reference points (points floating in the air)
+const pts=[];
+for(let i=0;i<14;i++){
+  const a=i/14*Math.PI*2;
+  pts.push([2.2*Math.cos(a),2.2*Math.sin(a), 0.2+0.5*((i%3))]);
+}
+
+/* ---------- canvas ---------- */
+const wc=document.getElementById('world'), wx=wc.getContext('2d');
+const ic=document.getElementById('image'), ix=ic.getContext('2d');
+const SENSOR=440;            // image canvas = sensor size (px)
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+/* fixed god camera for the world view (drag to rotate) */
+let godAz=40, godEl=22, godDist=14;
+
+function godCam(){
+  return makeCam([0,0,0.4], godAz, godEl, godDist, 0,
+    {fx:520,fy:520,cx:220,cy:220,s:0});
+}
+
+/* ---------- read user camera parameters ---------- */
+const el=id=>document.getElementById(id);
+function userCam(){
+  return makeCam(TARGET, +el('az').value, +el('el').value,
+    +el('dist').value/10, +el('roll').value,
+    {fx:+el('fx').value, fy:+el('fy').value, cx:+el('cx').value, cy:+el('cy').value, s:+el('sk').value});
+}
+
+/* ---------- shared scene drawing (any cam, any ctx) ---------- */
+function drawScene(ctx, cam, full){
+  const P=X=>project(cam,X);
+  // floor grid
+  ctx.lineWidth=1; ctx.strokeStyle='rgba(255,255,255,0.10)';
+  grid.forEach(seg=>{
+    const a=P(seg[0]),b=P(seg[1]);
+    if(a.behind||b.behind) return;
+    ctx.beginPath();ctx.moveTo(a.u,a.v);ctx.lineTo(b.u,b.v);ctx.stroke();
+  });
+  // axes
+  axes.forEach(ax=>{
+    const o=P([0,0,0]),p=P(ax.p);
+    if(o.behind||p.behind) return;
+    ctx.strokeStyle=css(ax.c);ctx.lineWidth=2.5;
+    ctx.beginPath();ctx.moveTo(o.u,o.v);ctx.lineTo(p.u,p.v);ctx.stroke();
+  });
+  // cube faces (depth-sort then fill)
+  const Pv=cubeV.map(P);
+  if(!Pv.some(p=>p.behind)){
+    const faces=cubeF.map(f=>{
+      const cz=f.idx.reduce((s,i)=>s+Pv[i].cz,0)/4;
+      return {f,cz};
+    }).sort((a,b)=>b.cz-a.cz);
+    faces.forEach(({f})=>{
+      ctx.beginPath();
+      f.idx.forEach((i,k)=>{const p=Pv[i];k?ctx.lineTo(p.u,p.v):ctx.moveTo(p.u,p.v);});
+      ctx.closePath();
+      ctx.fillStyle=`rgba(${f.col[0]},${f.col[1]},${f.col[2]},0.55)`;
+      ctx.fill();
+      ctx.strokeStyle='rgba(255,255,255,0.65)';ctx.lineWidth=1.2;ctx.stroke();
+    });
+  }else{
+    // if some vertices are behind, draw only the visible edges
+    cubeE.forEach(([a,b])=>{
+      const pa=Pv[a],pb=Pv[b];if(pa.behind||pb.behind)return;
+      ctx.strokeStyle='rgba(220,220,220,0.6)';ctx.lineWidth=1.2;
+      ctx.beginPath();ctx.moveTo(pa.u,pa.v);ctx.lineTo(pb.u,pb.v);ctx.stroke();
+    });
+  }
+  // reference points
+  let visN=0;
+  pts.forEach(X=>{
+    const p=P(X); if(p.behind) return;
+    const inside = full ? true : (p.u>=0&&p.u<=SENSOR&&p.v>=0&&p.v<=SENSOR);
+    if(p.u>=0&&p.u<=SENSOR&&p.v>=0&&p.v<=SENSOR) visN++;
+    ctx.beginPath();ctx.arc(p.u,p.v,3.5,0,7);
+    ctx.fillStyle= inside ? '#ffffff' : 'rgba(255,255,255,0.25)';
+    ctx.fill();
+  });
+  return visN;
+}
+
+/* ---------- world view: scene via god camera + user camera gizmo ---------- */
+function drawWorld(){
+  wx.clearRect(0,0,440,440);
+  const g=godCam();
+  drawScene(wx,g,true);
+  // user camera gizmo (eye + frustum)
+  const u=userCam();
+  const gp=X=>project(g,X);
+  const eyeP=gp(u.eye);
+  if(!eyeP.behind){
+    // frustum corners (4 corners of the sensor)
+    const corners=[[0,0],[SENSOR,0],[SENSOR,SENSOR],[0,SENSOR]];
+    const depth=2.2;
+    const farW=corners.map(([cu,cv])=>{
+      const dirCam=[(cu-u.cx)/u.fx,(cv-u.cy)/u.fy,1];
+      const Xc=scl(dirCam,depth);
+      return add(u.eye, matTVec(u.R,Xc));      // world coordinates
+    });
+    const farP=farW.map(gp);
+    // eye -> corner lines
+    wx.strokeStyle=css('--cam');wx.lineWidth=1.4;
+    farP.forEach(fp=>{ if(fp.behind)return;
+      wx.beginPath();wx.moveTo(eyeP.u,eyeP.v);wx.lineTo(fp.u,fp.v);wx.stroke();});
+    // image plane quad
+    if(!farP.some(p=>p.behind)){
+      wx.beginPath();
+      farP.forEach((p,k)=>k?wx.lineTo(p.u,p.v):wx.moveTo(p.u,p.v));
+      wx.closePath();
+      wx.fillStyle='rgba(255,209,102,0.12)';wx.fill();
+      wx.strokeStyle=css('--cam');wx.lineWidth=1.8;wx.stroke();
+    }
+    // optical axis (central ray)
+    const axC=add(u.eye, matTVec(u.R,[0,0,depth*1.15]));
+    const axP=gp(axC);
+    if(!axP.behind){wx.setLineDash([4,4]);wx.strokeStyle='rgba(255,209,102,0.5)';
+      wx.beginPath();wx.moveTo(eyeP.u,eyeP.v);wx.lineTo(axP.u,axP.v);wx.stroke();wx.setLineDash([]);}
+    // camera body
+    wx.beginPath();wx.arc(eyeP.u,eyeP.v,6,0,7);wx.fillStyle=css('--cam');wx.fill();
+    wx.fillStyle=css('--cam');wx.font='11px sans-serif';wx.fillText('camera',eyeP.u+9,eyeP.v-7);
+  }
+}
+
+/* ---------- image view ---------- */
+function drawImage(){
+  ix.clearRect(0,0,440,440);
+  // sensor border
+  ix.strokeStyle='#2e3a52';ix.lineWidth=1.5;ix.strokeRect(0.5,0.5,SENSOR-1,SENSOR-1);
+  const cam=userCam();
+  const visN=drawScene(ix,cam,false);
+  // principal point marker
+  ix.strokeStyle=css('--accent');ix.lineWidth=1.5;
+  const cx=cam.cx,cy=cam.cy;
+  ix.beginPath();ix.moveTo(cx-9,cy);ix.lineTo(cx+9,cy);ix.moveTo(cx,cy-9);ix.lineTo(cx,cy+9);ix.stroke();
+  return visN;
+}
+
+/* ---------- update status / panel ---------- */
+function updateReadout(visN){
+  const cam=userCam();
+  const f1=x=>x.toFixed(0);
+  el('kmat').innerHTML=
+    `[ <span class="v">${f1(cam.fx)}</span> &nbsp;<span class="v">${cam.s.toFixed(0)}</span> &nbsp;<span class="v">${f1(cam.cx)}</span> ]<br>`+
+    `[ &nbsp;&nbsp;0 &nbsp;<span class="v">${f1(cam.fy)}</span> &nbsp;<span class="v">${f1(cam.cy)}</span> ]<br>`+
+    `[ &nbsp;&nbsp;0 &nbsp;&nbsp;&nbsp;0 &nbsp;&nbsp;&nbsp;1 ]`;
+  const fov=2*Math.atan((SENSOR/2)/cam.fx)*180/Math.PI;
+  el('fov').textContent=fov.toFixed(1)+'°';
+  el('campos').textContent=`(${cam.eye[0].toFixed(1)}, ${cam.eye[1].toFixed(1)}, ${cam.eye[2].toFixed(1)})`;
+  el('vis').textContent=`${visN} / ${pts.length}`;
+}
+
+function render(){
+  drawWorld();
+  const visN=drawImage();
+  updateReadout(visN);
+}
+
+/* ---------- input handling ---------- */
+const fmt={az:'°',el:'°',roll:'°'};
+function bindSlider(id,suffix,fn){
+  el(id).oninput=()=>{
+    let v=el(id).value;
+    if(id==='dist') v=(+v/10).toFixed(1);
+    el(id+'V').textContent=v+(suffix||'');
+    fn&&fn();
+    render();
+  };
+}
+bindSlider('az','°');bindSlider('el','°');bindSlider('dist','');bindSlider('roll','°');
+bindSlider('cx','');bindSlider('cy','');bindSlider('sk','');
+bindSlider('fx','',()=>{ if(el('lock').checked){el('fy').value=el('fx').value;el('fyV').textContent=el('fy').value;}});
+bindSlider('fy','',()=>{ if(el('lock').checked){el('fx').value=el('fy').value;el('fxV').textContent=el('fx').value;}});
+el('lock').onchange=()=>{ if(el('lock').checked){el('fy').value=el('fx').value;el('fyV').textContent=el('fy').value;render();}};
+
+el('reset').onclick=()=>{
+  const def={az:35,el:18,dist:60,roll:0,fx:420,fy:420,cx:220,cy:220,sk:0};
+  for(const k in def){el(k).value=def[k];}
+  el('lock').checked=true;
+  ['az','el','roll'].forEach(k=>el(k+'V').textContent=def[k]+'°');
+  el('distV').textContent='6.0';
+  ['fx','fy','cx','cy','sk'].forEach(k=>el(k+'V').textContent=def[k]);
+  render();
+};
+
+/* world view drag rotation */
+let drag=null;
+wc.addEventListener('mousedown',e=>{drag={x:e.clientX,y:e.clientY,az:godAz,el:godEl};});
+window.addEventListener('mousemove',e=>{
+  if(!drag)return;
+  godAz=drag.az+(e.clientX-drag.x)*0.4;
+  godEl=Math.max(-85,Math.min(85,drag.el-(e.clientY-drag.y)*0.4));
+  drawWorld();
+});
+window.addEventListener('mouseup',()=>drag=null);
+wc.addEventListener('wheel',e=>{e.preventDefault();
+  godDist=Math.max(6,Math.min(30,godDist+e.deltaY*0.01));drawWorld();},{passive:false});
+
+render();
+
+/* ============================================================
+   Two-View Geometry (epipolar geometry)
+============================================================ */
+/* ---- 3x3 matrix utilities ---- */
+function m3mul(A,B){const C=[[0,0,0],[0,0,0],[0,0,0]];
+  for(let i=0;i<3;i++)for(let j=0;j<3;j++){let s=0;for(let k=0;k<3;k++)s+=A[i][k]*B[k][j];C[i][j]=s;}return C;}
+function m3T(A){return [[A[0][0],A[1][0],A[2][0]],[A[0][1],A[1][1],A[2][1]],[A[0][2],A[1][2],A[2][2]]];}
+function m3inv(A){
+  const a=A[0][0],b=A[0][1],c=A[0][2],d=A[1][0],e=A[1][1],f=A[1][2],g=A[2][0],h=A[2][1],i=A[2][2];
+  const det=a*(e*i-f*h)-b*(d*i-f*g)+c*(d*h-e*g), id=1/det;
+  return [[(e*i-f*h)*id,(c*h-b*i)*id,(b*f-c*e)*id],
+          [(f*g-d*i)*id,(a*i-c*g)*id,(c*d-a*f)*id],
+          [(d*h-e*g)*id,(b*g-a*h)*id,(a*e-b*d)*id]];}
+function skew(t){return [[0,-t[2],t[1]],[t[2],0,-t[0]],[-t[1],t[0],0]];}
+function Kof(c){return [[c.fx,c.s,c.cx],[0,c.fy,c.cy],[0,0,1]];}
+/* l_B = F x_A : a point in image A -> its epipolar line in image B */
+function fundamental(A,B){
+  const Rrel=m3mul(B.R,m3T(A.R));
+  const trel=matVec(B.R, sub(A.eye,B.eye));
+  const E=m3mul(skew(trel),Rrel);
+  return m3mul(m3mul(m3T(m3inv(Kof(B))),E),m3inv(Kof(A)));}
+function epipoleIn(B,A){ // project A's center into image B
+  const p=matVec(Kof(B), matVec(B.R, sub(A.eye,B.eye)));
+  if(Math.abs(p[2])<1e-9) return null;
+  return [p[0]/p[2],p[1]/p[2],p[2]];}
+function clipLine(l,S){
+  const a=l[0],b=l[1],c=l[2],eps=1e-9,cand=[];
+  if(Math.abs(b)>eps){cand.push([0,-c/b]);cand.push([S,-(a*S+c)/b]);}
+  if(Math.abs(a)>eps){cand.push([-c/a,0]);cand.push([-(b*S+c)/a,S]);}
+  const inb=cand.filter(p=>p[0]>=-0.5&&p[0]<=S+0.5&&p[1]>=-0.5&&p[1]<=S+0.5);
+  return inb.length<2?null:[inb[0],inb[1]];}
+function drawLineL(ctx,l,S,color,w){const seg=clipLine(l,S);if(!seg)return;
+  ctx.strokeStyle=color;ctx.lineWidth=w||1.5;ctx.beginPath();
+  ctx.moveTo(seg[0][0],seg[0][1]);ctx.lineTo(seg[1][0],seg[1][1]);ctx.stroke();}
+function drawCamGizmo(ctx,gp,cam,color,label,S,depth){
+  const eyeP=gp(cam.eye);if(eyeP.behind)return;
+  const corners=[[0,0],[S,0],[S,S],[0,S]];
+  const farP=corners.map(([cu,cv])=>gp(add(cam.eye,matTVec(cam.R,scl([(cu-cam.cx)/cam.fx,(cv-cam.cy)/cam.fy,1],depth)))));
+  ctx.strokeStyle=color;ctx.lineWidth=1.3;
+  farP.forEach(fp=>{if(fp.behind)return;ctx.beginPath();ctx.moveTo(eyeP.u,eyeP.v);ctx.lineTo(fp.u,fp.v);ctx.stroke();});
+  if(!farP.some(p=>p.behind)){
+    ctx.save();ctx.globalAlpha=0.13;ctx.fillStyle=color;ctx.beginPath();
+    farP.forEach((p,k)=>k?ctx.lineTo(p.u,p.v):ctx.moveTo(p.u,p.v));ctx.closePath();ctx.fill();ctx.restore();
+    ctx.strokeStyle=color;ctx.lineWidth=1.6;ctx.beginPath();
+    farP.forEach((p,k)=>k?ctx.lineTo(p.u,p.v):ctx.moveTo(p.u,p.v));ctx.closePath();ctx.stroke();}
+  ctx.beginPath();ctx.arc(eyeP.u,eyeP.v,5,0,7);ctx.fillStyle=color;ctx.fill();
+  ctx.font='11px sans-serif';ctx.fillStyle=color;ctx.fillText(label,eyeP.u+8,eyeP.v-6);}
+
+(function TwoView(){
+  const S=320, half=160;
+  const w2=document.getElementById('world2'),wx2=w2.getContext('2d');
+  const i1=document.getElementById('img1'),ix1=i1.getContext('2d');
+  const i2=document.getElementById('img2'),ix2=i2.getContext('2d');
+  let gAz=42,gEl=24,gDist=14, hover=null;
+  const PT3=[...cubeV,...pts];
+  const COL1='#ffd166', COL2='#a78bfa', SEL='#36d399', EPI='#ff6b6b';
+  const e=id=>document.getElementById(id);
+
+  const intr=()=>{const f=+e('f2').value;return {fx:f,fy:f,cx:half,cy:half,s:0};};
+  const cam1=()=>makeCam(TARGET,+e('az1').value,+e('el1').value,+e('d1').value/10,0,intr());
+  const cam2=()=>makeCam(TARGET,+e('az2').value,+e('el2').value,+e('d2').value/10,0,intr());
+  const god=()=>makeCam([0,0,0.4],gAz,gEl,gDist,0,{fx:520,fy:520,cx:220,cy:220,s:0});
+
+  function nearest3D(cam,mx,my){let best=-1,bd=16*16;
+    PT3.forEach((X,k)=>{const p=project(cam,X);if(p.behind)return;
+      const d=(p.u-mx)**2+(p.v-my)**2;if(d<bd){bd=d;best=k;}});return best;}
+
+  function drawImg(ctx,cam){
+    ctx.clearRect(0,0,S,S);
+    ctx.strokeStyle='#2e3a52';ctx.lineWidth=1.5;ctx.strokeRect(0.5,0.5,S-1,S-1);
+    drawScene(ctx,cam,false);
+    ctx.strokeStyle=css('--accent');ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(cam.cx-7,cam.cy);ctx.lineTo(cam.cx+7,cam.cy);
+    ctx.moveTo(cam.cx,cam.cy-7);ctx.lineTo(cam.cx,cam.cy+7);ctx.stroke();}
+  function epiMark(ctx,ep,label){if(!ep||ep[2]<=0)return;
+    const x=Math.max(6,Math.min(S-6,ep[0])),y=Math.max(6,Math.min(S-6,ep[1]));
+    ctx.fillStyle=EPI;ctx.beginPath();ctx.arc(x,y,4,0,7);ctx.fill();
+    ctx.font='10px sans-serif';ctx.fillStyle=EPI;ctx.fillText(label,x+6,y-4);}
+  function ring(ctx,p){if(!p||p.behind)return;ctx.strokeStyle=SEL;ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(p.u,p.v,8,0,7);ctx.stroke();}
+  const inb=ep=>ep&&ep[2]>0&&ep[0]>=0&&ep[0]<=S&&ep[1]>=0&&ep[1]<=S;
+
+  function render(){
+    const c1=cam1(),c2=cam2();
+    const F12=fundamental(c1,c2), F21=fundamental(c2,c1);
+    drawImg(ix1,c1); drawImg(ix2,c2);
+    const e1=epipoleIn(c1,c2), e2=epipoleIn(c2,c1);
+    if(e('allepi').checked){
+      PT3.forEach(X=>{
+        const pa=project(c1,X); if(!pa.behind) drawLineL(ix2,matVec(F12,[pa.u,pa.v,1]),S,'rgba(167,139,250,0.22)',1);
+        const pb=project(c2,X); if(!pb.behind) drawLineL(ix1,matVec(F21,[pb.u,pb.v,1]),S,'rgba(255,209,102,0.22)',1);
+      });
+    }
+    let matchedX=null;
+    if(hover){
+      const src=hover.img===1?c1:c2, F=hover.img===1?F12:F21;
+      const dstCtx=hover.img===1?ix2:ix1, srcCtx=hover.img===1?ix1:ix2;
+      drawLineL(dstCtx,matVec(F,[hover.x,hover.y,1]),S,SEL,2.2);
+      srcCtx.fillStyle=SEL;srcCtx.beginPath();srcCtx.arc(hover.x,hover.y,4,0,7);srcCtx.fill();
+      const k=nearest3D(src,hover.x,hover.y);
+      if(k>=0){ring(ix1,project(c1,PT3[k]));ring(ix2,project(c2,PT3[k]));matchedX=PT3[k];}
+    }
+    epiMark(ix1,e1,'e₁'); epiMark(ix2,e2,'e₂');
+    drawW(c1,c2,matchedX);
+    e('epi1').textContent= e1&&e1[2]>0 ? `(${e1[0].toFixed(0)}, ${e1[1].toFixed(0)})`+(inb(e1)?'':' ·out') : '∞';
+    e('epi2').textContent= e2&&e2[2]>0 ? `(${e2[0].toFixed(0)}, ${e2[1].toFixed(0)})`+(inb(e2)?'':' ·out') : '∞';
+  }
+
+  function drawW(c1,c2,matchedX){
+    wx2.clearRect(0,0,440,440);
+    const g=god(), gp=X=>project(g,X);
+    drawScene(wx2,g,true);
+    const a=gp(c1.eye),b=gp(c2.eye);
+    if(!a.behind&&!b.behind){wx2.setLineDash([5,4]);wx2.strokeStyle='rgba(255,255,255,0.6)';wx2.lineWidth=1.5;
+      wx2.beginPath();wx2.moveTo(a.u,a.v);wx2.lineTo(b.u,b.v);wx2.stroke();wx2.setLineDash([]);
+      wx2.fillStyle='rgba(255,255,255,0.5)';wx2.font='10px sans-serif';
+      wx2.fillText('baseline',(a.u+b.u)/2+4,(a.v+b.v)/2);}
+    if(matchedX){const pa=gp(c1.eye),pb=gp(c2.eye),pc=gp(matchedX);
+      if(!pa.behind&&!pb.behind&&!pc.behind){
+        wx2.save();wx2.globalAlpha=0.18;wx2.fillStyle=SEL;
+        wx2.beginPath();wx2.moveTo(pa.u,pa.v);wx2.lineTo(pb.u,pb.v);wx2.lineTo(pc.u,pc.v);wx2.closePath();wx2.fill();wx2.restore();
+        wx2.strokeStyle='rgba(54,211,153,0.75)';wx2.lineWidth=1.3;
+        wx2.beginPath();wx2.moveTo(pa.u,pa.v);wx2.lineTo(pc.u,pc.v);wx2.moveTo(pb.u,pb.v);wx2.lineTo(pc.u,pc.v);wx2.stroke();
+        wx2.fillStyle=SEL;wx2.beginPath();wx2.arc(pc.u,pc.v,4,0,7);wx2.fill();}}
+    drawCamGizmo(wx2,gp,c1,COL1,'cam 1',S,2.2);
+    drawCamGizmo(wx2,gp,c2,COL2,'cam 2',S,2.2);
+  }
+
+  ['az1','el1','d1','az2','el2','d2','f2'].forEach(id=>{
+    e(id).oninput=()=>{const ang=(id[0]==='a'||id[0]==='e');
+      let v=e(id).value; if(id==='d1'||id==='d2')v=(+v/10).toFixed(1);
+      e(id+'V').textContent=v+(ang?'°':''); render();};
+  });
+  e('allepi').onchange=render;
+
+  const cpos=(cv,ev)=>{const r=cv.getBoundingClientRect();
+    return [(ev.clientX-r.left)*(cv.width/r.width),(ev.clientY-r.top)*(cv.height/r.height)];};
+  i1.addEventListener('mousemove',ev=>{const[x,y]=cpos(i1,ev);hover={img:1,x,y};render();});
+  i2.addEventListener('mousemove',ev=>{const[x,y]=cpos(i2,ev);hover={img:2,x,y};render();});
+  i1.addEventListener('mouseleave',()=>{hover=null;render();});
+  i2.addEventListener('mouseleave',()=>{hover=null;render();});
+
+  let drag=null;
+  w2.addEventListener('mousedown',ev=>{drag={x:ev.clientX,y:ev.clientY,az:gAz,el:gEl};});
+  window.addEventListener('mousemove',ev=>{if(!drag)return;
+    gAz=drag.az+(ev.clientX-drag.x)*0.4;gEl=Math.max(-85,Math.min(85,drag.el-(ev.clientY-drag.y)*0.4));render();});
+  window.addEventListener('mouseup',()=>drag=null);
+  w2.addEventListener('wheel',ev=>{ev.preventDefault();gDist=Math.max(6,Math.min(30,gDist+ev.deltaY*0.01));render();},{passive:false});
+
+  window.__render2=render;
+})();
+
+/* ---- tab switching ---- */
+document.querySelectorAll('.tab').forEach(t=>{
+  t.onclick=()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('view-'+t.dataset.tab).classList.add('active');
+    if(t.dataset.tab==='two') window.__render2&&window.__render2();
+  };
+});
+window.__render2 && window.__render2();
+</script>
+</body>
+</html>
