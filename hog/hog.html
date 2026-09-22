@@ -1,0 +1,1842 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HOG Dissected</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --paper:#ECEEF2; --surface:#FFFFFF; --surface-2:#F5F6F9;
+  --line:#D3D8E0; --line-soft:#E4E7EC;
+  --text:#14171D; --text-2:#454C58; --muted:#6B7382;
+  --amber:#9A6210; --amber-soft:#F3E4C8;
+  --indigo:#3A43BE; --indigo-soft:#E2E4FA;
+  --hit:#0B7A5E; --miss:#B23A2C;
+  --screen:#090B0F; --screen-line:#232934; --screen-dim:#7C879A;
+  --shadow:0 1px 2px rgba(18,22,30,.06), 0 8px 24px -16px rgba(18,22,30,.35);
+  --mono:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans:"IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0D1015; --surface:#151921; --surface-2:#1B202A;
+    --line:#2B323E; --line-soft:#232935;
+    --text:#E7EAF0; --text-2:#B4BCCA; --muted:#8892A2;
+    --amber:#E6B45C; --amber-soft:#3A2E17;
+    --indigo:#8E97FF; --indigo-soft:#1F2340;
+    --hit:#3ECBA2; --miss:#FF8574;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -18px rgba(0,0,0,.9);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0D1015; --surface:#151921; --surface-2:#1B202A;
+  --line:#2B323E; --line-soft:#232935;
+  --text:#E7EAF0; --text-2:#B4BCCA; --muted:#8892A2;
+  --amber:#E6B45C; --amber-soft:#3A2E17;
+  --indigo:#8E97FF; --indigo-soft:#1F2340;
+  --hit:#3ECBA2; --miss:#FF8574;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -18px rgba(0,0,0,.9);
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--paper); color:var(--text);
+  font-family:var(--sans); font-size:14px; line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{text-wrap:balance; margin:0}
+.eyebrow{
+  font-family:var(--mono); font-size:11px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--muted);
+}
+.wrap{max-width:1280px; margin:0 auto; padding:0 24px}
+
+/* ---------- header ---------- */
+header.site{border-bottom:1px solid var(--line); background:var(--surface)}
+.head-grid{display:flex; gap:32px; align-items:flex-end; justify-content:space-between;
+  flex-wrap:wrap; padding:26px 0 18px}
+header h1{font-size:30px; font-weight:700; letter-spacing:-.02em; line-height:1.15; margin:6px 0 6px}
+header h1 .thin{font-weight:400; color:var(--muted)}
+.byline{margin:10px 0 0; font-size:12.5px; color:var(--muted)}
+.byline a{color:var(--indigo); text-decoration:none}
+.byline a:hover{text-decoration:underline}
+.lede{color:var(--text-2); max-width:62ch; margin:0; font-size:14.5px}
+.formula{
+  font-family:var(--mono); font-size:12px; color:var(--text-2);
+  border-left:2px solid var(--amber); padding:6px 0 6px 12px; white-space:nowrap;
+}
+.theme-btn{
+  font-family:var(--mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+  background:transparent; border:1px solid var(--line); color:var(--muted);
+  padding:6px 10px; border-radius:2px; cursor:pointer;
+}
+.theme-btn:hover{color:var(--text); border-color:var(--muted)}
+
+/* ---------- tabs ---------- */
+nav.tabs{position:sticky; top:0; z-index:30; background:var(--surface);
+  border-bottom:1px solid var(--line)}
+.tabs-inner{display:flex; gap:2px; overflow-x:auto}
+.tabs button{
+  appearance:none; background:transparent; border:0; border-bottom:2px solid transparent;
+  padding:13px 18px 11px; cursor:pointer; color:var(--muted); white-space:nowrap;
+  font-family:var(--sans); font-size:14px; font-weight:500;
+}
+.tabs button .num{font-family:var(--mono); font-size:11px; margin-right:7px; opacity:.75}
+.tabs button:hover{color:var(--text)}
+.tabs button[aria-selected="true"]{color:var(--text); border-bottom-color:var(--amber); font-weight:600}
+.tabs button:focus-visible{outline:2px solid var(--indigo); outline-offset:-2px}
+
+/* ---------- layout ---------- */
+.tabpanel{display:none; padding:24px 0 72px}
+.tabpanel.active{display:block}
+.split{display:grid; grid-template-columns:266px minmax(0,1fr); gap:24px; align-items:start}
+@media (max-width:920px){.split{grid-template-columns:1fr}}
+
+/* ---------- control rail ---------- */
+.rail{position:sticky; top:62px; display:flex; flex-direction:column; gap:14px}
+@media (max-width:920px){.rail{position:static}}
+.ctlgroup{background:var(--surface); border:1px solid var(--line); border-radius:3px; padding:14px}
+.ctlgroup > .eyebrow{display:block; margin-bottom:10px}
+.field{display:flex; flex-direction:column; gap:6px; margin-bottom:14px}
+.field:last-child{margin-bottom:0}
+.field label{font-size:12.5px; color:var(--text-2); display:flex; justify-content:space-between; gap:8px}
+.field label b{font-family:var(--mono); font-weight:500; color:var(--text); font-variant-numeric:tabular-nums}
+input[type=range]{width:100%; accent-color:var(--amber); height:18px}
+.seg{display:flex; border:1px solid var(--line); border-radius:2px; overflow:hidden}
+.seg button{flex:1; appearance:none; background:var(--surface); border:0; padding:6px 4px;
+  font-family:var(--mono); font-size:11px; color:var(--muted); cursor:pointer; border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--amber-soft); color:var(--text); font-weight:600}
+.seg button:hover{color:var(--text)}
+.btn{
+  appearance:none; font-family:var(--sans); font-size:13px; font-weight:500;
+  background:var(--surface); color:var(--text); border:1px solid var(--line);
+  padding:8px 12px; border-radius:2px; cursor:pointer; width:100%; text-align:left;
+}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--amber); border-color:var(--amber); color:#fff; font-weight:600}
+:root[data-theme="dark"] .btn.primary, :root:not([data-theme="light"]) .btn.primary{color:#14171D}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]) .btn.primary{color:#fff}}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn:disabled{opacity:.45; cursor:not-allowed}
+.btnrow{display:flex; flex-direction:column; gap:8px}
+.chk{display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--text-2); cursor:pointer}
+.chk input{accent-color:var(--indigo); width:15px; height:15px}
+.hint{font-size:11.5px; color:var(--muted); line-height:1.5; margin:8px 0 0}
+
+/* ---------- screens ---------- */
+.stagegrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(248px,1fr)); gap:16px}
+.stagegrid .wide{grid-column:span 2}
+.stagegrid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (max-width:1080px){.stagegrid .wide{grid-column:auto}
+  .stagegrid.two{grid-template-columns:repeat(auto-fit,minmax(248px,1fr))}}
+.screen{background:var(--surface); border:1px solid var(--line); border-radius:3px;
+  display:flex; flex-direction:column; overflow:hidden}
+.screen > figcaption{padding:10px 12px 9px; border-bottom:1px solid var(--line-soft);
+  display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; row-gap:2px}
+.screen .step{font-family:var(--mono); font-size:11px; color:var(--amber); font-weight:600}
+.screen .title{font-size:13px; font-weight:600; white-space:nowrap}
+.screen .sub{font-family:var(--mono); font-size:10.5px; color:var(--muted); margin-left:auto; white-space:nowrap}
+.plate{background:var(--screen); padding:10px; display:flex; align-items:center;
+  justify-content:center; flex:1; min-height:0}
+.plate canvas{max-width:100%; height:auto; display:block; image-rendering:pixelated; border-radius:1px}
+.plate.pad{padding:12px}
+.note{padding:9px 12px; font-size:11.5px; color:var(--muted); border-top:1px solid var(--line-soft)}
+.note b{color:var(--text-2); font-weight:600}
+canvas.interactive{cursor:crosshair}
+
+/* ---------- inspector ---------- */
+.inspector{margin-top:16px; background:var(--surface); border:1px solid var(--line); border-radius:3px}
+.insp-head{padding:11px 14px; border-bottom:1px solid var(--line-soft); display:flex;
+  align-items:baseline; gap:10px; flex-wrap:wrap}
+.insp-head h3{font-size:13.5px; font-weight:600}
+.insp-head .where{font-family:var(--mono); font-size:11.5px; color:var(--amber)}
+.insp-body{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:1px;
+  background:var(--line-soft)}
+.insp-cell{background:var(--surface); padding:13px 14px}
+.insp-cell h4{margin:0 0 9px; font-family:var(--mono); font-size:10.5px; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--muted); font-weight:500}
+.insp-cell canvas{width:100%; height:auto; display:block; background:var(--screen); border-radius:1px}
+.insp-cell p{margin:9px 0 0; font-size:11.5px; color:var(--muted)}
+.insp-cell p code{font-family:var(--mono); color:var(--text-2); font-size:11px}
+
+/* ---------- prose / cards ---------- */
+.prose{max-width:66ch}
+.prose p{color:var(--text-2)}
+.cardgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px}
+.card{background:var(--surface); border:1px solid var(--line); border-radius:3px; padding:16px 18px}
+.card h3{font-size:14px; font-weight:600; margin-bottom:6px}
+.card p{margin:0; font-size:13px; color:var(--text-2)}
+.card .eyebrow{display:block; margin-bottom:9px}
+table.spec{width:100%; border-collapse:collapse; font-size:13px}
+table.spec th, table.spec td{text-align:left; padding:8px 10px; border-bottom:1px solid var(--line-soft)}
+table.spec th{font-family:var(--mono); font-size:10.5px; letter-spacing:.09em; text-transform:uppercase;
+  color:var(--muted); font-weight:500}
+table.spec td.k{font-family:var(--mono); font-size:12px; color:var(--text)}
+table.spec td.v{font-family:var(--mono); font-size:12px; color:var(--amber); font-variant-numeric:tabular-nums}
+.scrollx{overflow-x:auto}
+.statline{display:flex; flex-wrap:wrap; gap:1px; background:var(--line-soft);
+  border:1px solid var(--line); border-radius:3px; overflow:hidden; margin-bottom:16px}
+.stat{background:var(--surface); padding:11px 16px; flex:1; min-width:120px}
+.stat .k{font-family:var(--mono); font-size:10.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--muted)}
+.stat .v{font-family:var(--mono); font-size:19px; font-weight:500; color:var(--text);
+  font-variant-numeric:tabular-nums; line-height:1.3}
+.stat .v small{font-size:12px; color:var(--muted); font-weight:400}
+.sectionhead{margin:30px 0 14px}
+.sectionhead:first-child{margin-top:0}
+.sectionhead h2{font-size:17px; font-weight:600; letter-spacing:-.01em; margin-top:4px}
+.sectionhead p{margin:4px 0 0; font-size:13px; color:var(--muted); max-width:70ch}
+.tag{font-family:var(--mono); font-size:10.5px; padding:2px 7px; border-radius:2px;
+  background:var(--indigo-soft); color:var(--indigo); white-space:nowrap}
+.tag.amber{background:var(--amber-soft); color:var(--amber)}
+.log{font-family:var(--mono); font-size:11.5px; color:var(--muted); padding:9px 12px;
+  background:var(--surface-2); border:1px solid var(--line); border-radius:3px; min-height:34px}
+.legendrow{display:flex; gap:14px; flex-wrap:wrap; align-items:center; font-family:var(--mono);
+  font-size:11px; color:var(--muted); padding:9px 12px; border-top:1px solid var(--line-soft)}
+.swatch{display:inline-block; width:9px; height:9px; border-radius:1px; margin-right:5px; vertical-align:-1px}
+@media (prefers-reduced-motion:no-preference){
+  .screen, .card{transition:border-color .15s ease}
+}
+</style>
+</head>
+<body>
+<header class="site">
+  <div class="wrap head-grid">
+    <div>
+      <span class="eyebrow">Computer Vision · Lecture lab</span>
+      <h1>HOG Dissected <span class="thin">Histogram of Oriented Gradients</span></h1>
+      <p class="lede">Start from raw pixels, go through gradients, cell histograms and block normalization to a single
+        feature vector — then watch a linear classifier use that vector to find objects. Every step is hands-on.</p>
+      <p class="byline">Hanbyul Joo &nbsp;|&nbsp; Visual Computing Lab, Seoul National University &nbsp;|&nbsp; <a href="https://github.com/jhugestar/snu-vision-lecture" target="_blank" rel="noopener">More Demos ↗</a></p>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:12px; align-items:flex-start">
+      <div class="formula">∇I → θ, |∇| → cell hist → block L2 → w·x + b</div>
+      <button class="theme-btn" id="themeBtn" type="button">Toggle theme</button>
+    </div>
+  </div>
+</header>
+
+<nav class="tabs">
+  <div class="wrap tabs-inner" role="tablist">
+    <button role="tab" aria-selected="true"  data-tab="pipeline"><span class="num">01</span>Pipeline</button>
+    <button role="tab" aria-selected="false" data-tab="descriptor"><span class="num">02</span>Descriptor</button>
+    <button role="tab" aria-selected="false" data-tab="detect"><span class="num">03</span>Detection</button>
+    <button role="tab" aria-selected="false" data-tab="notes"><span class="num">04</span>Summary</button>
+  </div>
+</nav>
+
+<main class="wrap">
+
+<!-- ================= TAB 1 : PIPELINE ================= -->
+<section class="tabpanel active" id="tab-pipeline" role="tabpanel">
+  <div class="split">
+    <aside class="rail">
+      <div class="ctlgroup">
+        <span class="eyebrow">Input</span>
+        <div class="btnrow">
+          <button class="btn" data-src="snu" aria-pressed="true">Photo — SNU main gate</button>
+          <button class="btn" data-src="person">Synthetic — pedestrian</button>
+          <button class="btn" data-src="shapes">Synthetic — shapes / edges</button>
+          <button class="btn" id="uploadBtn">Upload your own image…</button>
+          <input type="file" id="fileInput" accept="image/*" hidden>
+        </div>
+      </div>
+
+      <div class="ctlgroup">
+        <span class="eyebrow">Parameters</span>
+        <div class="field">
+          <label>Cell size <b><span id="vCell">8</span> px</b></label>
+          <input type="range" id="cellSize" min="4" max="20" step="2" value="8">
+        </div>
+        <div class="field">
+          <label>Orientation bins <b id="vBins">9</b></label>
+          <input type="range" id="nBins" min="4" max="18" step="1" value="9">
+        </div>
+        <div class="field">
+          <label>Angle range</label>
+          <div class="seg" id="segSigned">
+            <button data-v="0" aria-pressed="true">0°–180° unsigned</button>
+            <button data-v="1" aria-pressed="false">0°–360°</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Block size (in cells)</label>
+          <div class="seg" id="segBlock">
+            <button data-v="1" aria-pressed="false">1×1</button>
+            <button data-v="2" aria-pressed="true">2×2</button>
+            <button data-v="3" aria-pressed="false">3×3</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Flat-block suppression ε <b id="vEps">0.80</b></label>
+          <input type="range" id="epsF" min="0" max="2" step="0.05" value="0.8">
+        </div>
+        <div class="field">
+          <label>Normalization</label>
+          <div class="seg" id="segNorm">
+            <button data-v="none" aria-pressed="false">None</button>
+            <button data-v="l2" aria-pressed="false">L2</button>
+            <button data-v="l2hys" aria-pressed="true">L2-Hys</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="ctlgroup">
+        <span class="eyebrow">Display</span>
+        <label class="chk"><input type="checkbox" id="optGamma"> Gamma correction √I</label>
+        <label class="chk" style="margin-top:8px"><input type="checkbox" id="optGrid" checked> Show cell grid</label>
+        <label class="chk" style="margin-top:8px"><input type="checkbox" id="optOverlay"> Overlay HOG on the image</label>
+        <div class="field" style="margin-top:12px">
+          <label>HOG display gain <b id="vGain">1.0</b>×</label>
+          <input type="range" id="hogGain" min="0.2" max="4" step="0.1" value="1">
+        </div>
+        <p class="hint">Hover over an image to open up that cell in the inspector below.<br><br>
+          ε sets the ε in <code style="font-family:var(--mono)">v / √(‖v‖²+ε²)</code> as a fraction of the image's mean block norm.
+          The original paper uses ε≈0. Raising it suppresses <b>flat blocks that contain only noise</b>, giving a cleaner picture and better illumination invariance.</p>
+      </div>
+    </aside>
+
+    <div>
+      <div class="statline" id="pipeStats"></div>
+      <div class="stagegrid">
+        <figure class="screen">
+          <figcaption><span class="step">01</span><span class="title">Input image</span><span class="sub" id="capSize"></span></figcaption>
+          <div class="plate"><canvas id="cvSrc" class="interactive"></canvas></div>
+          <div class="note">RGB original. Color is discarded; only <b>changes in brightness</b> matter.</div>
+        </figure>
+
+        <figure class="screen">
+          <figcaption><span class="step">02</span><span class="title">Grayscale</span><span class="sub">0.299R+0.587G+0.114B</span></figcaption>
+          <div class="plate"><canvas id="cvGray"></canvas></div>
+          <div class="note">Gamma correction √I boosts contrast in dark regions. <b>Dalal &amp; Triggs report only a marginal gain</b>.</div>
+        </figure>
+
+        <figure class="screen">
+          <figcaption><span class="step">03</span><span class="title">Gradient Gx</span><span class="sub">[-1 0 1]</span></figcaption>
+          <div class="plate"><canvas id="cvGx"></canvas></div>
+          <div class="note">Vertical edges show up bright (+) or dark (−). Gray = no change.</div>
+        </figure>
+
+        <figure class="screen">
+          <figcaption><span class="step">03</span><span class="title">Gradient Gy</span><span class="sub">[-1 0 1]ᵀ</span></figcaption>
+          <div class="plate"><canvas id="cvGy"></canvas></div>
+          <div class="note">A plain <b>1st-derivative mask</b> with no Gaussian smoothing worked best.</div>
+        </figure>
+
+        <figure class="screen">
+          <figcaption><span class="step">04</span><span class="title">Magnitude |∇I|</span><span class="sub">√(Gx²+Gy²)</span></figcaption>
+          <div class="plate"><canvas id="cvMag"></canvas></div>
+          <div class="note">Becomes the <b>weight of each vote</b> in the histogram.</div>
+        </figure>
+
+        <figure class="screen">
+          <figcaption><span class="step">04</span><span class="title">Orientation θ</span><span class="sub">atan2(Gy,Gx)</span></figcaption>
+          <div class="plate"><canvas id="cvOri"></canvas></div>
+          <div class="legendrow" id="oriLegend"></div>
+          <div class="note">Hue = angle, brightness = magnitude. Decides <b>which bin gets the vote</b>.</div>
+        </figure>
+
+      </div>
+
+      <div class="stagegrid two" style="margin-top:16px">
+        <figure class="screen">
+          <figcaption><span class="step">05</span><span class="title">Cell histograms (before normalization)</span><span class="sub" id="capCells"></span></figcaption>
+          <div class="plate pad"><canvas id="cvCells" class="interactive"></canvas></div>
+          <div class="note">One <b id="capBins">9</b>-bin histogram per cell. Line length = accumulated magnitude in that bin,
+            line direction = <b>edge direction</b> (perpendicular to the gradient).</div>
+        </figure>
+
+        <figure class="screen">
+          <figcaption><span class="step">06</span><span class="title">HOG after block normalization</span><span class="sub" id="capBlocks"></span></figcaption>
+          <div class="plate pad"><canvas id="cvHog" class="interactive"></canvas></div>
+          <div class="note">Every overlapping block is L2-normalized → bright regions can no longer drown out dark ones. <b>This is the final feature</b>.</div>
+        </figure>
+      </div>
+
+      <div class="inspector">
+        <div class="insp-head">
+          <h3>Inside one cell</h3>
+          <span class="where" id="inspWhere">Hover over an image</span>
+          <span class="tag" id="inspBlockTag" style="margin-left:auto">block = 2×2 cells</span>
+        </div>
+        <div class="insp-body">
+          <div class="insp-cell">
+            <h4>A · Gradients in the cell</h4>
+            <canvas id="cvZoom" width="230" height="230"></canvas>
+            <p>Per-pixel ∇I as arrows. Length ∝ |∇I|, color = θ.</p>
+          </div>
+          <div class="insp-cell">
+            <h4>B · Orientation histogram (the votes)</h4>
+            <canvas id="cvHist" width="230" height="230"></canvas>
+            <p>Each pixel casts a vote of its magnitude, <code>split linearly between the two nearest bins</code>.</p>
+          </div>
+          <div class="insp-cell">
+            <h4>C · Block vector: before → after</h4>
+            <canvas id="cvBlock" width="230" height="230"></canvas>
+            <p>Concatenate all cells of the block, then <code>v / √(‖v‖²+ε²)</code>. The same cell is normalized <b>differently</b> in each block it belongs to.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= TAB 2 : DESCRIPTOR ================= -->
+<section class="tabpanel" id="tab-descriptor" role="tabpanel">
+  <div class="split">
+    <aside class="rail">
+      <div class="ctlgroup">
+        <span class="eyebrow">Illumination change</span>
+        <div class="field">
+          <label>Brightness offset <b id="vBright">+0</b></label>
+          <input type="range" id="brightness" min="-100" max="100" step="5" value="40">
+        </div>
+        <div class="field">
+          <label>Contrast gain <b id="vContrast">1.00</b>×</label>
+          <input type="range" id="contrast" min="0.2" max="2.5" step="0.05" value="0.45">
+        </div>
+        <div class="field">
+          <label>Vignetting (shadow) <b id="vVignette">0.0</b></label>
+          <input type="range" id="vignette" min="0" max="1" step="0.05" value="0">
+        </div>
+        <div class="field">
+          <label>Gaussian noise <b id="vNoise">0</b></label>
+          <input type="range" id="noise" min="0" max="40" step="2" value="0">
+        </div>
+        <div class="btnrow" style="margin-top:4px">
+          <button class="btn" id="resetPert">Reset to no change</button>
+        </div>
+        <p class="hint">Uses the image and parameters from the Pipeline tab.</p>
+      </div>
+      <div class="ctlgroup">
+        <span class="eyebrow">Vector view</span>
+        <label class="chk"><input type="checkbox" id="optSortless" checked> Show block boundaries</label>
+        <p class="hint">The descriptor is a 1-D array of blocks concatenated in order. x-axis = dimension index.</p>
+      </div>
+    </aside>
+
+    <div>
+      <div class="sectionhead">
+        <span class="eyebrow">Where the dimension comes from</span>
+        <h2>Parameters → vector length</h2>
+        <p>Window size, cell size, block size and bin count multiply together to give the final dimension.</p>
+      </div>
+      <div class="statline" id="dimStats"></div>
+      <div class="scrollx" style="background:var(--surface); border:1px solid var(--line); border-radius:3px; padding:14px 16px; margin-bottom:8px">
+        <div class="formula" id="dimFormula" style="white-space:normal; line-height:2"></div>
+      </div>
+
+      <div class="sectionhead">
+        <span class="eyebrow">The final feature vector</span>
+        <h2>The whole descriptor, unrolled</h2>
+        <p>Each column is one dimension. A faint divider marks the end of each block.</p>
+      </div>
+      <figure class="screen" style="margin-bottom:16px">
+        <figcaption><span class="step">x</span><span class="title">descriptor vector</span><span class="sub" id="capVec"></span></figcaption>
+        <div class="plate pad"><canvas id="cvVec"></canvas></div>
+        <div class="note">With L2-Hys every value is clipped to <b>[0, 0.2]</b> and renormalized, so a single strong edge cannot dominate the vector.</div>
+      </figure>
+
+      <div class="sectionhead">
+        <span class="eyebrow">Why normalize</span>
+        <h2>Same descriptor under different lighting?</h2>
+        <p>The <b>pixel values</b> of the original (left) and the altered image (right) are completely different. Compare below how much each representation changed.</p>
+      </div>
+      <div class="stagegrid two">
+        <figure class="screen">
+          <figcaption><span class="step">A</span><span class="title">Original</span></figcaption>
+          <div class="plate"><canvas id="cvOrigA"></canvas></div>
+        </figure>
+        <figure class="screen">
+          <figcaption><span class="step">B</span><span class="title">Altered image</span><span class="sub" id="capPert"></span></figcaption>
+          <div class="plate"><canvas id="cvOrigB"></canvas></div>
+        </figure>
+        <figure class="screen">
+          <figcaption><span class="step">A</span><span class="title">HOG (original)</span></figcaption>
+          <div class="plate pad"><canvas id="cvHogA"></canvas></div>
+        </figure>
+        <figure class="screen">
+          <figcaption><span class="step">B</span><span class="title">HOG (altered)</span></figcaption>
+          <div class="plate pad"><canvas id="cvHogB"></canvas></div>
+        </figure>
+      </div>
+      <figure class="screen" style="margin-top:16px">
+        <figcaption><span class="title">How much did each representation change?</span><span class="sub">relative difference ‖a−b‖ / ‖a‖ · 0 = identical</span></figcaption>
+        <div class="plate pad" style="background:var(--surface-2)"><canvas id="cvSim"></canvas></div>
+        <div class="note">
+          The <b>middle bar</b> is the point. Scaling contrast by a scales every gradient by exactly a → the unnormalized histograms change wholesale,
+          but dividing each block by ‖v‖ <b>cancels</b> that a, so HOG barely moves (a brightness offset is erased by the derivative itself).
+          It doesn't reach exactly 0 because of 8-bit quantization and saturation, and most of that error comes from <b>flat regions</b> —
+          lower ε to 0 in the Pipeline tab to watch the error grow, or set normalization to <b>None</b> to watch the invariance disappear entirely.</div>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ================= TAB 3 : DETECTION ================= -->
+<section class="tabpanel" id="tab-detect" role="tabpanel">
+  <div class="split">
+    <aside class="rail">
+      <div class="ctlgroup">
+        <span class="eyebrow">Run the pipeline</span>
+        <div class="btnrow">
+          <button class="btn" id="btnData">① Generate training data</button>
+          <button class="btn" id="btnTrain">② Train linear classifier</button>
+          <button class="btn" id="btnScene">③ New scene</button>
+          <button class="btn primary" id="btnDetect">④ Run detection</button>
+        </div>
+        <p class="hint">64×128 window, 8px cells, 2×2 blocks → 3,780 dims. Logistic regression is trained right here in the browser.</p>
+      </div>
+      <div class="ctlgroup">
+        <span class="eyebrow">Detection parameters</span>
+        <div class="field">
+          <label>Score threshold <b id="vThr">0.0</b></label>
+          <input type="range" id="detThr" min="-6" max="8" step="0.25" value="1">
+        </div>
+        <div class="field">
+          <label>NMS IoU <b id="vIou">0.30</b></label>
+          <input type="range" id="detIou" min="0.05" max="0.8" step="0.05" value="0.3">
+        </div>
+        <div class="field">
+          <label>Window stride <b id="vStride">8</b> px</label>
+          <input type="range" id="detStride" min="8" max="24" step="8" value="8">
+        </div>
+        <div class="field">
+          <label>Scale levels <b id="vScales">3</b></label>
+          <input type="range" id="detScales" min="1" max="5" step="1" value="3">
+        </div>
+        <label class="chk"><input type="checkbox" id="optNMS" checked> Apply NMS</label>
+        <label class="chk" style="margin-top:8px"><input type="checkbox" id="optHeat" checked> Show score heatmap</label>
+      </div>
+      <div class="ctlgroup">
+        <span class="eyebrow">Training</span>
+        <div class="field">
+          <label>Positive samples <b id="vPos">60</b></label>
+          <input type="range" id="numPos" min="20" max="160" step="10" value="60">
+        </div>
+        <div class="field">
+          <label>Negative samples <b id="vNeg">180</b></label>
+          <input type="range" id="numNeg" min="40" max="400" step="20" value="180">
+        </div>
+        <div class="field">
+          <label>Epochs <b id="vEpoch">40</b></label>
+          <input type="range" id="numEpoch" min="5" max="120" step="5" value="40">
+        </div>
+      </div>
+    </aside>
+
+    <div>
+      <div class="statline" id="detStats"></div>
+      <div class="log" id="detLog" style="margin-bottom:16px">Press ① → ② → ③ → ④ in order. Everything is computed inside this page.</div>
+
+      <figure class="screen" style="margin-bottom:16px">
+        <figcaption><span class="step">03</span><span class="title">Detections</span><span class="sub" id="capDet">not run yet</span></figcaption>
+        <div class="plate"><canvas id="cvScene"></canvas></div>
+        <div class="legendrow">
+          <span><span class="swatch" style="background:#3ECBA2"></span>detection (score &gt; threshold)</span>
+          <span><span class="swatch" style="background:#888"></span>candidate removed by NMS</span>
+          <span><span class="swatch" style="background:#E6B45C"></span>heatmap = window score</span>
+        </div>
+        <div class="note">Around a single person <b>dozens of windows fire at once</b>. Non-Maximum Suppression cleans up those duplicates.</div>
+      </figure>
+
+      <div class="stagegrid two">
+        <figure class="screen">
+          <figcaption><span class="step">w+</span><span class="title">Learned positive weights</span><span class="sub">64×128 window</span></figcaption>
+          <div class="plate pad"><canvas id="cvWpos"></canvas></div>
+          <div class="note">"An edge in this direction here means <b>more likely a person</b>" — the head, shoulder and leg contours emerge.</div>
+        </figure>
+        <figure class="screen">
+          <figcaption><span class="step">w−</span><span class="title">Learned negative weights</span><span class="sub">negative part of w</span></figcaption>
+          <div class="plate pad"><canvas id="cvWneg"></canvas></div>
+          <div class="note">"An edge in this direction here means <b>less likely a person</b>" — e.g. horizontal edges inside the torso.</div>
+        </figure>
+        <figure class="screen">
+          <figcaption><span class="step">+</span><span class="title">Positive samples</span><span class="sub" id="capPos"></span></figcaption>
+          <div class="plate pad"><canvas id="cvPos"></canvas></div>
+          <div class="note">Generated with random background, brightness, pose and build.</div>
+        </figure>
+        <figure class="screen">
+          <figcaption><span class="step">−</span><span class="title">Negative samples</span><span class="sub" id="capNeg"></span></figcaption>
+          <div class="plate pad"><canvas id="cvNeg"></canvas></div>
+          <div class="note">Random crops from person-free scenes, plus <b>hard negatives</b> mined after the first training round — as in the original paper.</div>
+        </figure>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= TAB 4 : NOTES ================= -->
+<section class="tabpanel" id="tab-notes" role="tabpanel">
+  <div class="sectionhead">
+    <span class="eyebrow">Dalal &amp; Triggs, CVPR 2005</span>
+    <h2>HOG in six steps</h2>
+    <p>Remember which invariance each step buys you, and the exam questions sort themselves out.</p>
+  </div>
+  <div class="cardgrid">
+    <div class="card"><span class="eyebrow">Step 01</span><h3>Normalize &amp; grayscale</h3>
+      <p>Drop color, keep brightness. Gamma correction √I is optional — the later block normalization does most of its job.</p></div>
+    <div class="card"><span class="eyebrow">Step 02</span><h3>Compute gradients</h3>
+      <p>Use the plain [-1,0,1] mask. Adding smoothing or switching to Sobel <b>hurt</b> performance — fine contours get blurred away.</p></div>
+    <div class="card"><span class="eyebrow">Step 03</span><h3>Orientation voting per cell</h3>
+      <p>Inside each 8×8 cell, magnitude-weighted votes go into 9 bins (0–180°), split linearly between neighboring bins so small angle changes don't matter.
+        → <b>invariance to small shifts and deformations</b>.</p></div>
+    <div class="card"><span class="eyebrow">Step 04</span><h3>Block normalization</h3>
+      <p>Group 2×2 cells, normalize with L2-Hys, and slide the block <b>one cell at a time</b>. → <b>illumination and contrast invariance</b>. Each cell appears several times, each time normalized differently.</p></div>
+    <div class="card"><span class="eyebrow">Step 05</span><h3>Concatenate the descriptor</h3>
+      <p>Concatenate every block vector into one 1-D vector: <b>3780 dimensions</b> for a 64×128 window.</p></div>
+    <div class="card"><span class="eyebrow">Step 06</span><h3>Linear SVM + sliding window</h3>
+      <p>Scan windows over several scales, compute w·x+b, remove duplicates with NMS. Being linear, each window costs <b>one dot product</b> — the secret to its speed.</p></div>
+  </div>
+
+  <div class="sectionhead">
+    <span class="eyebrow">Defaults from the original paper</span>
+    <h2>Why 8×8, 9 bins, 2×2?</h2>
+    <p>These values were chosen experimentally for pedestrian detection (INRIA). A different object class may need different numbers.</p>
+  </div>
+  <div class="card scrollx">
+    <table class="spec">
+      <thead><tr><th>Parameter</th><th>Default</th><th>What happens if you change it</th></tr></thead>
+      <tbody>
+        <tr><td class="k">detection window</td><td class="v">64 × 128</td><td>Includes a 16px margin around the person. Removing the margin hurts performance.</td></tr>
+        <tr><td class="k">cell</td><td class="v">8 × 8 px</td><td>Larger → fewer dims and less compute, but fine contours are lost. Smaller → sensitive to noise.</td></tr>
+        <tr><td class="k">orientation bins</td><td class="v">9 (unsigned)</td><td>Little gain beyond 9. Clothing can be lighter or darker than the background, so <b>unsigned</b> works better.</td></tr>
+        <tr><td class="k">block</td><td class="v">2 × 2 cells</td><td>Size of the normalization neighborhood. Too large dilutes local contrast.</td></tr>
+        <tr><td class="k">block stride</td><td class="v">8 px (50% overlap)</td><td>Removing overlap drops performance noticeably. Redundancy is robustness.</td></tr>
+        <tr><td class="k">normalization</td><td class="v">L2-Hys</td><td>L2, clip at 0.2, renormalize. L1-sqrt is similar; plain L1 is slightly worse.</td></tr>
+        <tr><td class="k">descriptor dim</td><td class="v">3780</td><td>7×15 blocks × 4 cells × 9 bins.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="sectionhead">
+    <span class="eyebrow">Frequently asked</span>
+    <h2>Common points of confusion</h2>
+  </div>
+  <div class="cardgrid">
+    <div class="card"><span class="tag">Q</span><h3 style="margin-top:8px">How is it different from SIFT?</h3>
+      <p>Both are orientation histograms, but SIFT is a <b>sparse</b> descriptor computed at <b>detected keypoints</b> and rotated to a dominant orientation,
+        while HOG covers the whole window <b>densely</b> with no rotation alignment. People are mostly upright, so rotation invariance isn't needed.</p></div>
+    <div class="card"><span class="tag">Q</span><h3 style="margin-top:8px">Why have both cells and blocks?</h3>
+      <p>Cells set the <b>spatial resolution</b>; blocks set the <b>normalization neighborhood</b>. Because blocks overlap, one cell's histogram
+        shows up several times in the descriptor, each time normalized at a different scale.</p></div>
+    <div class="card"><span class="tag">Q</span><h3 style="margin-top:8px">Why do the lines follow edges, not gradients?</h3>
+      <p>The gradient θ points where brightness changes fastest, i.e. <b>perpendicular to the edge</b>. Visualizations draw θ+90° so the lines read as contours.</p></div>
+    <div class="card"><span class="tag">Q</span><h3 style="margin-top:8px">Why isn't it used much today?</h3>
+      <p>CNNs learn the features themselves and overtook it in accuracy. But HOG's ingredients — local statistics, overlapping normalization, sliding windows —
+        live on in modern detectors, which makes it worth learning as <b>the prototype of the ideas</b>.</p></div>
+  </div>
+</section>
+
+</main>
+<script>
+"use strict";
+/* ============================================================
+   0. Utilities
+   ============================================================ */
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const clamp = (v,a,b)=> v<a?a:(v>b?b:v);
+const fmt = (v,d=2)=> v.toFixed(d);
+
+function hsl2rgb(h,s,l){
+  h=((h%360)+360)%360/360;
+  const f=(n)=>{const k=(n+h*12)%12; const a=s*Math.min(l,1-l);
+    return l-a*Math.max(-1,Math.min(k-3,Math.min(9-k,1)));};
+  return [Math.round(f(0)*255),Math.round(f(8)*255),Math.round(f(4)*255)];
+}
+function oriColor(angleDeg, signed){
+  const hue = signed ? angleDeg : angleDeg*2;
+  return hsl2rgb(hue, 0.95, 0.55);
+}
+function fitCanvas(cv, w, h, scale){
+  cv.width=w*scale; cv.height=h*scale;
+  cv.style.width=(w*scale)+'px';
+  const ctx=cv.getContext('2d'); ctx.imageSmoothingEnabled=false;
+  ctx.setTransform(scale,0,0,scale,0,0);
+  return ctx;
+}
+function cssVar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+
+/* ============================================================
+   1. HOG core
+   ============================================================ */
+function toGray(rgba,w,h,gamma){
+  const g=new Float32Array(w*h);
+  for(let i=0,p=0;i<w*h;i++,p+=4){
+    const v=(0.299*rgba[p]+0.587*rgba[p+1]+0.114*rgba[p+2])/255;
+    g[i]= gamma? Math.sqrt(v) : v;
+  }
+  return g;
+}
+function gradients(g,w,h,signed){
+  const gx=new Float32Array(w*h), gy=new Float32Array(w*h);
+  const mag=new Float32Array(w*h), ang=new Float32Array(w*h);
+  for(let y=0;y<h;y++){
+    for(let x=0;x<w;x++){
+      const i=y*w+x;
+      const dx=(x<w-1?g[i+1]:g[i])-(x>0?g[i-1]:g[i]);
+      const dy=(y<h-1?g[i+w]:g[i])-(y>0?g[i-w]:g[i]);
+      gx[i]=dx; gy[i]=dy;
+      mag[i]=Math.sqrt(dx*dx+dy*dy);
+      let a=Math.atan2(dy,dx)*57.29577951308232;
+      if(a<0)a+=360;
+      ang[i]= signed? a : (a>=180? a-180 : a);
+    }
+  }
+  return {gx,gy,mag,ang};
+}
+/* Cell histograms: linear split between the two nearest bins (orientation interpolation) */
+function cellHistograms(mag,ang,w,h,cell,bins,signed){
+  const cw=Math.max(1,Math.floor(w/cell)), ch=Math.max(1,Math.floor(h/cell));
+  const range=signed?360:180, bwid=range/bins;
+  const hist=new Float32Array(cw*ch*bins);
+  for(let cy=0;cy<ch;cy++){
+    for(let cx=0;cx<cw;cx++){
+      const base=(cy*cw+cx)*bins;
+      const y1=(cy+1)*cell, x1=(cx+1)*cell;
+      for(let y=cy*cell;y<y1;y++){
+        for(let x=cx*cell;x<x1;x++){
+          const i=y*w+x, m=mag[i];
+          if(m<=1e-7) continue;
+          const f=ang[i]/bwid-0.5;
+          let b0=Math.floor(f); const t=f-b0;
+          let b1=b0+1;
+          b0=((b0%bins)+bins)%bins; b1=((b1%bins)+bins)%bins;
+          hist[base+b0]+=m*(1-t); hist[base+b1]+=m*t;
+        }
+      }
+    }
+  }
+  return {hist,cw,ch,bins,cell,signed};
+}
+/* Block normalization: blocks slide one cell at a time.
+   epsF = flat-block suppression factor. ε is proportional to the image's mean block norm, so
+   when brightness is scaled by a constant, ε scales by the same factor and invariance is preserved. */
+function normalizeBlocks(H,norm,bs,epsF){
+  const {hist,cw,ch,bins}=H;
+  const bw=Math.max(0,cw-bs+1), bh=Math.max(0,ch-bs+1);
+  const per=bs*bs*bins, nb=bw*bh;
+  const desc=new Float32Array(Math.max(0,nb*per));
+  const sq=new Float32Array(Math.max(1,nb));
+  let sumN=0;
+  for(let by=0;by<bh;by++){
+    for(let bx=0;bx<bw;bx++){
+      const bi=by*bw+bx, off=bi*per; let k=0, ss=0;
+      for(let dy=0;dy<bs;dy++)for(let dx=0;dx<bs;dx++){
+        const cb=((by+dy)*cw+(bx+dx))*bins;
+        for(let b=0;b<bins;b++){ const v=hist[cb+b]; desc[off+(k++)]=v; ss+=v*v; }
+      }
+      sq[bi]=ss; sumN+=Math.sqrt(ss);
+    }
+  }
+  if(norm==='none') return {desc,bw,bh,per,bs,bins};
+  const f=(epsF===undefined?0:epsF);
+  const eps=f*(sumN/Math.max(1,nb))+1e-6;      // absolute scale
+  const eps2=f+1e-6;                            // scale after the first pass (≈ unit norm)
+  for(let bi=0;bi<nb;bi++){
+    const off=bi*per;
+    let n=Math.sqrt(sq[bi]+eps*eps);
+    for(let j=0;j<per;j++) desc[off+j]/=n;
+    if(norm==='l2hys'){
+      let s2=0;
+      for(let j=0;j<per;j++){ if(desc[off+j]>0.2) desc[off+j]=0.2; s2+=desc[off+j]*desc[off+j]; }
+      n=Math.sqrt(s2+eps2*eps2);
+      for(let j=0;j<per;j++) desc[off+j]/=n;
+    }
+  }
+  return {desc,bw,bh,per,bs,bins};
+}
+/* For display: average normalized blocks back onto cells */
+function cellsFromBlocks(B,H){
+  const {cw,ch,bins}=H, {desc,bw,bh,per,bs}=B;
+  const out=new Float32Array(cw*ch*bins), cnt=new Float32Array(cw*ch);
+  for(let by=0;by<bh;by++)for(let bx=0;bx<bw;bx++){
+    const off=(by*bw+bx)*per; let k=0;
+    for(let dy=0;dy<bs;dy++)for(let dx=0;dx<bs;dx++){
+      const ci=(by+dy)*cw+(bx+dx);
+      for(let b=0;b<bins;b++) out[ci*bins+b]+=desc[off+(k++)];
+      cnt[ci]++;
+    }
+  }
+  for(let i=0;i<cw*ch;i++){ const c=cnt[i]||1; for(let b=0;b<bins;b++) out[i*bins+b]/=c; }
+  return out;
+}
+function relDiff(a,b){
+  let d=0,na=0; const n=Math.min(a.length,b.length);
+  for(let i=0;i<n;i++){ const t=a[i]-b[i]; d+=t*t; na+=a[i]*a[i]; }
+  return Math.sqrt(d)/(Math.sqrt(na)+1e-12);
+}
+function cosine(a,b){
+  let d=0,na=0,nb=0;
+  const n=Math.min(a.length,b.length);
+  for(let i=0;i<n;i++){ d+=a[i]*b[i]; na+=a[i]*a[i]; nb+=b[i]*b[i]; }
+  return d/(Math.sqrt(na)*Math.sqrt(nb)+1e-12);
+}
+
+/* ============================================================
+   2. Rose ("star") plot — the iconic HOG picture
+   ============================================================ */
+function drawStars(ctx, cells, cw, ch, bins, signed, cellPx, gain, opts){
+  opts=opts||{};
+  const range=signed?360:180;
+  let max=1e-9;
+  for(let i=0;i<cells.length;i++) if(cells[i]>max) max=cells[i];
+  const R=cellPx*0.5;
+  ctx.lineCap='round';
+  for(let cy=0;cy<ch;cy++){
+    for(let cx=0;cx<cw;cx++){
+      const ox=cx*cellPx+cellPx/2, oy=cy*cellPx+cellPx/2;
+      const base=(cy*cw+cx)*bins;
+      for(let b=0;b<bins;b++){
+        let v=cells[base+b]/max*gain;
+        if(v<=0.02) continue;
+        v=Math.min(v,1.25);
+        const theta=(b+0.5)*range/bins;         // gradient direction
+        const edge=(theta+90)*Math.PI/180;      // edge direction = perpendicular
+        const dx=Math.cos(edge)*R*v, dy=Math.sin(edge)*R*v;
+        ctx.globalAlpha=clamp(v*0.95,0.06,1);
+        if(opts.colored){
+          const c=oriColor(theta,signed);
+          ctx.strokeStyle='rgb('+c[0]+','+c[1]+','+c[2]+')';
+        } else {
+          ctx.strokeStyle= opts.stroke || 'rgb(255,238,208)';
+        }
+        ctx.lineWidth=Math.max(0.7,cellPx*0.085);
+        ctx.beginPath();
+        if(signed){ ctx.moveTo(ox,oy); ctx.lineTo(ox+dx,oy+dy); }
+        else { ctx.moveTo(ox-dx,oy-dy); ctx.lineTo(ox+dx,oy+dy); }
+        ctx.stroke();
+      }
+    }
+  }
+  ctx.globalAlpha=1;
+}
+function drawCellGrid(ctx,cw,ch,cellPx,color){
+  ctx.save();
+  ctx.strokeStyle=color||'rgba(120,135,160,.30)'; ctx.lineWidth=0.6;
+  ctx.beginPath();
+  for(let x=0;x<=cw;x++){ ctx.moveTo(x*cellPx+.5,0); ctx.lineTo(x*cellPx+.5,ch*cellPx); }
+  for(let y=0;y<=ch;y++){ ctx.moveTo(0,y*cellPx+.5); ctx.lineTo(cw*cellPx,y*cellPx+.5); }
+  ctx.stroke(); ctx.restore();
+}
+
+/* ============================================================
+   3. Sample images (synthetic + embedded photo)
+   ============================================================ */
+const SNU_B64="data:image/jpeg;base64,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";
+
+function rnd(a,b){ return a+Math.random()*(b-a); }
+function drawPerson(ctx, cx, footY, H, o){
+  o=o||{};
+  const u=H/8, col=o.color||'#20242c';
+  const swing=o.swing===undefined? rnd(-0.35,0.35):o.swing;
+  const arm=o.arm===undefined? rnd(-0.5,0.5):o.arm;
+  const thick=o.thick||1;
+  ctx.save();
+  ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineCap='round'; ctx.lineJoin='round';
+  const hipY=footY-3.2*u, shoY=footY-6.4*u;
+  // legs
+  ctx.lineWidth=0.62*u*thick;
+  ctx.beginPath();
+  ctx.moveTo(cx-0.18*u,hipY); ctx.lineTo(cx-0.18*u+Math.sin(swing)*1.5*u, footY);
+  ctx.moveTo(cx+0.18*u,hipY); ctx.lineTo(cx+0.18*u-Math.sin(swing)*1.5*u, footY);
+  ctx.stroke();
+  // torso
+  ctx.beginPath();
+  ctx.moveTo(cx-0.95*u*thick, shoY); ctx.lineTo(cx+0.95*u*thick, shoY);
+  ctx.lineTo(cx+0.70*u*thick, hipY+0.2*u); ctx.lineTo(cx-0.70*u*thick, hipY+0.2*u);
+  ctx.closePath(); ctx.fill();
+  // arms
+  ctx.lineWidth=0.38*u*thick;
+  ctx.beginPath();
+  ctx.moveTo(cx-0.85*u*thick, shoY+0.2*u); ctx.lineTo(cx-0.95*u*thick+Math.sin(arm)*0.9*u, hipY+0.6*u);
+  ctx.moveTo(cx+0.85*u*thick, shoY+0.2*u); ctx.lineTo(cx+0.95*u*thick-Math.sin(arm)*0.9*u, hipY+0.6*u);
+  ctx.stroke();
+  // head + neck
+  ctx.lineWidth=0.34*u;
+  ctx.beginPath(); ctx.moveTo(cx,shoY); ctx.lineTo(cx,shoY-0.35*u); ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, shoY-0.95*u, 0.60*u, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+function noiseOver(ctx,w,h,amt){
+  if(amt<=0) return;
+  const img=ctx.getImageData(0,0,w,h), d=img.data;
+  for(let i=0;i<d.length;i+=4){
+    const n=(Math.random()+Math.random()+Math.random()-1.5)*amt;
+    d[i]=clamp(d[i]+n,0,255); d[i+1]=clamp(d[i+1]+n,0,255); d[i+2]=clamp(d[i+2]+n,0,255);
+  }
+  ctx.putImageData(img,0,0);
+}
+function makePersonSample(w,h){
+  const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+  const ctx=cv.getContext('2d');
+  const g=ctx.createLinearGradient(0,0,0,h);
+  g.addColorStop(0,'#c9cfd8'); g.addColorStop(1,'#8e97a4');
+  ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
+  ctx.fillStyle='rgba(255,255,255,.30)'; ctx.fillRect(0,h*0.72,w,2);
+  ctx.fillStyle='rgba(60,70,85,.18)';
+  ctx.fillRect(w*0.06,h*0.30,w*0.10,h*0.42);
+  drawPerson(ctx, w*0.52, h*0.93, h*0.74, {color:'#1b1f27', swing:0.30, arm:0.35});
+  noiseOver(ctx,w,h,5);
+  return cv;
+}
+function makeShapesSample(w,h){
+  const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+  const ctx=cv.getContext('2d');
+  ctx.fillStyle='#b9c0ca'; ctx.fillRect(0,0,w,h);
+  ctx.fillStyle='#22262e'; ctx.beginPath(); ctx.arc(w*0.28,h*0.28,w*0.16,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#f2f4f7'; ctx.fillRect(w*0.56,h*0.12,w*0.30,h*0.30);
+  ctx.fillStyle='#2f3a4d'; ctx.beginPath();
+  ctx.moveTo(w*0.72,h*0.55); ctx.lineTo(w*0.92,h*0.90); ctx.lineTo(w*0.52,h*0.90); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle='#1c2128'; ctx.lineWidth=Math.max(2,w*0.012);
+  for(let i=0;i<7;i++){ ctx.beginPath();
+    ctx.moveTo(w*0.06, h*0.56+i*h*0.055); ctx.lineTo(w*0.40, h*0.56+i*h*0.055+h*0.03); ctx.stroke(); }
+  noiseOver(ctx,w,h,4);
+  return cv;
+}
+</script>
+<script>
+"use strict";
+/* ============================================================
+   4. Pipeline tab
+   ============================================================ */
+const SCREEN_BG='#090B0F', SCREEN_TXT='#E7EAF0', SCREEN_DIM='#7C879A',
+      SCREEN_LINE='#232934', AMBER='#E6B45C', INDIGO='#8E97FF';
+
+const P={cell:8,bins:9,signed:false,block:2,norm:'l2hys',gamma:false,grid:true,overlay:false,gain:1,epsF:0.8};
+let IMG=null, PIPE=null, HOVER=null;
+const starCells=document.createElement('canvas');
+const starHog=document.createElement('canvas');
+
+function setImageFromCanvas(cv){
+  const MAX=272;
+  let w=cv.width,h=cv.height;
+  const k=Math.min(1,MAX/Math.max(w,h));
+  w=Math.max(32,Math.round(w*k)); h=Math.max(32,Math.round(h*k));
+  const o=document.createElement('canvas'); o.width=w; o.height=h;
+  const c=o.getContext('2d'); c.drawImage(cv,0,0,w,h);
+  IMG={w,h,canvas:o,rgba:c.getImageData(0,0,w,h).data};
+  recompute();
+}
+function dispScale(){ return clamp(Math.floor(300/IMG.w),1,4)||1; }
+function starPx(cw){ return clamp(Math.floor(460/cw),8,30); }
+
+function recompute(){
+  if(!IMG) return;
+  const {w,h,rgba}=IMG;
+  const gray=toGray(rgba,w,h,P.gamma);
+  const G=gradients(gray,w,h,P.signed);
+  const H=cellHistograms(G.mag,G.ang,w,h,P.cell,P.bins,P.signed);
+  const B=normalizeBlocks(H,P.norm,P.block,P.epsF);
+  const cellsN=cellsFromBlocks(B,H);
+  PIPE={gray,G,H,B,cellsN};
+  if(!HOVER || HOVER.cx>=H.cw || HOVER.cy>=H.ch) setHover(Math.floor(H.cw*0.45),Math.floor(H.ch*0.55));
+  else setHover(HOVER.cx,HOVER.cy);
+  renderPipeline();
+  renderDescriptorTab();
+}
+
+function setHover(cx,cy){
+  const bx=clamp(cx-Math.floor((P.block-1)/2),0,Math.max(0,PIPE.B.bw-1));
+  const by=clamp(cy-Math.floor((P.block-1)/2),0,Math.max(0,PIPE.B.bh-1));
+  HOVER={cx,cy,bx,by};
+  $('#inspWhere').textContent='cell ('+cx+', '+cy+')  ·  pixels ('+(cx*P.cell)+'–'+(cx*P.cell+P.cell-1)+
+    ', '+(cy*P.cell)+'–'+(cy*P.cell+P.cell-1)+')';
+}
+function renderPipeline(){
+  const {w,h}=IMG, sc=dispScale(), {gray,G,H,B,cellsN}=PIPE;
+  // 01 original
+  let ctx=fitCanvas($('#cvSrc'),w,h,sc);
+  ctx.drawImage(IMG.canvas,0,0);
+  if(P.grid) drawCellGrid(ctx,Math.floor(w/P.cell),Math.floor(h/P.cell),P.cell,'rgba(230,180,92,.35)');
+  // 02 gray / 03 gx,gy / 04 mag,ori
+  const mk=(id,fn)=>{
+    const c=fitCanvas($('#'+id),w,h,sc);
+    const im=c.createImageData(w,h); const d=im.data;
+    for(let i=0;i<w*h;i++){ const px=fn(i); d[i*4]=px[0]; d[i*4+1]=px[1]; d[i*4+2]=px[2]; d[i*4+3]=255; }
+    const tmp=document.createElement('canvas'); tmp.width=w; tmp.height=h;
+    tmp.getContext('2d').putImageData(im,0,0);
+    c.drawImage(tmp,0,0);
+    return c;
+  };
+  mk('cvGray', i=>{const v=clamp(gray[i]*255,0,255); return [v,v,v];});
+  mk('cvGx', i=>{const v=clamp(128+G.gx[i]*300,0,255); return [v,v,v];});
+  mk('cvGy', i=>{const v=clamp(128+G.gy[i]*300,0,255); return [v,v,v];});
+  let mmax=1e-9; for(let i=0;i<w*h;i++) if(G.mag[i]>mmax) mmax=G.mag[i];
+  mk('cvMag', i=>{const v=clamp(Math.sqrt(G.mag[i]/mmax)*255,0,255); return [v,v,v];});
+  const oc=mk('cvOri', i=>{
+    const m=Math.min(1,G.mag[i]/mmax*2.6);
+    return hsl2rgb(P.signed?G.ang[i]:G.ang[i]*2, 0.20+0.75*m, 0.05+0.50*m);
+  });
+  if(P.grid) drawCellGrid(oc,Math.floor(w/P.cell),Math.floor(h/P.cell),P.cell,'rgba(255,255,255,.12)');
+
+  // 05 / 06 rose plots
+  const cw=H.cw, ch=H.ch, px=starPx(cw);
+  starCells.width=cw*px; starCells.height=ch*px;
+  let s1=starCells.getContext('2d');
+  s1.fillStyle=SCREEN_BG; s1.fillRect(0,0,starCells.width,starCells.height);
+  drawStars(s1,H.hist,cw,ch,P.bins,P.signed,px,P.gain,{});
+  if(P.grid) drawCellGrid(s1,cw,ch,px,'rgba(140,155,180,.16)');
+
+  starHog.width=cw*px; starHog.height=ch*px;
+  let s2=starHog.getContext('2d');
+  s2.fillStyle=SCREEN_BG; s2.fillRect(0,0,starHog.width,starHog.height);
+  if(P.overlay){ s2.globalAlpha=0.45; s2.imageSmoothingEnabled=true;
+    s2.drawImage(IMG.canvas,0,0,starHog.width,starHog.height); s2.globalAlpha=1; }
+  drawStars(s2,cellsN,cw,ch,P.bins,P.signed,px,P.gain,{});
+  if(P.grid) drawCellGrid(s2,cw,ch,px,'rgba(140,155,180,.16)');
+  blitStars();
+
+  // captions / stats
+  $('#capSize').textContent=w+'×'+h+' px';
+  $('#capCells').textContent=cw+'×'+ch+' cells';
+  $('#capBins').textContent=P.bins;
+  $('#capBlocks').textContent=B.bw+'×'+B.bh+' blocks';
+  $('#inspBlockTag').textContent='block = '+P.block+'×'+P.block+' cells';
+  const D=B.bw*B.bh*B.per;
+  $('#pipeStats').innerHTML=[
+    ['Cell grid', H.cw+'×'+H.ch, P.cell+'px per cell'],
+    ['Blocks', B.bw+'×'+B.bh, P.block+'×'+P.block+' cells, stride 1 cell'],
+    ['Dims per block', B.per, P.block+'²×'+P.bins+' bin'],
+    ['Descriptor dims', D.toLocaleString(), 'whole image']
+  ].map(([k,v,s])=>'<div class="stat"><div class="k">'+k+'</div><div class="v">'+v+
+     ' <small>'+s+'</small></div></div>').join('');
+  renderOriLegend();
+  renderInspector();
+}
+function renderOriLegend(){
+  const el=$('#oriLegend'); if(!el) return;
+  const range=P.signed?360:180;
+  let html='';
+  for(let b=0;b<P.bins;b++){
+    const th=(b+0.5)*range/P.bins;
+    const c=oriColor(th,P.signed);
+    html+='<span><span class="swatch" style="background:rgb('+c[0]+','+c[1]+','+c[2]+')"></span>'+Math.round(th)+'°</span>';
+  }
+  el.innerHTML=html;
+}
+function blitStars(){
+  const px=starPx(PIPE.H.cw);
+  [['#cvCells',starCells],['#cvHog',starHog]].forEach(([id,src])=>{
+    const cv=$(id); cv.width=src.width; cv.height=src.height;
+    cv.style.width=src.width+'px';
+    const c=cv.getContext('2d'); c.setTransform(1,0,0,1,0,0);
+    c.drawImage(src,0,0);
+    if(HOVER){
+      const {cx,cy,bx,by}=HOVER;
+      c.strokeStyle='rgba(142,151,255,.9)'; c.lineWidth=1.5;
+      c.strokeRect(bx*px+.5,by*px+.5,P.block*px-1,P.block*px-1);
+      c.strokeStyle=AMBER; c.lineWidth=2;
+      c.strokeRect(cx*px+1,cy*px+1,px-2,px-2);
+    }
+  });
+  // highlight on the original
+  if(HOVER && IMG){
+    const sc=dispScale(), cv=$('#cvSrc'), c=cv.getContext('2d');
+    c.setTransform(sc,0,0,sc,0,0);
+    c.strokeStyle='rgba(142,151,255,.95)'; c.lineWidth=1.2/sc;
+    c.strokeRect(HOVER.bx*P.cell,HOVER.by*P.cell,P.block*P.cell,P.block*P.cell);
+    c.strokeStyle=AMBER; c.lineWidth=1.6/sc;
+    c.strokeRect(HOVER.cx*P.cell,HOVER.cy*P.cell,P.cell,P.cell);
+  }
+}
+
+/* ---------- Cell inspector ---------- */
+function renderInspector(){
+  const zc=$('#cvZoom').getContext('2d'), hc=$('#cvHist').getContext('2d'), bc=$('#cvBlock').getContext('2d');
+  [zc,hc,bc].forEach(c=>{ c.setTransform(1,0,0,1,0,0);
+    c.fillStyle=SCREEN_BG; c.fillRect(0,0,230,230); });
+  if(!HOVER || !PIPE){
+    [zc,hc,bc].forEach(c=>{ c.fillStyle=SCREEN_DIM; c.font='12px "IBM Plex Mono", monospace';
+      c.textAlign='center'; c.fillText('Hover a cell to see it here',115,118); });
+    return;
+  }
+  const {cx,cy,bx,by}=HOVER, {G,H,B}=PIPE, {w}=IMG, cell=P.cell;
+  const range=P.signed?360:180;
+
+  /* A. Zoomed cell + gradient arrows */
+  const ps=230/cell;
+  let cmax=1e-9;
+  for(let y=0;y<cell;y++)for(let x=0;x<cell;x++){
+    const i=(cy*cell+y)*w+(cx*cell+x); if(G.mag[i]>cmax) cmax=G.mag[i];
+  }
+  for(let y=0;y<cell;y++)for(let x=0;x<cell;x++){
+    const i=(cy*cell+y)*w+(cx*cell+x);
+    const v=clamp(PIPE.gray[i]*255,0,255);
+    zc.fillStyle='rgb('+v+','+v+','+v+')';
+    zc.fillRect(x*ps,y*ps,ps+0.5,ps+0.5);
+  }
+  zc.lineCap='round';
+  for(let y=0;y<cell;y++)for(let x=0;x<cell;x++){
+    const i=(cy*cell+y)*w+(cx*cell+x);
+    const m=G.mag[i]/cmax; if(m<0.06) continue;
+    const a=Math.atan2(G.gy[i],G.gx[i]);
+    const L=ps*0.46*Math.min(1,m*1.25);
+    const ox=x*ps+ps/2, oy=y*ps+ps/2;
+    const col=oriColor(P.signed?G.ang[i]:G.ang[i],P.signed);
+    zc.strokeStyle='rgb('+col[0]+','+col[1]+','+col[2]+')';
+    zc.lineWidth=Math.max(1,ps*0.10);
+    zc.beginPath(); zc.moveTo(ox-Math.cos(a)*L,oy-Math.sin(a)*L); zc.lineTo(ox+Math.cos(a)*L,oy+Math.sin(a)*L); zc.stroke();
+    zc.fillStyle=zc.strokeStyle;
+    zc.beginPath(); zc.arc(ox+Math.cos(a)*L,oy+Math.sin(a)*L,Math.max(1.1,ps*0.10),0,6.29); zc.fill();
+  }
+  zc.strokeStyle='rgba(230,180,92,.8)'; zc.lineWidth=1.5; zc.strokeRect(0.75,0.75,228.5,228.5);
+
+  /* B. Orientation histogram */
+  const base=(cy*H.cw+cx)*P.bins;
+  let hmax=1e-9; for(let b=0;b<P.bins;b++) hmax=Math.max(hmax,H.hist[base+b]);
+  const L0=30,R0=8,T0=14,B0=28, gw=230-L0-R0, gh=230-T0-B0;
+  hc.strokeStyle=SCREEN_LINE; hc.lineWidth=1;
+  hc.beginPath();
+  for(let t=0;t<=4;t++){ const y=T0+gh*t/4; hc.moveTo(L0,y+.5); hc.lineTo(230-R0,y+.5); }
+  hc.stroke();
+  const bwid=gw/P.bins;
+  for(let b=0;b<P.bins;b++){
+    const v=H.hist[base+b]/hmax, hgt=gh*v;
+    const th=(b+0.5)*range/P.bins, c=oriColor(th,P.signed);
+    hc.fillStyle='rgb('+c[0]+','+c[1]+','+c[2]+')';
+    hc.fillRect(L0+b*bwid+1.5, T0+gh-hgt, bwid-3, hgt);
+  }
+  hc.fillStyle=SCREEN_DIM; hc.font='9px "IBM Plex Mono", monospace'; hc.textAlign='center';
+  for(let b=0;b<P.bins;b+=Math.ceil(P.bins/5)){
+    hc.fillText(Math.round((b+0.5)*range/P.bins)+'°', L0+b*bwid+bwid/2, 230-14);
+  }
+  hc.textAlign='left'; hc.fillText('θ (gradient direction)', L0, 230-3);
+  hc.textAlign='right'; hc.fillStyle=SCREEN_TXT;
+  hc.fillText('max '+fmt(hmax,1), 230-R0, T0-4);
+
+  /* C. Block vector before/after normalization */
+  const per=B.per, bins=P.bins, bs=P.block;
+  const raw=new Float32Array(per); let k=0;
+  for(let dy=0;dy<bs;dy++)for(let dx=0;dx<bs;dx++){
+    const cb=((by+dy)*H.cw+(bx+dx))*bins;
+    for(let b=0;b<bins;b++) raw[k++]=H.hist[cb+b];
+  }
+  const off=(by*B.bw+bx)*per;
+  const nrm=B.desc.subarray(off,off+per);
+  const panel=(yTop,hgt,arr,label,color)=>{
+    let mx=1e-9; for(let i=0;i<arr.length;i++) mx=Math.max(mx,arr[i]);
+    bc.fillStyle=SCREEN_DIM; bc.font='9px "IBM Plex Mono", monospace'; bc.textAlign='left';
+    bc.fillText(label,6,yTop-4);
+    bc.textAlign='right'; bc.fillText(fmt(mx,2),224,yTop-4);
+    const w0=(230-12)/per;
+    for(let i=0;i<per;i++){
+      const v=arr[i]/mx*hgt;
+      bc.fillStyle=color;
+      bc.fillRect(6+i*w0, yTop+hgt-v, Math.max(1,w0-0.6), v);
+    }
+    bc.strokeStyle=SCREEN_LINE; bc.lineWidth=1;
+    bc.beginPath(); bc.moveTo(6,yTop+hgt+.5); bc.lineTo(224,yTop+hgt+.5); bc.stroke();
+    bc.strokeStyle='rgba(142,151,255,.35)';
+    bc.beginPath();
+    for(let c2=1;c2<bs*bs;c2++){ const x=6+c2*bins*w0; bc.moveTo(x,yTop); bc.lineTo(x,yTop+hgt); }
+    bc.stroke();
+  };
+  panel(26,72,raw,'before (concat of '+(bs*bs)+' cells)',AMBER);
+  panel(140,72,nrm,'after · '+P.norm.toUpperCase(),INDIGO);
+  bc.fillStyle=SCREEN_DIM; bc.font='9px "IBM Plex Mono", monospace'; bc.textAlign='center';
+  bc.fillText('block ('+bx+','+by+')  ·  '+per+' dim', 115, 228);
+}
+
+/* ---------- Mouse ---------- */
+function hoverFromEvent(e, unit){
+  const r=e.currentTarget.getBoundingClientRect();
+  const x=(e.clientX-r.left)/r.width*e.currentTarget.width;
+  const y=(e.clientY-r.top)/r.height*e.currentTarget.height;
+  setHover(clamp(Math.floor(x/unit),0,PIPE.H.cw-1), clamp(Math.floor(y/unit),0,PIPE.H.ch-1));
+}
+let hoverRAF=null;
+function scheduleHover(){
+  if(hoverRAF) return;
+  hoverRAF=requestAnimationFrame(()=>{ hoverRAF=null;
+    const sc=dispScale(), ctx=fitCanvas($('#cvSrc'),IMG.w,IMG.h,sc);
+    ctx.drawImage(IMG.canvas,0,0);
+    if(P.grid) drawCellGrid(ctx,PIPE.H.cw,PIPE.H.ch,P.cell,'rgba(230,180,92,.35)');
+    blitStars(); renderInspector();
+  });
+}
+function bindHover(){
+  $('#cvSrc').addEventListener('mousemove',e=>{ if(!PIPE)return; hoverFromEvent(e,P.cell*dispScale()); scheduleHover(); });
+  ['#cvCells','#cvHog'].forEach(id=>{
+    $(id).addEventListener('mousemove',e=>{ if(!PIPE)return; hoverFromEvent(e,starPx(PIPE.H.cw)); scheduleHover(); });
+  });
+}
+</script>
+<script>
+"use strict";
+/* ============================================================
+   5. Descriptor tab
+   ============================================================ */
+const PERT={bright:40,contrast:0.45,vignette:0,noise:0};
+
+function perturb(){
+  const {w,h,rgba}=IMG;
+  const out=new Uint8ClampedArray(rgba.length);
+  const cxp=w/2, cyp=h/2, R=Math.sqrt(cxp*cxp+cyp*cyp);
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    const i=(y*w+x)*4;
+    const d=Math.sqrt((x-cxp)*(x-cxp)+(y-cyp)*(y-cyp))/R;
+    const vig=1-PERT.vignette*d*d;
+    const n=PERT.noise? (Math.random()+Math.random()+Math.random()-1.5)*PERT.noise : 0;
+    for(let c=0;c<3;c++){
+      let v=rgba[i+c];
+      v=(v-128)*PERT.contrast+128+PERT.bright;
+      out[i+c]=clamp(v*vig+n,0,255);
+    }
+    out[i+3]=255;
+  }
+  return out;
+}
+function hogOf(rgba,w,h){
+  const gray=toGray(rgba,w,h,P.gamma);
+  const G=gradients(gray,w,h,P.signed);
+  const H=cellHistograms(G.mag,G.ang,w,h,P.cell,P.bins,P.signed);
+  const B=normalizeBlocks(H,P.norm,P.block,P.epsF);
+  return {gray,H,B,cells:cellsFromBlocks(B,H)};
+}
+function drawVector(cv,desc,per,showSep){
+  const W=Math.min(920,Math.max(560,desc.length));
+  const Hh=176, top=24, bot=26, gh=Hh-top-bot, pad=10;
+  cv.width=W; cv.height=Hh; cv.style.width='100%';
+  const c=cv.getContext('2d'); c.setTransform(1,0,0,1,0,0);
+  c.fillStyle=SCREEN_BG; c.fillRect(0,0,W,Hh);
+  const D=desc.length, gw=W-pad*2;
+  let mx=1e-9; for(let i=0;i<D;i++) mx=Math.max(mx,desc[i]);
+  const cols=Math.min(D,gw), bucket=Math.max(1,Math.ceil(D/cols)), nC=Math.ceil(D/bucket), cwid=gw/nC;
+  for(let x=0;x<nC;x++){
+    let vmax=0, vsum=0, n=0;
+    for(let j=0;j<bucket;j++){ const i=x*bucket+j; if(i<D){ vmax=Math.max(vmax,desc[i]); vsum+=desc[i]; n++; } }
+    const X=pad+x*cwid, Wd=Math.max(0.8,cwid-0.25);
+    c.fillStyle='rgba(230,180,92,.32)';
+    c.fillRect(X, top+gh-vmax/mx*gh, Wd, vmax/mx*gh);
+    if(bucket>1){ const m=vsum/n; c.fillStyle=AMBER; c.fillRect(X, top+gh-m/mx*gh, Wd, m/mx*gh); }
+  }
+  if(showSep && D/per<=200){
+    c.strokeStyle='rgba(142,151,255,.30)'; c.lineWidth=1; c.beginPath();
+    for(let b=1;b<D/per;b++){ const x=pad+(b*per/bucket)*cwid; c.moveTo(x,top); c.lineTo(x,top+gh); }
+    c.stroke();
+  }
+  c.strokeStyle=SCREEN_LINE; c.lineWidth=1; c.beginPath();
+  c.moveTo(pad,top+gh+.5); c.lineTo(W-pad,top+gh+.5); c.stroke();
+  c.font='10px "IBM Plex Mono", monospace';
+  c.textAlign='left';  c.fillStyle=SCREEN_TXT; c.fillText('max '+fmt(mx,3),pad,14);
+  c.textAlign='right'; c.fillStyle=SCREEN_DIM;
+  c.fillText(bucket>1? ('1 column = '+bucket+' dims (light = max · dark = mean)') : '1 column = 1 dim', W-pad,14);
+  c.textAlign='left';  c.fillText('dim 0',pad,Hh-8);
+  c.textAlign='right'; c.fillText('dim '+(D-1),W-pad,Hh-8);
+  c.textAlign='left';
+}
+function starCanvasFor(cv,res,px){
+  const cw=res.H.cw, ch=res.H.ch;
+  cv.width=cw*px; cv.height=ch*px; cv.style.width=(cw*px)+'px';
+  const c=cv.getContext('2d'); c.setTransform(1,0,0,1,0,0);
+  c.fillStyle=SCREEN_BG; c.fillRect(0,0,cv.width,cv.height);
+  drawStars(c,res.cells,cw,ch,P.bins,P.signed,px,P.gain,{});
+}
+function drawSim(cv,pairs){
+  const W=Math.min(880,760), Hh=26+pairs.length*46;
+  cv.width=W; cv.height=Hh; cv.style.width='100%';
+  const c=cv.getContext('2d'); c.setTransform(1,0,0,1,0,0);
+  c.clearRect(0,0,W,Hh);
+  const L=190, R=70, gw=W-L-R;
+  pairs.forEach((p,i)=>{
+    const y=18+i*46;
+    c.fillStyle=cssVar('--text'); c.font='500 13px "IBM Plex Sans", sans-serif';
+    c.textAlign='right'; c.fillText(p.label,L-14,y+16);
+    c.fillStyle=cssVar('--line-soft'); c.fillRect(L,y,gw,20);
+    const v=clamp(p.value,0,1);
+    c.fillStyle=p.color; c.fillRect(L,y,gw*v,20);
+    c.strokeStyle=cssVar('--line'); c.lineWidth=1;
+    c.beginPath(); c.moveTo(L+gw*0.5+.5,y-3); c.lineTo(L+gw*0.5+.5,y+23); c.stroke();
+    c.fillStyle=cssVar('--text'); c.font='500 14px "IBM Plex Mono", monospace';
+    c.textAlign='left'; c.fillText(fmt(p.value,3),L+gw+12,y+15);
+    c.fillStyle=cssVar('--muted'); c.font='11px "IBM Plex Mono", monospace';
+    if(i===pairs.length-1){
+      c.textAlign='center'; c.fillText('0.5',L+gw*0.5,y+36);
+      c.textAlign='left';  c.fillText('0 · identical',L,y+36);
+      c.textAlign='right'; c.fillText('≥ 1.0 · completely different',L+gw,y+36);
+    }
+  });
+}
+function renderDescriptorTab(){
+  if(!PIPE||!IMG) return;
+  const {H,B}=PIPE;
+  const D=B.bw*B.bh*B.per;
+  // numbers for the standard 64×128 window
+  const wc=Math.floor(64/P.cell), hc=Math.floor(128/P.cell);
+  const wb=Math.max(0,wc-P.block+1), hb=Math.max(0,hc-P.block+1);
+  const Dstd=wb*hb*P.block*P.block*P.bins;
+  $('#dimStats').innerHTML=[
+    ['Current image', IMG.w+'×'+IMG.h, 'px'],
+    ['Blocks', B.bw+'×'+B.bh, '= '+(B.bw*B.bh)],
+    ['Current dim D', D.toLocaleString(), ''],
+    ['For a 64×128 window', Dstd.toLocaleString(), 'dims']
+  ].map(([k,v,s])=>'<div class="stat"><div class="k">'+k+'</div><div class="v">'+v+' <small>'+s+'</small></div></div>').join('');
+  $('#dimFormula').innerHTML=
+    'D = (blocks_x × blocks_y) × (cells / block) × bins<br>'+
+    '&nbsp;&nbsp;= ('+B.bw+' × '+B.bh+') × '+(P.block*P.block)+' × '+P.bins+' = <b>'+D.toLocaleString()+'</b><br>'+
+    '<span style="opacity:.7">standard setup (64×128 window, 8px cells, 2×2 blocks, 9 bins) → 7 × 15 × 4 × 9 = 3,780</span>';
+  $('#capVec').textContent=D.toLocaleString()+' dim · '+P.norm.toUpperCase();
+  drawVector($('#cvVec'),B.desc,B.per,$('#optSortless').checked);
+
+  // illumination-invariance comparison
+  const pr=perturb();
+  const resB=hogOf(pr,IMG.w,IMG.h);
+  const resA={H:PIPE.H,B:PIPE.B,cells:PIPE.cellsN,gray:PIPE.gray};
+  const sc=dispScale();
+  let ca=fitCanvas($('#cvOrigA'),IMG.w,IMG.h,sc); ca.drawImage(IMG.canvas,0,0);
+  let cb=fitCanvas($('#cvOrigB'),IMG.w,IMG.h,sc);
+  const tmp=document.createElement('canvas'); tmp.width=IMG.w; tmp.height=IMG.h;
+  tmp.getContext('2d').putImageData(new ImageData(pr,IMG.w,IMG.h),0,0);
+  cb.drawImage(tmp,0,0);
+  const px=starPx(H.cw);
+  starCanvasFor($('#cvHogA'),resA,px);
+  starCanvasFor($('#cvHogB'),resB,px);
+  const grayB=toGray(pr,IMG.w,IMG.h,P.gamma);
+  const dPix=relDiff(PIPE.gray,grayB),
+        dHist=relDiff(PIPE.H.hist,resB.H.hist),
+        dHog=relDiff(PIPE.B.desc,resB.B.desc);
+  const tone=v=> v<0.15? cssVar('--hit') : (v>0.40? cssVar('--miss') : cssVar('--amber'));
+  drawSim($('#cvSim'),[
+    {label:'Raw pixels (gray)',         value:dPix,  color:tone(dPix)},
+    {label:'Cell histograms (raw)',    value:dHist, color:tone(dHist)},
+    {label:'HOG (block-normalized)',   value:dHog,  color:tone(dHog)}
+  ]);
+  $('#capPert').textContent='gain '+fmt(PERT.contrast,2)+' · offset '+(PERT.bright>0?'+':'')+PERT.bright+
+    (PERT.vignette>0? ' · vignette '+fmt(PERT.vignette,1):'');
+}
+</script>
+<script>
+"use strict";
+/* ============================================================
+   6. Detection tab — 64×128 window · logistic regression · sliding window · NMS
+   ============================================================ */
+const WIN_W=64, WIN_H=128, DCELL=8, DBINS=9, DBS=2;
+const WCX=WIN_W/DCELL, WCY=WIN_H/DCELL;          // 8 × 16 cells
+const BPX=WCX-DBS+1, BPY=WCY-DBS+1;              // 7 × 15 blocks
+const BPER=DBS*DBS*DBINS;                        // 36
+const DDIM=BPX*BPY*BPER;                         // 3780
+const DET={w:null,b:0,pos:[],neg:[],scene:null,boxes:[],raw:[],acc:0,busy:false,ready:false};
+const tick=()=>new Promise(r=>setTimeout(r,0));
+function log(s){ $('#detLog').textContent=s; }
+
+/* ---- Iterate blocks: pass each normalized 36-d vector to a callback ---- */
+function forEachBlock(Hc,c0x,c0y,buf,cb){
+  for(let by=0;by<BPY;by++){
+    for(let bx=0;bx<BPX;bx++){
+      let k=0, s=0;
+      for(let dy=0;dy<DBS;dy++)for(let dx=0;dx<DBS;dx++){
+        const cb0=((c0y+by+dy)*Hc.cw+(c0x+bx+dx))*DBINS;
+        for(let b=0;b<DBINS;b++){ const v=Hc.hist[cb0+b]; buf[k++]=v; s+=v*v; }
+      }
+      let n=Math.sqrt(s)+1e-5, s2=0;
+      for(let j=0;j<BPER;j++){ let v=buf[j]/n; if(v>0.2)v=0.2; buf[j]=v; s2+=v*v; }
+      n=Math.sqrt(s2)+1e-5;
+      for(let j=0;j<BPER;j++) buf[j]/=n;
+      cb(buf,(by*BPX+bx)*BPER);
+    }
+  }
+}
+function descriptorAt(Hc,c0x,c0y,out,buf){
+  forEachBlock(Hc,c0x,c0y,buf,(v,off)=>{ for(let j=0;j<BPER;j++) out[off+j]=v[j]; });
+  return out;
+}
+function scoreAt(Hc,c0x,c0y,w,b0,buf){
+  let s=b0;
+  forEachBlock(Hc,c0x,c0y,buf,(v,off)=>{ for(let j=0;j<BPER;j++) s+=w[off+j]*v[j]; });
+  return s;
+}
+function histOfCanvas(cv){
+  const c=cv.getContext('2d');
+  const d=c.getImageData(0,0,cv.width,cv.height).data;
+  const g=toGray(d,cv.width,cv.height,false);
+  const G=gradients(g,cv.width,cv.height,false);
+  return cellHistograms(G.mag,G.ang,cv.width,cv.height,DCELL,DBINS,false);
+}
+
+/* ---- Training sample generation ---- */
+function bgFill(ctx,w,h){
+  const g=ctx.createLinearGradient(0,0,0,h);
+  const a=rnd(120,235), b=rnd(70,200);
+  g.addColorStop(0,'rgb('+a+','+(a*0.98|0)+','+(a*0.95|0)+')');
+  g.addColorStop(1,'rgb('+b+','+(b*0.97|0)+','+(b*0.94|0)+')');
+  ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
+  ctx.strokeStyle='rgba('+rnd(40,220)+','+rnd(40,220)+','+rnd(40,220)+',.25)';
+  ctx.lineWidth=rnd(1,4);
+  for(let i=0;i<3;i++){ ctx.beginPath();
+    ctx.moveTo(rnd(0,w),rnd(0,h)); ctx.lineTo(rnd(0,w),rnd(0,h)); ctx.stroke(); }
+}
+function makePositive(){
+  const cv=document.createElement('canvas'); cv.width=WIN_W; cv.height=WIN_H;
+  const ctx=cv.getContext('2d');
+  bgFill(ctx,WIN_W,WIN_H);
+  const dark=Math.random()<0.62;
+  const lum=dark? rnd(10,70):rnd(195,250);
+  const col='rgb('+(lum|0)+','+(lum*0.99|0)+','+(lum*1.02|0)+')';
+  drawPerson(ctx, WIN_W/2+rnd(-4,4), WIN_H*0.93+rnd(-4,4), rnd(90,108),
+    {color:col, thick:rnd(0.85,1.2)});
+  noiseOver(ctx,WIN_W,WIN_H,rnd(2,9));
+  return cv;
+}
+function makeClutter(w,h){
+  const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+  const ctx=cv.getContext('2d');
+  bgFill(ctx,w,h);
+  for(let i=0;i<16;i++){
+    const t=Math.random();
+    ctx.fillStyle='rgba('+rnd(20,240)+','+rnd(20,240)+','+rnd(20,240)+','+rnd(.3,.9)+')';
+    if(t<0.34) ctx.fillRect(rnd(0,w),rnd(0,h),rnd(8,60),rnd(8,70));
+    else if(t<0.6){ ctx.beginPath(); ctx.arc(rnd(0,w),rnd(0,h),rnd(5,30),0,6.29); ctx.fill(); }
+    else { ctx.fillRect(rnd(0,w),rnd(0,h),rnd(3,9),rnd(30,120)); }   // poles easily confused with people
+  }
+  noiseOver(ctx,w,h,rnd(2,8));
+  return cv;
+}
+/* Person-free street backdrop — source of negatives and hard negative mining */
+function makeBackdrop(W,H){
+  const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+  const ctx=cv.getContext('2d');
+  const base=rnd(0.78,1.02);
+  const sky=ctx.createLinearGradient(0,0,0,H);
+  sky.addColorStop(0,'rgb('+(207*base|0)+','+(214*base|0)+','+(224*base|0)+')');
+  sky.addColorStop(0.62,'rgb('+(174*base|0)+','+(183*base|0)+','+(196*base|0)+')');
+  sky.addColorStop(1,'rgb('+(141*base|0)+','+(150*base|0)+','+(164*base|0)+')');
+  ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
+  const horizon=H*rnd(0.58,0.66);
+  ctx.fillStyle='rgba(90,100,115,.35)'; ctx.fillRect(0,horizon,W,2);
+  // building blocks
+  for(let i=0;i<3;i++){
+    ctx.fillStyle='rgba('+rnd(55,95)+','+rnd(65,105)+','+rnd(75,120)+',.'+Math.floor(rnd(20,45))+')';
+    const bw2=rnd(W*0.08,W*0.22), bh2=rnd(H*0.18,H*0.42);
+    ctx.fillRect(rnd(0,W-bw2), horizon-bh2, bw2, bh2);
+  }
+  // poles and signs — vertical structures most easily confused with people
+  const nPole=Math.floor(rnd(4,8));
+  for(let i=0;i<nPole;i++){
+    ctx.fillStyle='rgba('+rnd(35,90)+','+rnd(40,95)+','+rnd(45,110)+',.6)';
+    const pw=rnd(4,11), ph=rnd(H*0.14,H*0.34);
+    const px2=rnd(0,W-pw), py2=horizon-ph+rnd(-4,26);
+    ctx.fillRect(px2,py2,pw,ph);
+    if(Math.random()<0.4) ctx.fillRect(px2-rnd(4,14), py2-rnd(0,8), rnd(14,30), rnd(6,16));
+  }
+  // benches and planters
+  for(let i=0;i<2;i++){
+    ctx.fillStyle='rgba('+rnd(40,90)+','+rnd(45,95)+','+rnd(50,110)+',.35)';
+    ctx.fillRect(rnd(0,W*0.8), horizon+rnd(0,H*0.2), rnd(50,140), rnd(8,22));
+  }
+  noiseOver(ctx,W,H,rnd(3,7));
+  return {cv,horizon,base};
+}
+let negPool=[];
+function makeNegative(){
+  const cv=document.createElement('canvas'); cv.width=WIN_W; cv.height=WIN_H;
+  const c=cv.getContext('2d');
+  if(Math.random()<0.75){                       // crop from a real backdrop
+    if(negPool.length<6) negPool.push(makeBackdrop(600,340).cv);
+    const src=negPool[Math.floor(Math.random()*negPool.length)];
+    const s=rnd(0.55,1.6);                      // crop at multiple scales
+    const sw=WIN_W*s, sh=WIN_H*s;
+    c.drawImage(src, rnd(0,src.width-sw), rnd(0,src.height-sh), sw, sh, 0,0,WIN_W,WIN_H);
+  } else {                                      // miscellaneous clutter
+    const big=makeClutter(WIN_W*3,WIN_H*2);
+    c.drawImage(big, -Math.floor(rnd(0,WIN_W*2)), -Math.floor(rnd(0,WIN_H)));
+  }
+  return cv;
+}
+function sampleStrip(cv,list,n){
+  const tw=44, th=88, gap=6, cols=Math.min(n,list.length);
+  cv.width=cols*(tw+gap)+gap; cv.height=th+gap*2; cv.style.width=cv.width+'px';
+  const c=cv.getContext('2d'); c.setTransform(1,0,0,1,0,0);
+  c.fillStyle=SCREEN_BG; c.fillRect(0,0,cv.width,cv.height);
+  c.imageSmoothingEnabled=true;
+  for(let i=0;i<cols;i++) c.drawImage(list[i].cv, gap+i*(tw+gap), gap, tw, th);
+}
+
+/* ---- Weight visualization ---- */
+function weightCells(w,sign){
+  const cells=new Float32Array(WCX*WCY*DBINS), cnt=new Float32Array(WCX*WCY);
+  for(let by=0;by<BPY;by++)for(let bx=0;bx<BPX;bx++){
+    const off=(by*BPX+bx)*BPER; let k=0;
+    for(let dy=0;dy<DBS;dy++)for(let dx=0;dx<DBS;dx++){
+      const ci=(by+dy)*WCX+(bx+dx);
+      for(let b=0;b<DBINS;b++){
+        const v=w[off+k++]*sign;
+        cells[ci*DBINS+b]+= v>0? v:0;
+      }
+      cnt[ci]++;
+    }
+  }
+  for(let i=0;i<WCX*WCY;i++){ const c=cnt[i]||1; for(let b=0;b<DBINS;b++) cells[i*DBINS+b]/=c; }
+  return cells;
+}
+function drawWeights(id,sign,stroke){
+  const cv=$(id), px=24;
+  cv.width=WCX*px; cv.height=WCY*px; cv.style.width=(WCX*px)+'px';
+  const c=cv.getContext('2d'); c.setTransform(1,0,0,1,0,0);
+  c.fillStyle=SCREEN_BG; c.fillRect(0,0,cv.width,cv.height);
+  if(!DET.w){ c.fillStyle=SCREEN_DIM; c.font='12px "IBM Plex Mono", monospace'; c.textAlign='center';
+    c.fillText('not trained',cv.width/2,cv.height/2); return; }
+  drawStars(c,weightCells(DET.w,sign),WCX,WCY,DBINS,false,px,1.15,{stroke:stroke});
+  drawCellGrid(c,WCX,WCY,px,'rgba(140,155,180,.12)');
+}
+
+/* ---- Training ---- */
+async function buildData(){
+  const nP=+$('#numPos').value, nN=+$('#numNeg').value;
+  DET.pos=[]; DET.neg=[];
+  const buf=new Float32Array(BPER);
+  log('Generating training samples… 0 / '+(nP+nN));
+  for(let i=0;i<nP;i++){
+    const cv=makePositive();
+    DET.pos.push({cv,x:descriptorAt(histOfCanvas(cv),0,0,new Float32Array(DDIM),buf)});
+    if(i%15===0){ log('positives '+i+' / '+nP); await tick(); }
+  }
+  for(let i=0;i<nN;i++){
+    const cv=makeNegative();
+    DET.neg.push({cv,x:descriptorAt(histOfCanvas(cv),0,0,new Float32Array(DDIM),buf)});
+    if(i%20===0){ log('negatives '+i+' / '+nN); await tick(); }
+  }
+  sampleStrip($('#cvPos'),DET.pos,8);
+  sampleStrip($('#cvNeg'),DET.neg,8);
+  $('#capPos').textContent='8 of '+nP;
+  $('#capNeg').textContent='8 of '+nN;
+  log('Samples ready — '+nP+' positive, '+nN+' negative ('+DDIM.toLocaleString()+' dims each)');
+  updateDetStats();
+}
+async function fit(epochs){
+  const X=[], Y=[];
+  DET.pos.forEach(s=>{X.push(s.x);Y.push(1);});
+  DET.neg.forEach(s=>{X.push(s.x);Y.push(0);});
+  const N=X.length;
+  const w=new Float32Array(DDIM); let b=0;
+  const lam=1e-4;
+  const idx=Array.from({length:N},(_,i)=>i);
+  for(let e=0;e<epochs;e++){
+    const lr=0.5/(1+e*0.06);
+    for(let i=N-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const t=idx[i]; idx[i]=idx[j]; idx[j]=t; }
+    for(const i of idx){
+      const x=X[i]; let z=b;
+      for(let j=0;j<DDIM;j++) z+=w[j]*x[j];
+      const p=1/(1+Math.exp(-z)), g=(p-Y[i])*lr;
+      for(let j=0;j<DDIM;j++) w[j]-=g*x[j]+lr*lam*w[j];
+      b-=g;
+    }
+    if(e%5===0){ log('Training… epoch '+e+' / '+epochs); await tick(); }
+  }
+  let ok=0, margin=0;
+  for(let i=0;i<N;i++){
+    let z=b; const x=X[i];
+    for(let j=0;j<DDIM;j++) z+=w[j]*x[j];
+    if((z>0?1:0)===Y[i]) ok++;
+    margin+= Y[i]? z : -z;
+  }
+  DET.w=w; DET.b=b; DET.acc=ok/N; DET.ready=true;
+  drawWeights('#cvWpos',1,'rgb(120,230,190)');
+  drawWeights('#cvWneg',-1,'rgb(255,150,135)');
+  updateDetStats();
+  return margin/N;
+}
+/* hard negative mining — feed back high-scoring windows from person-free backdrops */
+async function mineHard(limit){
+  const bg=makeBackdrop(600,340).cv;
+  const Hc=histOfCanvas(bg);
+  const buf=new Float32Array(BPER), found=[];
+  for(let cy=0; cy+WCY<=Hc.ch; cy+=1){
+    for(let cx=0; cx+WCX<=Hc.cw; cx+=1){
+      found.push({cx,cy,s:scoreAt(Hc,cx,cy,DET.w,DET.b,buf)});
+    }
+  }
+  found.sort((a,b)=>b.s-a.s);
+  const take=found.slice(0,limit);
+  for(const f of take){
+    const cv=document.createElement('canvas'); cv.width=WIN_W; cv.height=WIN_H;
+    cv.getContext('2d').drawImage(bg, f.cx*DCELL, f.cy*DCELL, WIN_W, WIN_H, 0,0,WIN_W,WIN_H);
+    DET.neg.push({cv, x:descriptorAt(histOfCanvas(cv),0,0,new Float32Array(DDIM),buf), hard:true});
+  }
+  return take.length;
+}
+async function train(){
+  if(!DET.pos.length) await buildData();
+  const epochs=+$('#numEpoch').value;
+  log('Training round 1…'); await tick();
+  const m1=await fit(epochs);
+  log('Mining hard negatives — collecting false positives from backgrounds and retraining…'); await tick();
+  const added=await mineHard(48);
+  const m2=await fit(epochs);
+  sampleStrip($('#cvNeg'),DET.neg.filter(n=>n.hard).concat(DET.neg),8);
+  $('#capNeg').textContent=DET.neg.length+' (incl. '+added+' hard)';
+  log('Training done — accuracy '+fmt(DET.acc*100,1)+'%, mean margin '+fmt(m1,2)+' → '+fmt(m2,2)+
+      ' (after adding '+added+' hard negatives). Can you see head, shoulders and legs in the weights?');
+  updateDetStats();
+}
+
+/* ---- Scene ---- */
+function makeScene(){
+  const W=600,H=340;
+  const bd=makeBackdrop(W,H);
+  const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+  const ctx=cv.getContext('2d');
+  ctx.drawImage(bd.cv,0,0);
+  // three people, sized to the detector scales (96 · 125 · 162px)
+  const hs=[162,125,97];
+  const people=hs.map((h,i)=>({
+    x:W*(0.16+i*0.29)+rnd(-14,14),
+    foot:Math.min(H-4, bd.horizon+h*rnd(0.34,0.52)),
+    h:h*rnd(0.96,1.04),
+    col: (Math.random()<0.4 && bd.base<0.95)
+          ? 'rgb('+rnd(238,252)+','+rnd(238,252)+','+rnd(240,254)+')'   // light clothing
+          : 'rgb('+rnd(16,52)+','+rnd(18,54)+','+rnd(22,62)+')'         // dark clothing
+  }));
+  people.forEach(p=>drawPerson(ctx,p.x,p.foot,p.h,{color:p.col,thick:rnd(0.9,1.15)}));
+  noiseOver(ctx,W,H,5);
+  DET.scene={cv,W,H,people};
+  DET.boxes=[]; DET.raw=[]; DET.heat=null;
+  drawScene();
+  $('#capDet').textContent=people.length+' people · '+W+'×'+H;
+  log('New scene ready. Press ④ Run detection.');
+}
+function iou(a,b){
+  const x1=Math.max(a.x,b.x), y1=Math.max(a.y,b.y);
+  const x2=Math.min(a.x+a.w,b.x+b.w), y2=Math.min(a.y+a.h,b.y+b.h);
+  const iw=Math.max(0,x2-x1), ih=Math.max(0,y2-y1), I=iw*ih;
+  return I/(a.w*a.h+b.w*b.h-I);
+}
+function nms(list,thr){
+  const s=list.slice().sort((p,q)=>q.score-p.score), keep=[];
+  s.forEach(c=>{ if(keep.every(k=>iou(k,c)<thr)) keep.push(c); else c.suppressed=true; });
+  return keep;
+}
+async function detect(){
+  if(!DET.ready){ await train(); }
+  if(!DET.scene) makeScene();
+  const t0=performance.now();
+  const {cv,W,H}=DET.scene;
+  const stride=+$('#detStride').value, nSc=+$('#detScales').value;
+  const stepC=Math.max(1,Math.round(stride/DCELL));
+  const buf=new Float32Array(BPER);
+  const raw=[]; let heat=null, heatW=0, heatH=0;
+  let s=1;
+  for(let k=0;k<nSc;k++){
+    const w2=Math.round(W*s), h2=Math.round(H*s);
+    if(w2<WIN_W||h2<WIN_H) break;
+    const rc=document.createElement('canvas'); rc.width=w2; rc.height=h2;
+    const c2=rc.getContext('2d'); c2.imageSmoothingEnabled=true; c2.drawImage(cv,0,0,w2,h2);
+    const Hc=histOfCanvas(rc);
+    if(k===0){ heatW=Hc.cw; heatH=Hc.ch; heat=new Float32Array(heatW*heatH).fill(-99); }
+    for(let cy=0; cy+WCY<=Hc.ch; cy+=stepC){
+      for(let cx=0; cx+WCX<=Hc.cw; cx+=stepC){
+        const sc0=scoreAt(Hc,cx,cy,DET.w,DET.b,buf);
+        raw.push({x:cx*DCELL/s, y:cy*DCELL/s, w:WIN_W/s, h:WIN_H/s, score:sc0, scale:s});
+        if(k===0){
+          const hx=cx+(WCX>>1), hy=cy+(WCY>>1);
+          const hi=hy*heatW+hx; if(sc0>heat[hi]) heat[hi]=sc0;
+        }
+      }
+    }
+    s/=1.3;
+    log('Detecting… scale '+(k+1)+' / '+nSc);
+    await tick();
+  }
+  DET.raw=raw; DET.heat={data:heat,w:heatW,h:heatH};
+  DET.time=performance.now()-t0;
+  // re-range the threshold slider to the score distribution
+  let mn=Infinity,mx=-Infinity;
+  raw.forEach(r=>{ if(r.score<mn)mn=r.score; if(r.score>mx)mx=r.score; });
+  const el=$('#detThr');
+  el.min=fmt(mn,1); el.max=fmt(mx+0.5,1); el.step=fmt(Math.max(0.01,(mx-mn)/200),3);
+  el.value=fmt(Math.max(0, mx*0.22),2);
+  $('#vThr').textContent=fmt(+el.value,2);
+  applyThreshold();
+  log('Detection done — '+raw.length.toLocaleString()+' windows scored in '+Math.round(DET.time)+'ms. '+
+      'Scores range '+fmt(mn,1)+' to '+fmt(mx,1)+'; threshold auto-set to '+fmt(+el.value,1)+'. '+
+      'Move the slider to see the recall vs. false-positive trade-off.');
+}
+function applyThreshold(){
+  if(!DET.raw.length) return;
+  const thr=+$('#detThr').value, iouT=+$('#detIou').value;
+  const cand=DET.raw.filter(r=>r.score>thr).map(r=>Object.assign({},r));
+  DET.cands=cand;
+  DET.boxes=$('#optNMS').checked? nms(cand,iouT) : cand;
+  drawScene();
+  updateDetStats();
+}
+function drawScene(){
+  if(!DET.scene) return;
+  const {cv,W,H}=DET.scene;
+  const c=fitCanvas($('#cvScene'),W,H,1);
+  c.imageSmoothingEnabled=true;
+  c.drawImage(cv,0,0);
+  // heatmap
+  if(DET.heat && $('#optHeat').checked){
+    const {data,w,h}=DET.heat;
+    const hc=document.createElement('canvas'); hc.width=w; hc.height=h;
+    const hx=hc.getContext('2d'); const im=hx.createImageData(w,h);
+    let mn=1e9,mx=-1e9;
+    for(let i=0;i<data.length;i++){ if(data[i]>-90){ mn=Math.min(mn,data[i]); mx=Math.max(mx,data[i]); } }
+    for(let i=0;i<data.length;i++){
+      const v=data[i]<-90?0:clamp((data[i]-mn)/(mx-mn+1e-9),0,1);
+      const t=Math.pow(v,2.2);
+      im.data[i*4]=Math.round(214+30*t); im.data[i*4+1]=Math.round(170-110*t); im.data[i*4+2]=Math.round(70-30*t);
+      im.data[i*4+3]=Math.round(Math.pow(v,1.6)*185);
+    }
+    hx.putImageData(im,0,0);
+    c.save(); c.imageSmoothingEnabled=true;
+    c.drawImage(hc,0,0,W,H); c.restore();
+  }
+  // suppressed candidates
+  if(DET.cands && $('#optNMS').checked){
+    c.strokeStyle='rgba(150,158,170,.55)'; c.lineWidth=1;
+    DET.cands.forEach(b=>{ if(!DET.boxes.includes(b)) c.strokeRect(b.x+.5,b.y+.5,b.w,b.h); });
+  }
+  // final boxes
+  (DET.boxes||[]).forEach(b=>{
+    c.strokeStyle='#3ECBA2'; c.lineWidth=2.2;
+    c.strokeRect(b.x,b.y,b.w,b.h);
+    const label=fmt(b.score,2);
+    c.font='600 11px "IBM Plex Mono", monospace';
+    const tw=c.measureText(label).width+10;
+    c.fillStyle='#3ECBA2'; c.fillRect(b.x,Math.max(0,b.y-15),tw,15);
+    c.fillStyle='#08110D'; c.fillText(label,b.x+5,Math.max(0,b.y-15)+11);
+  });
+}
+function updateDetStats(){
+  const n=DET.boxes?DET.boxes.length:0;
+  $('#detStats').innerHTML=[
+    ['Descriptor', DDIM.toLocaleString(), 'dims / window'],
+    ['Training samples', (DET.pos.length+DET.neg.length)||'—', DET.pos.length? '+'+DET.pos.length+' / −'+DET.neg.length:''],
+    ['Train accuracy', DET.ready? fmt(DET.acc*100,1)+'%':'—',''],
+    ['Windows scored', DET.raw.length? DET.raw.length.toLocaleString():'—', DET.time? Math.round(DET.time)+'ms':''],
+    ['Detections', n, DET.cands? 'of '+DET.cands.length+' candidates':'']
+  ].map(([k,v,s])=>'<div class="stat"><div class="k">'+k+'</div><div class="v">'+v+' <small>'+s+'</small></div></div>').join('');
+  $('#capDet').textContent= DET.raw.length? (n+' detected · threshold '+fmt(+$('#detThr').value,2)) : 'not run yet';
+}
+</script>
+<script>
+"use strict";
+/* ============================================================
+   7. Init · control bindings
+   ============================================================ */
+function seg(id,cb){
+  const el=$(id); if(!el) return;
+  el.addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    el.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed', String(x===b)));
+    cb(b.dataset.v);
+  });
+}
+function bindRange(id,labelId,fn,dec){
+  const el=$(id);
+  const upd=()=>{ const v=parseFloat(el.value); if(labelId) $(labelId).textContent= dec===undefined? v : fmt(v,dec); fn(v); };
+  el.addEventListener('input',upd);
+  if(labelId) $(labelId).textContent= dec===undefined? parseFloat(el.value) : fmt(parseFloat(el.value),dec);
+  return upd;
+}
+
+/* --- Tabs --- */
+let detectInit=false;
+$$('.tabs button').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    $$('.tabs button').forEach(b=>b.setAttribute('aria-selected',String(b===btn)));
+    $$('.tabpanel').forEach(p=>p.classList.toggle('active', p.id==='tab-'+btn.dataset.tab));
+    window.scrollTo({top:0,behavior:'instant'});
+    if(btn.dataset.tab==='detect' && !detectInit){ detectInit=true; runDetectionDemo(); }
+    if(btn.dataset.tab==='descriptor') renderDescriptorTab();
+  });
+});
+
+/* --- Theme --- */
+$('#themeBtn').addEventListener('click',()=>{
+  const cur=document.documentElement.getAttribute('data-theme');
+  const dark=cur? cur==='dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  document.documentElement.setAttribute('data-theme', dark?'light':'dark');
+  if(PIPE) renderDescriptorTab();
+});
+
+/* --- Input image --- */
+function loadSource(name){
+  if(name==='snu'){
+    const im=new Image();
+    im.onload=()=>{ const cv=document.createElement('canvas'); cv.width=im.width; cv.height=im.height;
+      cv.getContext('2d').drawImage(im,0,0); setImageFromCanvas(cv); };
+    im.src=SNU_B64;
+  } else if(name==='person'){ setImageFromCanvas(makePersonSample(144,272));
+  } else if(name==='shapes'){ setImageFromCanvas(makeShapesSample(256,256)); }
+}
+$$('[data-src]').forEach(b=>b.addEventListener('click',()=>{
+  $$('[data-src]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+  loadSource(b.dataset.src);
+}));
+$('#uploadBtn').addEventListener('click',()=>$('#fileInput').click());
+$('#fileInput').addEventListener('change',e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const im=new Image();
+  im.onload=()=>{ const cv=document.createElement('canvas'); cv.width=im.width; cv.height=im.height;
+    cv.getContext('2d').drawImage(im,0,0); setImageFromCanvas(cv);
+    $$('[data-src]').forEach(x=>x.setAttribute('aria-pressed','false'));
+    URL.revokeObjectURL(im.src); };
+  im.src=URL.createObjectURL(f);
+});
+
+/* --- Pipeline parameters --- */
+bindRange('#cellSize','#vCell',v=>{P.cell=v; recompute();});
+bindRange('#nBins','#vBins',v=>{P.bins=v; recompute();});
+bindRange('#hogGain','#vGain',v=>{P.gain=v; recompute();},1);
+bindRange('#epsF','#vEps',v=>{P.epsF=v; recompute();},2);
+seg('#segSigned',v=>{P.signed=(v==='1'); recompute();});
+seg('#segBlock',v=>{P.block=+v; recompute();});
+seg('#segNorm',v=>{P.norm=v; recompute();});
+$('#optGamma').addEventListener('change',e=>{P.gamma=e.target.checked; recompute();});
+$('#optGrid').addEventListener('change',e=>{P.grid=e.target.checked; recompute();});
+$('#optOverlay').addEventListener('change',e=>{P.overlay=e.target.checked; recompute();});
+
+/* --- Descriptor tab --- */
+bindRange('#brightness','#vBright',v=>{PERT.bright=v; renderDescriptorTab();});
+bindRange('#contrast','#vContrast',v=>{PERT.contrast=v; renderDescriptorTab();},2);
+bindRange('#vignette','#vVignette',v=>{PERT.vignette=v; renderDescriptorTab();},1);
+bindRange('#noise','#vNoise',v=>{PERT.noise=v; renderDescriptorTab();});
+$('#optSortless').addEventListener('change',renderDescriptorTab);
+$('#resetPert').addEventListener('click',()=>{
+  $('#brightness').value=0; $('#contrast').value=1; $('#vignette').value=0; $('#noise').value=0;
+  PERT.bright=0; PERT.contrast=1; PERT.vignette=0; PERT.noise=0;
+  $('#vBright').textContent='0'; $('#vContrast').textContent='1.00';
+  $('#vVignette').textContent='0.0'; $('#vNoise').textContent='0';
+  renderDescriptorTab();
+});
+
+/* --- Detection tab --- */
+function busy(on){
+  DET.busy=on;
+  ['#btnData','#btnTrain','#btnScene','#btnDetect'].forEach(id=>$(id).disabled=on);
+}
+async function guard(fn){ if(DET.busy) return; busy(true); try{ await fn(); } finally{ busy(false); } }
+$('#btnData').addEventListener('click',()=>guard(buildData));
+$('#btnTrain').addEventListener('click',()=>guard(train));
+$('#btnScene').addEventListener('click',()=>{ makeScene(); updateDetStats(); });
+$('#btnDetect').addEventListener('click',()=>guard(detect));
+bindRange('#detThr','#vThr',()=>applyThreshold(),2);
+bindRange('#detIou','#vIou',()=>applyThreshold(),2);
+bindRange('#detStride','#vStride',()=>{});
+bindRange('#detScales','#vScales',()=>{});
+bindRange('#numPos','#vPos',()=>{DET.pos=[];});
+bindRange('#numNeg','#vNeg',()=>{DET.neg=[];});
+bindRange('#numEpoch','#vEpoch',()=>{});
+$('#optNMS').addEventListener('change',applyThreshold);
+$('#optHeat').addEventListener('change',drawScene);
+async function runDetectionDemo(){
+  await guard(async()=>{
+    await buildData(); await train(); makeScene(); await detect();
+  });
+}
+
+/* --- Start --- */
+bindHover();
+drawWeights('#cvWpos',1,'rgb(120,230,190)');
+drawWeights('#cvWneg',-1,'rgb(255,150,135)');
+updateDetStats();
+loadSource('snu');
+</script>
+</body>
+</html>

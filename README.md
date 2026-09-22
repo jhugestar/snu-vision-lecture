@@ -16,6 +16,7 @@ Interactive web-based demos for computer vision courses at Seoul National Univer
 | Hough Transform (Real Image) | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/hough-transform/hough_viz_img.html) |
 | PCA (Principal Component Analysis) | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/pca/pca_demo.html) |
 | Eigenface | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/eigenface/eigenface_demo.html) |
+| HOG (Histogram of Oriented Gradients) | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/hog/hog.html) |
 | Clustering & Segmentation | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/clustering/clustering.html) |
 | RANSAC (Line Fitting & Homography) | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/3dvision-ransac/ransac_demo.html) |
 | Visual Hull Reconstruction | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/3dvision-visualhull/visual_hull.html) |
