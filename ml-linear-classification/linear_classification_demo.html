@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Logistic Regression vs SVM Playground</title>
+<style>
+/* Layout: header strip -> [big decision-boundary canvas | control stack] -> [sigmoid plot | loss curve | live equations] */
+:root {
+  --bg: #0e1118;
+  --panel: #161b25;
+  --panel2: #1d2331;
+  --border: #2a3243;
+  --fg: #e4e8f0;
+  --muted: #8b95a8;
+  --faint: #3b4457;
+  --c0: #3b8de8;      /* class 0 (blue) */
+  --c1: #e86a2c;      /* class 1 (orange) */
+  --accent: #f3c969;  /* highlights, boundary */
+  --loss: #2fbf8a;    /* loss curve */
+  --danger: #e66767;
+  --other: #c792ea;   /* the other model's fitted boundary (overlay) */
+  --font: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font); font-size: 14px; line-height: 1.45;
+}
+.wrap { max-width: 1640px; margin: 0 auto; padding-block: 14px 28px; padding-inline: 18px; display: grid; gap: 14px;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 340px; grid-template-areas: "hdr hdr hdr" "plot mid ctrl"; align-items: start; }
+header { grid-area: hdr; }
+.plot { grid-area: plot; max-width: 700px; }
+.controls { grid-area: ctrl; }
+.mid { grid-area: mid; display: grid; gap: 14px; min-width: 0; align-content: start; }
+@media (max-width: 1250px) { .wrap { grid-template-columns: minmax(0, 1fr) 340px; grid-template-areas: "hdr hdr" "plot ctrl" "mid mid"; } .mid { grid-template-columns: repeat(3, minmax(0,1fr)); } }
+@media (max-width: 1000px) { .wrap { grid-template-columns: 1fr; grid-template-areas: "hdr" "plot" "ctrl" "mid"; } .mid { grid-template-columns: 1fr; } }
+
+header { display: flex; align-items: baseline; gap: 14px 22px; flex-wrap: wrap; }
+header h1 { font-size: 21px; margin: 0; letter-spacing: .2px; }
+header .sub { color: var(--muted); }
+header .author { margin-left: auto; font-size: 12px; color: var(--muted); }
+header .author a { color: var(--c0); text-decoration: none; }
+header .author a:hover { text-decoration: underline; }
+.kbd { font-family: var(--mono); font-size: 11px; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; color: var(--muted); }
+
+
+.panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; min-width: 0; }
+.plot { position: relative; }
+#mainCanvas { width: 100%; aspect-ratio: 1; display: block; cursor: crosshair; border-radius: 8px; max-width: 100%; }
+.overlay { position: absolute; pointer-events: none; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+#hoverInfo { top: 10px; left: 12px; }
+#status { top: 10px; right: 12px; text-align: right; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-family: var(--font); font-weight: 600; letter-spacing: .3px; }
+.badge.run { background: rgba(47,191,138,.15); color: var(--loss); }
+.badge.conv { background: rgba(243,201,105,.15); color: var(--accent); }
+.badge.div { background: rgba(230,103,103,.18); color: var(--danger); }
+.legend { position: absolute; bottom: 10px; left: 12px; display: flex; gap: 14px; font-size: 12px; color: var(--muted); pointer-events: none; flex-wrap: wrap; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.dot { width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--panel); box-shadow: 0 0 0 1px var(--faint); }
+.dot.c0 { background: var(--c0); } .dot.c1 { background: var(--c1); }
+.dot.miss { background: transparent; border: 2px solid var(--c1); box-shadow: none; }
+.dot.sv { background: transparent; border: 1.5px solid var(--accent); box-shadow: none; width: 13px; height: 13px; }
+.chk { display: flex; gap: 8px; align-items: center; font-size: 13px; cursor: pointer; }
+.chk input { accent-color: var(--other); margin: 0; }
+.fit { width: 100%; border-collapse: collapse; font-size: 12px; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.fit th, .fit td { text-align: right; padding: 3px 6px; border-top: 1px solid var(--border); color: var(--fg); }
+.fit th { font-family: var(--font); font-size: 10px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); border-top: none; }
+.fit td:first-child, .fit th:first-child { text-align: left; font-family: var(--font); color: var(--muted); }
+.fit .lr { color: var(--loss); } .fit .svm { color: var(--accent); }
+.cmp { width: 100%; border-collapse: collapse; font-size: 11.5px; margin-top: 2px; }
+.cmp th, .cmp td { text-align: left; padding: 4px 6px; border-top: 1px solid var(--border); vertical-align: top; color: var(--muted); }
+.cmp th { font-size: 10.5px; text-transform: uppercase; letter-spacing: .6px; border-top: none; font-weight: 600; }
+.cmp td:first-child { white-space: nowrap; }
+.cmp[data-model="lr"] td:nth-child(2), .cmp[data-model="lr"] th:nth-child(2),
+.cmp[data-model="svm"] td:nth-child(3), .cmp[data-model="svm"] th:nth-child(3) { color: var(--fg); background: rgba(243,201,105,0.07); }
+#marginCanvas { width: 100%; height: 275px; display: block; max-width: 100%; }
+.sw { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 5px; border-radius: 2px; }
+.sw.dash { background: repeating-linear-gradient(90deg, var(--muted) 0 3px, transparent 3px 6px); }
+
+/* controls */
+.controls { padding: 14px; display: grid; gap: 14px; align-content: start; }
+.sec { display: grid; gap: 7px; }
+.sec > .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .9px; color: var(--muted); font-weight: 600; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.row.between { justify-content: space-between; }
+select, button, input[type=number] {
+  font: inherit; color: var(--fg); background: var(--panel2); border: 1px solid var(--border);
+  border-radius: 6px; padding: 6px 10px;
+}
+select { flex: 1; min-width: 0; }
+button { cursor: pointer; transition: background .12s, border-color .12s; }
+button:hover { background: #253044; border-color: #3a4660; }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+button.primary { background: var(--accent); color: #1a1405; border-color: var(--accent); font-weight: 600; }
+button.primary:hover { background: #ffd97a; }
+button.wide { flex: 1; }
+.seg { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.seg label { flex: 1; text-align: center; padding: 6px 8px; cursor: pointer; background: var(--panel2); color: var(--muted); user-select: none; }
+.seg input { position: absolute; opacity: 0; width: 0; height: 0; }
+.seg input:checked + label { background: #2b3550; color: var(--fg); font-weight: 600; }
+.seg input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: -2px; }
+.seg label.cls0 b { color: var(--c0); } .seg label.cls1 b { color: var(--c1); }
+.slider { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; }
+.slider .name { font-size: 13px; color: var(--muted); }
+.slider .val { font-family: var(--mono); font-size: 12px; color: var(--fg); font-variant-numeric: tabular-nums; min-width: 64px; text-align: right; }
+.slider input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); margin: 0; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.stat { background: var(--panel2); border-radius: 6px; padding: 7px 9px; }
+.stat .k { font-size: 10px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
+.stat .v { font-family: var(--mono); font-size: 15px; font-variant-numeric: tabular-nums; }
+.hint { font-size: 12px; color: var(--muted); }
+.manual { display: grid; gap: 4px; }
+.manual .slider { grid-template-columns: 34px 1fr 60px; gap: 8px; }
+.manual .slider input[type=range] { grid-column: auto; }
+.manual .slider .name { font-family: var(--mono); color: var(--fg); }
+
+/* bottom row */
+.ptitle { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 14px 0; }
+.ptitle h2 { font-size: 13px; margin: 0; font-weight: 600; }
+.ptitle span { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+.small-canvas { width: 100%; height: 170px; display: block; max-width: 100%; }
+#surfCanvas { width: 100%; height: 300px; display: block; max-width: 100%; cursor: grab; touch-action: none; }
+#surfCanvas:active { cursor: grabbing; }
+.tabs { display: flex; gap: 4px; }
+.tabs button { padding: 3px 9px; font-size: 12px; white-space: nowrap; border-radius: 5px; background: transparent; border-color: transparent; color: var(--muted); }
+.tabs button[aria-selected="true"] { background: var(--panel2); border-color: var(--border); color: var(--fg); font-weight: 600; }
+.ptitle .right { display: flex; gap: 10px; align-items: center; flex-shrink: 0; }
+.surf-hint { position: absolute; left: 14px; bottom: 8px; font-size: 11px; color: var(--muted); pointer-events: none; }
+.panel.plot3d { position: relative; }
+
+.eq { padding: 10px 14px 14px; display: grid; gap: 9px; font-size: 13px; }
+.eq .line { display: grid; grid-template-columns: 78px 1fr; gap: 10px; align-items: baseline; }
+.eq .line .k { color: var(--muted); font-size: 12px; }
+.eq .m { font-family: var(--mono); font-size: 12.5px; color: var(--fg); overflow-wrap: anywhere; line-height: 1.6; }
+.eq .m .n { color: var(--accent); }
+.eq .m .y0 { color: var(--c0); } .eq .m .y1 { color: var(--c1); }
+.note { background: var(--panel2); border-left: 3px solid var(--accent); padding: 7px 10px; border-radius: 4px; font-size: 12.5px; color: var(--fg); }
+.note.quiet { border-left-color: var(--faint); color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Logistic Regression vs SVM Playground</h1>
+    <div class="sub" id="hdrSub">Binary classification: p(y=1|x) = &sigma;(w&middot;x + b), fit by minimizing cross-entropy loss</div>
+    <div class="hint"><span class="kbd">Space</span> run / pause &nbsp; <span class="kbd">S</span> one step &nbsp; <span class="kbd">R</span> reset weights</div>
+    <div class="author"><a href="https://jhugestar.github.io/" target="_blank" rel="noopener">Hanbyul Joo</a> &nbsp;|&nbsp; Visual Computing Lab, Seoul National University &nbsp;|&nbsp; <a href="https://github.com/jhugestar/snu-vision-lecture" target="_blank" rel="noopener">More Demos ↗</a></div>
+  </header>
+
+    <div class="panel plot">
+      <canvas id="mainCanvas"></canvas>
+      <div class="overlay" id="hoverInfo">hover to read p(x)</div>
+      <div class="overlay" id="status"></div>
+      <div class="legend">
+        <span><i class="dot c0"></i>class 0 (y=0)</span>
+        <span><i class="dot c1"></i>class 1 (y=1)</span>
+        <span><i class="dot miss"></i>misclassified</span>
+        <span id="legSV" hidden><i class="dot sv"></i>support vector (t&middot;f &le; 1)</span>
+        <span id="legB">&mdash; p = 0.5 boundary, - - p = 0.25 / 0.75</span>
+        <span id="legOther" hidden style="color:var(--other)">&mdash; overlay: other model's fitted boundary</span>
+      </div>
+    </div>
+
+    <div class="panel controls">
+      <div class="sec">
+        <div class="lbl">Model</div>
+        <div class="seg">
+          <input type="radio" name="model" id="modelLR" value="lr" checked><label for="modelLR">Logistic regression</label>
+          <input type="radio" name="model" id="modelSVM" value="svm"><label for="modelSVM">Linear SVM (hinge)</label>
+        </div>
+        <div class="hint" id="modelHint">Same data, features and optimizer; only the loss changes. Weights are kept when you switch, so both losses can be compared at the same w.</div>
+      </div>
+
+      <div class="sec">
+        <div class="lbl">Data</div>
+        <div class="row">
+          <select id="dataset">
+            <option value="blobs">Two blobs (separable)</option>
+            <option value="overlap" selected>Overlapping blobs</option>
+            <option value="outliers">Separable + outliers</option>
+            <option value="xor">XOR (not linearly separable)</option>
+            <option value="circles">Circles (not linearly separable)</option>
+            <option value="empty">Empty (draw your own)</option>
+          </select>
+          <button id="resample" title="Draw a new random sample">New sample</button>
+        </div>
+        <div class="row">
+          <span class="hint">Click to add:</span>
+          <div class="seg" style="flex:1">
+            <input type="radio" name="addcls" id="add0" value="0" checked><label for="add0" class="cls0"><b>&#9679;</b> class 0</label>
+            <input type="radio" name="addcls" id="add1" value="1"><label for="add1" class="cls1"><b>&#9679;</b> class 1</label>
+          </div>
+        </div>
+        <div class="hint">Shift+click adds the other class. Right-click removes a point.</div>
+      </div>
+
+      <div class="sec">
+        <div class="lbl">Features &phi;(x)</div>
+        <div class="seg">
+          <input type="radio" name="feat" id="featLin" value="linear" checked><label for="featLin">Linear [x&#8321;, x&#8322;]</label>
+          <input type="radio" name="feat" id="featQuad" value="quad"><label for="featQuad">Quadratic [x&#8321;, x&#8322;, x&#8321;&sup2;, x&#8322;&sup2;, x&#8321;x&#8322;]</label>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="lbl">Optimizer</div>
+        <div class="row">
+          <select id="optimizer">
+            <option value="gd" selected>Gradient descent (full batch)</option>
+            <option value="sgd">Mini-batch SGD (batch = 8)</option>
+            <option value="newton">Newton's method (uses Hessian)</option>
+          </select>
+        </div>
+        <div class="slider">
+          <span class="name">Learning rate &eta;</span><span class="val" id="lrVal">1.00</span>
+          <input type="range" id="lr" min="-2" max="1.3" step="0.01" value="0">
+        </div>
+        <div class="slider" id="lamRow">
+          <span class="name">L2 regularization &lambda;</span><span class="val" id="lamVal">0</span>
+          <input type="range" id="lam" min="0" max="7" step="1" value="0">
+        </div>
+        <div class="slider" id="cRow" hidden>
+          <span class="name">Slack penalty C &nbsp;<span class="hint">(&frac12;&#8214;w&#8214;&sup2; + C &Sigma; &xi;&#7522;)</span></span><span class="val" id="cVal">1.00</span>
+          <input type="range" id="cSl" min="-2" max="3" step="0.05" value="0">
+          <span class="hint" style="grid-column: 1 / -1" id="cHint">small C: wide margin, many slack violations &middot; large C: hard margin, fits every point. Internally &lambda; = 1/(CN).</span>
+        </div>
+        <div class="slider">
+          <span class="name">Steps per frame</span><span class="val" id="speedVal">3</span>
+          <input type="range" id="speed" min="1" max="60" step="1" value="3">
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="row">
+          <button id="stepBtn" class="wide">Step</button>
+          <button id="runBtn" class="wide primary">Run</button>
+        </div>
+        <div class="row">
+          <button id="resetBtn" class="wide">Reset weights (w = 0)</button>
+          <button id="randBtn" class="wide">Random init</button>
+        </div>
+      </div>
+
+      <div class="sec" id="cmpSec">
+        <div class="lbl">Compare: fit both, then overlay</div>
+        <div class="row"><button id="fitBothBtn" class="wide">Fit both models to convergence</button></div>
+        <label class="chk" for="overlayChk"><input type="checkbox" id="overlayChk" disabled> Overlay the other model's fitted boundary</label>
+        <table class="fit" id="fitTable" hidden>
+          <thead><tr><th></th><th class="lr">LR</th><th class="svm">SVM</th></tr></thead>
+          <tbody>
+            <tr><td>Setting</td><td id="ftSetLR"></td><td id="ftSetSVM"></td></tr>
+            <tr><td>Iterations</td><td id="ftIterLR"></td><td id="ftIterSVM"></td></tr>
+            <tr><td>Final loss</td><td id="ftLossLR"></td><td id="ftLossSVM"></td></tr>
+            <tr><td>Accuracy</td><td id="ftAccLR"></td><td id="ftAccSVM"></td></tr>
+            <tr><td>&#8214;w&#8214;</td><td id="ftWnLR"></td><td id="ftWnSVM"></td></tr>
+            <tr><td>Points with |f| &lt; 1</td><td id="ftBandLR"></td><td id="ftBandSVM"></td></tr>
+            <tr><td>Boundary angle</td><td id="ftAngle" colspan="2"></td></tr>
+          </tbody>
+        </table>
+        <div class="hint" id="cmpHint">Both start from w = 0 with the current features and &eta;; LR uses its &lambda;, the SVM its C (full-batch GD; Newton for LR if selected). Afterwards, switching Model loads that model's fitted solution.</div>
+      </div>
+
+
+      <div class="sec">
+        <div class="stats">
+          <div class="stat"><div class="k">Iteration</div><div class="v" id="sIter">0</div></div>
+          <div class="stat"><div class="k">Loss</div><div class="v" id="sLoss">&ndash;</div></div>
+          <div class="stat"><div class="k">Accuracy</div><div class="v" id="sAcc">&ndash;</div></div>
+          <div class="stat"><div class="k">&#8214;w&#8214;</div><div class="v" id="sWn">0</div></div>
+          <div class="stat"><div class="k">&#8214;&nabla;L&#8214;</div><div class="v" id="sGn">&ndash;</div></div>
+          <div class="stat"><div class="k" id="sNk">N points</div><div class="v" id="sN">0</div></div>
+        </div>
+      </div>
+
+      <div class="sec" id="manualSec">
+        <div class="lbl">Manual weights (linear only)</div>
+        <div class="manual">
+          <div class="slider"><span class="name">w&#8321;</span><input type="range" id="mw1" min="-10" max="10" step="0.01" value="0"><span class="val" id="mw1v">0.00</span></div>
+          <div class="slider"><span class="name">w&#8322;</span><input type="range" id="mw2" min="-10" max="10" step="0.01" value="0"><span class="val" id="mw2v">0.00</span></div>
+          <div class="slider"><span class="name">b</span><input type="range" id="mb" min="-10" max="10" step="0.01" value="0"><span class="val" id="mbv">0.00</span></div>
+        </div>
+        <div class="hint">Try to lower the loss by hand, then let the optimizer finish.</div>
+      </div>
+    </div>
+
+  <div class="mid">
+    <div class="panel plot3d">
+      <div class="ptitle">
+        <h2 id="sigTitle">Fitted surface p(x) = &sigma;(f(x)) over (x&#8321;, x&#8322;, y)</h2>
+        <div class="right">
+          <div class="tabs" role="tablist">
+            <button id="tab3d" role="tab" aria-selected="true">3D surface</button>
+            <button id="tabM" role="tab" aria-selected="false">Loss vs margin</button>
+            <button id="tab1d" role="tab" aria-selected="false">1D &sigma;(z)</button>
+          </div>
+        </div>
+      </div>
+      <canvas id="surfCanvas"></canvas>
+      <canvas id="sigCanvas" class="small-canvas" hidden></canvas>
+      <canvas id="marginCanvas" hidden></canvas>
+      <div class="surf-hint" id="marginHint" hidden><i class="sw" style="background:var(--accent)"></i>hinge max(0, 1&minus;m) &middot; SVM &nbsp; <i class="sw" style="background:var(--loss)"></i>logistic log(1+e<sup>&minus;m</sup>) &middot; LR &nbsp; <i class="sw dash"></i>0-1 loss &nbsp;&middot;&nbsp; hollow = misclassified (m &lt; 0), ring = support vector</div>
+      <div class="surf-hint" id="surfHint">Drag to rotate. Points sit at height y (0 or 1); dashed stems show the residual p&#7522; &minus; y&#7522;. Yellow curve: p = 0.5.</div>
+    </div>
+    <div class="panel">
+      <div class="ptitle"><h2 id="lossTitle">Training loss (cross-entropy) per iteration</h2><span id="lossRange"></span></div>
+      <canvas id="lossCanvas" class="small-canvas"></canvas>
+    </div>
+    <div class="panel">
+      <div class="ptitle"><h2>Live equations</h2><span id="eqMode">linear</span></div>
+      <div class="eq">
+        <div class="line"><span class="k">Model</span><span class="m" id="eqModel"></span></div>
+        <div class="line"><span class="k">Loss</span><span class="m" id="eqLoss"></span></div>
+        <div class="line"><span class="k">Gradient</span><span class="m" id="eqGrad"></span></div>
+        <div class="line"><span class="k">Update</span><span class="m" id="eqUpd"></span></div>
+        <div class="note quiet" id="teachNote"></div>
+        <table class="cmp" id="cmpTable" data-model="lr">
+          <thead><tr><th></th><th>Logistic regression</th><th>Linear SVM</th></tr></thead>
+          <tbody>
+            <tr><td>Output</td><td>probability p = &sigma;(f)</td><td>score f; predict sign(f)</td></tr>
+            <tr><td>Loss per point, m = t&middot;f</td><td>log(1 + e<sup>&minus;m</sup>): smooth, never exactly 0</td><td>max(0, 1 &minus; m): exactly 0 once m &ge; 1</td></tr>
+            <tr><td>Which points matter</td><td>all of them, weighted by p&#7522; &minus; y&#7522;</td><td>only support vectors (m &le; 1)</td></tr>
+            <tr><td>Role of &lambda;</td><td>optional; keeps &#8214;w&#8214; finite on separable data</td><td>essential; trades margin 2/&#8214;w&#8214; against violations (C = 1/&lambda;N)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+// ---------- state ----------
+const S = {
+  pts: [],            // {x, y, c}
+  model: 'lr',        // 'lr' = logistic regression (cross-entropy), 'svm' = linear SVM (hinge)
+  feat: 'linear',
+  w: [0, 0], b: 0,
+  lr: 1, lam: 0, opt: 'gd', batch: 8, speed: 3,
+  iter: 0, hist: [],  // {loss, acc, gn}
+  running: false, diverged: false,
+  seed: 7,
+  cmp: null, overlay: false,   // fitted solutions of both models, and whether the other one is drawn
+  C: 1, lamLR: 0,              // SVM slack penalty C (lambda = 1/(C N)); LR's own lambda from its slider
+};
+const LAMS = [0, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1];
+const RANGE = 1.25;     // data axes: [-RANGE, RANGE]
+const G = 120;          // heatmap grid resolution
+const COL = { c0: [59, 141, 232], c1: [232, 106, 44] };
+
+// ---------- math ----------
+const dim = () => S.feat === 'linear' ? 2 : 5;
+function phi(x, y) { return S.feat === 'linear' ? [x, y] : [x, y, x * x, y * y, x * y]; }
+function sigmoid(z) { if (z >= 0) return 1 / (1 + Math.exp(-z)); const e = Math.exp(z); return e / (1 + e); }
+function softplus(x) { return x > 30 ? x : Math.log1p(Math.exp(x)); }   // log(1 + e^x), stable
+function zOf(f) { let z = S.b; for (let i = 0; i < f.length; i++) z += S.w[i] * f[i]; return z; }
+
+// loss, gradient, accuracy over a set of point indices
+function evaluate(idxs) {
+  const d = dim(), N = idxs.length;
+  const gw = new Array(d).fill(0); let gb = 0, loss = 0, correct = 0, nsv = 0, nviol = 0;
+  for (const k of idxs) {
+    const p = S.pts[k], f = phi(p.x, p.y), z = zOf(f), y = p.c;
+    if ((z >= 0) === (y === 1)) correct++;
+    if (S.model === 'lr') {
+      const pr = sigmoid(z);
+      loss += y === 1 ? softplus(-z) : softplus(z);  // -[y log p + (1-y) log(1-p)]
+      const r = pr - y;                                // residual
+      for (let j = 0; j < d; j++) gw[j] += r * f[j];
+      gb += r;
+    } else {
+      const t = 2 * y - 1, m = t * z;                  // label t in {-1,+1}, margin m = t f(x)
+      loss += Math.max(0, 1 - m);                       // hinge
+      if (m <= 1 + 1e-9) nsv++;
+      if (m < 1) { nviol++; for (let j = 0; j < d; j++) gw[j] -= t * f[j]; gb -= t; }  // subgradient: only margin violators
+    }
+  }
+  if (N > 0) { loss /= N; gb /= N; for (let j = 0; j < d; j++) gw[j] /= N; }
+  let w2 = 0; for (let j = 0; j < d; j++) { w2 += S.w[j] * S.w[j]; gw[j] += S.lam * S.w[j]; }
+  loss += 0.5 * S.lam * w2;
+  const gn = Math.sqrt(gw.reduce((a, v) => a + v * v, 0) + gb * gb);
+  return { loss, gw, gb, acc: N ? correct / N : 0, gn, nsv, nviol };
+}
+
+// Newton step: solve H d = g, with H = (1/N) sum p(1-p) phi~ phi~^T + lam*diag(1,..,1,0)
+function newtonStep(idxs, ev) {
+  const d = dim(), m = d + 1, N = idxs.length;
+  const H = Array.from({ length: m }, () => new Array(m).fill(0));
+  for (const k of idxs) {
+    const p = S.pts[k], f = phi(p.x, p.y); f.push(1);
+    const pr = sigmoid(zOf(f.slice(0, d))), s = pr * (1 - pr);
+    for (let i = 0; i < m; i++) for (let j = 0; j < m; j++) H[i][j] += s * f[i] * f[j];
+  }
+  for (let i = 0; i < m; i++) for (let j = 0; j < m; j++) H[i][j] /= N;
+  for (let i = 0; i < d; i++) H[i][i] += S.lam;
+  for (let i = 0; i < m; i++) H[i][i] += 1e-6;            // tiny ridge for numerical safety
+  const g = ev.gw.concat([ev.gb]);
+  const sol = solve(H, g);
+  for (let i = 0; i < d; i++) S.w[i] -= sol[i];
+  S.b -= sol[d];
+}
+function solve(A, b) { // Gaussian elimination with partial pivoting
+  const n = b.length, M = A.map((r, i) => r.concat([b[i]]));
+  for (let c = 0; c < n; c++) {
+    let piv = c; for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[piv][c])) piv = r;
+    [M[c], M[piv]] = [M[piv], M[c]];
+    const pv = M[c][c] || 1e-12;
+    for (let r = 0; r < n; r++) { if (r === c) continue; const f = M[r][c] / pv; for (let k = c; k <= n; k++) M[r][k] -= f * M[c][k]; }
+  }
+  return M.map((r, i) => r[n] / (r[i] || 1e-12));
+}
+
+function allIdx() { return S.pts.map((_, i) => i); }
+function step() {
+  if (!S.pts.length || S.diverged) return;
+  let idxs = allIdx();
+  if (S.opt === 'sgd') { shuffle(idxs); idxs = idxs.slice(0, Math.min(S.batch, idxs.length)); }
+  const ev = evaluate(idxs);
+  if (S.opt === 'newton' && S.model === 'lr') newtonStep(idxs, ev);
+  else { for (let j = 0; j < S.w.length; j++) S.w[j] -= S.lr * ev.gw[j]; S.b -= S.lr * ev.gb; }
+  S.iter++;
+  const full = evaluate(allIdx());
+  if (!isFinite(full.loss) || !S.w.every(isFinite) || !isFinite(S.b)) { S.diverged = true; S.running = false; }
+  S.hist.push({ loss: full.loss, acc: full.acc, gn: full.gn });
+  if (S.hist.length > 20000) S.hist.splice(0, S.hist.length - 20000);
+}
+function resetWeights(random) {
+  S.w = new Array(dim()).fill(0).map(() => random ? (Math.random() * 2 - 1) * 3 : 0);
+  S.b = random ? (Math.random() * 2 - 1) * 2 : 0;
+  S.iter = 0; S.hist = []; S.diverged = false; S.running = false;
+}
+
+// ---------- random data ----------
+let rng = mulberry32(S.seed);
+function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function gauss() { const u = 1 - rng(), v = rng(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } }
+const clampPt = p => ({ x: Math.max(-1.15, Math.min(1.15, p.x)), y: Math.max(-1.15, Math.min(1.15, p.y)), c: p.c });
+function blob(cx, cy, sd, n, c) { const out = []; for (let i = 0; i < n; i++) out.push(clampPt({ x: cx + gauss() * sd, y: cy + gauss() * sd, c })); return out; }
+function makeDataset(name) {
+  rng = mulberry32(S.seed);
+  switch (name) {
+    case 'blobs': return [...blob(-0.45, -0.35, 0.18, 40, 0), ...blob(0.45, 0.4, 0.18, 40, 1)];
+    case 'overlap': return [...blob(-0.25, -0.2, 0.32, 50, 0), ...blob(0.3, 0.25, 0.32, 50, 1)];
+    case 'outliers': return [...blob(-0.45, -0.35, 0.16, 40, 0), ...blob(0.45, 0.4, 0.16, 40, 1),
+      { x: -0.85, y: -0.75, c: 1 }, { x: -0.7, y: -0.95, c: 1 }, { x: -0.95, y: -0.5, c: 1 }];
+    case 'xor': return [...blob(-0.5, -0.5, 0.15, 25, 1), ...blob(0.5, 0.5, 0.15, 25, 1), ...blob(-0.5, 0.5, 0.15, 25, 0), ...blob(0.5, -0.5, 0.15, 25, 0)];
+    case 'circles': {
+      const out = [];
+      for (let i = 0; i < 50; i++) { const r = Math.sqrt(rng()) * 0.42, t = rng() * Math.PI * 2; out.push({ x: r * Math.cos(t), y: r * Math.sin(t), c: 1 }); }
+      for (let i = 0; i < 60; i++) { const r = 0.65 + rng() * 0.35, t = rng() * Math.PI * 2; out.push({ x: r * Math.cos(t), y: r * Math.sin(t), c: 0 }); }
+      return out;
+    }
+    default: return [];
+  }
+}
+
+// ---------- canvases ----------
+const mainC = document.getElementById('mainCanvas'), sigC = document.getElementById('sigCanvas'), lossC = document.getElementById('lossCanvas'), surfC = document.getElementById('surfCanvas');
+const heat = document.createElement('canvas'); heat.width = G; heat.height = G;
+const heatCtx = heat.getContext('2d'); const heatImg = heatCtx.createImageData(G, G);
+const grid = new Float32Array(G * G);
+function fitCanvas(c) {
+  const dpr = window.devicePixelRatio || 1, r = c.getBoundingClientRect();
+  const W = Math.round(r.width * dpr), H = Math.round(r.height * dpr);
+  if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
+  const ctx = c.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); return { ctx, W: r.width, H: r.height };
+}
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+// data <-> pixel (main canvas)
+let mainW = 1;
+const toPx = (x) => (x + RANGE) / (2 * RANGE) * mainW;
+const toPy = (y) => (RANGE - y) / (2 * RANGE) * mainW;
+const toDx = (px) => px / mainW * 2 * RANGE - RANGE;
+const toDy = (py) => RANGE - py / mainW * 2 * RANGE;
+
+// scalar field drawn on the canvas: probability p for LR, raw score f for SVM
+const score = (x, y) => zOf(phi(x, y));
+const fieldVal = (x, y) => S.model === 'lr' ? sigmoid(score(x, y)) : score(x, y);
+const mixT = v => S.model === 'lr' ? v : 0.5 + 0.5 * Math.max(-1, Math.min(1, v / 2));   // 0 = class 0 colour, 1 = class 1 colour
+const mixA = v => S.model === 'lr' ? Math.abs(2 * v - 1) : Math.min(1, Math.abs(v) / 2);  // 0 = undecided, 1 = confident
+const converged = ev => ev && S.iter > 0 && ev.gn < (S.model === 'lr' ? 1e-3 : 2e-2);
+function computeGrid() {
+  const d = heatImg.data;
+  for (let j = 0; j < G; j++) for (let i = 0; i < G; i++) {
+    const x = -RANGE + (i + 0.5) / G * 2 * RANGE, y = RANGE - (j + 0.5) / G * 2 * RANGE;
+    const v = fieldVal(x, y); grid[j * G + i] = v;
+    const k = (j * G + i) * 4, t = mixT(v), a = 0.12 + 0.55 * mixA(v);
+    d[k] = COL.c0[0] + (COL.c1[0] - COL.c0[0]) * t;
+    d[k + 1] = COL.c0[1] + (COL.c1[1] - COL.c0[1]) * t;
+    d[k + 2] = COL.c0[2] + (COL.c1[2] - COL.c0[2]) * t;
+    d[k + 3] = 255 * a;
+  }
+  heatCtx.putImageData(heatImg, 0, 0);
+}
+
+// overlay support: the score field of the OTHER model's fitted solution
+const grid2 = new Float32Array(G * G);
+const otherModel = () => S.model === 'lr' ? 'svm' : 'lr';
+const overlayOn = () => S.overlay && S.cmp && S.cmp[otherModel()] && S.cmp[otherModel()].w.length === dim();
+function computeOtherGrid() {
+  const o = S.cmp[otherModel()];
+  for (let j = 0; j < G; j++) for (let i = 0; i < G; i++) {
+    const x = -RANGE + (i + 0.5) / G * 2 * RANGE, y = RANGE - (j + 0.5) / G * 2 * RANGE, f = phi(x, y);
+    let z = o.b; for (let k = 0; k < f.length; k++) z += o.w[k] * f[k];
+    grid2[j * G + i] = z;
+  }
+}
+// fit one model from w = 0 with the current settings; restores the live state afterwards
+const lamFor = model => model === 'svm' ? 1 / (S.C * Math.max(1, S.pts.length)) : S.lamLR;
+function syncLam() { S.lam = lamFor(S.model); }   // N changes move the SVM's lambda when C is held fixed
+function fitModel(model, maxIter) {
+  const save = { model: S.model, w: S.w, b: S.b, opt: S.opt, hist: S.hist, iter: S.iter, running: S.running, diverged: S.diverged, lam: S.lam };
+  S.lam = lamFor(model);
+  S.model = model; S.w = new Array(dim()).fill(0); S.b = 0; S.hist = []; S.iter = 0; S.diverged = false; S.running = false;
+  S.opt = (model === 'lr' && save.opt === 'newton') ? 'newton' : 'gd';
+  const tol = model === 'lr' ? 1e-3 : 2e-2;
+  let ev = evaluate(allIdx()), it = 0;
+  while (it < maxIter && ev.gn > tol && !S.diverged) { step(); ev = evaluate(allIdx()); it++; }
+  const res = { w: S.w, b: S.b, hist: S.hist, iter: S.iter, ev, converged: ev.gn <= tol, diverged: S.diverged };
+  Object.assign(S, save);
+  return res;
+}
+function fitBoth() {
+  if (!S.pts.length) return;
+  S.running = false;
+  S.cmp = { lr: fitModel('lr', 4000), svm: fitModel('svm', 4000), feat: S.feat };
+  // the live model jumps to its own fitted solution
+  const me = S.cmp[S.model]; S.w = me.w.slice(); S.b = me.b; S.hist = me.hist.slice(); S.iter = me.iter; S.diverged = me.diverged;
+  S.overlay = true;
+  const chk = document.getElementById('overlayChk'); chk.disabled = false; chk.checked = true;
+  document.getElementById('legOther').hidden = false;
+  fillFitTable();
+  redraw();
+}
+function invalidateCmp() {
+  if (!S.cmp) return;
+  S.cmp = null; S.overlay = false;
+  const chk = document.getElementById('overlayChk'); chk.disabled = true; chk.checked = false;
+  document.getElementById('fitTable').hidden = true; document.getElementById('legOther').hidden = true;
+  document.getElementById('cmpHint').textContent = 'Data or settings changed, so the fitted pair was discarded. Fit both again to overlay.';
+}
+function fillFitTable() {
+  const c = S.cmp, $ = id => document.getElementById(id);
+  const bandCount = r => S.pts.reduce((n, p) => { const f = phi(p.x, p.y); let z = r.b; for (let k = 0; k < f.length; k++) z += r.w[k] * f[k]; return n + (Math.abs(z) < 1 ? 1 : 0); }, 0);
+  $('ftSetLR').textContent = '\u03BB = ' + S.lamLR; $('ftSetSVM').textContent = 'C = ' + (S.C >= 10 ? S.C.toFixed(0) : S.C.toFixed(2));
+  for (const [key, r] of [['LR', c.lr], ['SVM', c.svm]]) {
+    $('ftIter' + key).textContent = r.diverged ? 'diverged' : r.iter + (r.converged ? '' : ' (max)');
+    $('ftLoss' + key).textContent = r.ev.loss.toFixed(4);
+    $('ftAcc' + key).textContent = (r.ev.acc * 100).toFixed(1) + '%';
+    $('ftWn' + key).textContent = Math.sqrt(r.w.reduce((a, v) => a + v * v, 0)).toFixed(2);
+    $('ftBand' + key).textContent = bandCount(r) + ' / ' + S.pts.length;
+  }
+  let ang = 'n/a (quadratic)';
+  if (S.feat === 'linear') {
+    const a = c.lr.w, b = c.svm.w, na = Math.hypot(a[0], a[1]), nb = Math.hypot(b[0], b[1]);
+    if (na > 1e-9 && nb > 1e-9) ang = (Math.acos(Math.min(1, Math.abs(a[0] * b[0] + a[1] * b[1]) / (na * nb))) * 180 / Math.PI).toFixed(1) + '\u00B0';
+  }
+  $('ftAngle').textContent = ang;
+  $('fitTable').hidden = false;
+  $('cmpHint').textContent = 'Both fitted from w = 0 with the current features, \u03B7 and \u03BB. The violet line is the other model\u2019s boundary; switch Model to swap which one is live. Boundary angle = angle between the two normal vectors (linear features only).';
+}
+
+// marching squares on the probability grid; returns list of segments in data coords
+function contour(level, g = grid) {
+  const segs = [], cell = 2 * RANGE / G;
+  const gx = i => -RANGE + (i + 0.5) * cell, gy = j => RANGE - (j + 0.5) * cell;
+  for (let j = 0; j < G - 1; j++) for (let i = 0; i < G - 1; i++) {
+    const a = g[j * G + i], b = g[j * G + i + 1], c = g[(j + 1) * G + i + 1], d = g[(j + 1) * G + i];
+    const idx = (a > level ? 8 : 0) | (b > level ? 4 : 0) | (c > level ? 2 : 0) | (d > level ? 1 : 0);
+    if (idx === 0 || idx === 15) continue;
+    const lerp = (v0, v1) => (level - v0) / ((v1 - v0) || 1e-9);
+    const top = [gx(i) + cell * lerp(a, b), gy(j)], right = [gx(i + 1), gy(j) - cell * lerp(b, c)];
+    const bot = [gx(i) + cell * lerp(d, c), gy(j + 1)], left = [gx(i), gy(j) - cell * lerp(a, d)];
+    const T = { 1: [left, bot], 2: [bot, right], 3: [left, right], 4: [top, right], 5: [top, left, bot, right], 6: [top, bot], 7: [top, left],
+      8: [top, left], 9: [top, bot], 10: [top, right, bot, left], 11: [top, right], 12: [left, right], 13: [bot, right], 14: [left, bot] }[idx];
+    for (let k = 0; k < T.length; k += 2) segs.push([T[k], T[k + 1]]);
+  }
+  return segs;
+}
+
+let hover = null;
+function drawMain() {
+  const { ctx, W } = fitCanvas(mainC); mainW = W;
+  ctx.clearRect(0, 0, W, W);
+  computeGrid();
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(heat, 0, 0, W, W);
+  // grid & axes
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 1;
+  for (let v = -1; v <= 1; v += 0.5) { ctx.beginPath(); ctx.moveTo(toPx(v), 0); ctx.lineTo(toPx(v), W); ctx.moveTo(0, toPy(v)); ctx.lineTo(W, toPy(v)); ctx.stroke(); }
+  ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+  ctx.beginPath(); ctx.moveTo(toPx(0), 0); ctx.lineTo(toPx(0), W); ctx.moveTo(0, toPy(0)); ctx.lineTo(W, toPy(0)); ctx.stroke();
+  ctx.fillStyle = cssVar('--muted'); ctx.font = '11px ' + cssVar('--mono');
+  ctx.fillText('x₁', W - 18, toPy(0) - 6); ctx.fillText('x₂', toPx(0) + 6, 14);
+  for (const v of [-1, -0.5, 0.5, 1]) { ctx.fillText(v, toPx(v) - 8, toPy(0) + 14); ctx.fillText(v, toPx(0) - 26, toPy(v) + 4); }
+  // contours
+  const drawC = (lvl, color, lw, dash) => {
+    ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.setLineDash(dash); ctx.beginPath();
+    for (const [p, q] of contour(lvl)) { ctx.moveTo(toPx(p[0]), toPy(p[1])); ctx.lineTo(toPx(q[0]), toPy(q[1])); }
+    ctx.stroke(); ctx.setLineDash([]);
+  };
+  if (S.pts.length) {
+    if (S.model === 'lr') { drawC(0.25, 'rgba(255,255,255,0.25)', 1, [4, 4]); drawC(0.75, 'rgba(255,255,255,0.25)', 1, [4, 4]); drawC(0.5, cssVar('--accent'), 2.2, []); }
+    else { drawC(-1, 'rgba(255,255,255,0.5)', 1.2, [6, 4]); drawC(1, 'rgba(255,255,255,0.5)', 1.2, [6, 4]); drawC(0, cssVar('--accent'), 2.2, []); }
+  }
+  // overlay: the other model's fitted boundary (z = 0) in violet; its margins if it is the SVM, p = 0.25/0.75 (z = +-ln 3) if it is LR
+  if (overlayOn()) {
+    computeOtherGrid();
+    const drawO = (lvl, color, lw, dash) => {
+      ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.setLineDash(dash); ctx.beginPath();
+      for (const [p, q] of contour(lvl, grid2)) { ctx.moveTo(toPx(p[0]), toPy(p[1])); ctx.lineTo(toPx(q[0]), toPy(q[1])); }
+      ctx.stroke(); ctx.setLineDash([]);
+    };
+    const band = otherModel() === 'svm' ? 1 : Math.log(3);
+    drawO(-band, 'rgba(199,146,234,0.45)', 1, [3, 5]); drawO(band, 'rgba(199,146,234,0.45)', 1, [3, 5]);
+    drawO(0, cssVar('--other'), 2.4, [10, 5]);
+    ctx.fillStyle = cssVar('--other'); ctx.font = '12px ' + cssVar('--font'); ctx.textAlign = 'right';
+    ctx.fillText('violet: ' + (otherModel() === 'svm' ? 'SVM' : 'logistic regression') + ' fit (overlay)', W - 12, 46); ctx.textAlign = 'left';
+  }
+  // weight vector (linear only)
+  if (S.feat === 'linear') {
+    const [w1, w2] = S.w, n2 = w1 * w1 + w2 * w2;
+    if (n2 > 1e-8) {
+      const n = Math.sqrt(n2), qx = -S.b * w1 / n2, qy = -S.b * w2 / n2, L = 0.38;
+      const ex = qx + w1 / n * L, ey = qy + w2 / n * L;
+      ctx.strokeStyle = cssVar('--accent'); ctx.fillStyle = cssVar('--accent'); ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(toPx(qx), toPy(qy)); ctx.lineTo(toPx(ex), toPy(ey)); ctx.stroke();
+      const ang = Math.atan2(toPy(ey) - toPy(qy), toPx(ex) - toPx(qx));
+      ctx.beginPath(); ctx.moveTo(toPx(ex), toPy(ey));
+      ctx.lineTo(toPx(ex) - 10 * Math.cos(ang - 0.4), toPy(ey) - 10 * Math.sin(ang - 0.4));
+      ctx.lineTo(toPx(ex) - 10 * Math.cos(ang + 0.4), toPy(ey) - 10 * Math.sin(ang + 0.4)); ctx.closePath(); ctx.fill();
+      ctx.font = '12px ' + cssVar('--mono'); ctx.fillText('w', toPx(ex) + 6, toPy(ey) - 6);
+    }
+  }
+  // points
+  const panel = cssVar('--panel');
+  for (const p of S.pts) {
+    const z = score(p.x, p.y), miss = (z >= 0) !== (p.c === 1), sv = S.model === 'svm' && (2 * p.c - 1) * z <= 1 + 1e-9;
+    const col = p.c ? cssVar('--c1') : cssVar('--c0');
+    if (sv) { ctx.beginPath(); ctx.arc(toPx(p.x), toPy(p.y), 9.5, 0, Math.PI * 2); ctx.strokeStyle = cssVar('--accent'); ctx.lineWidth = 1.5; ctx.stroke(); }
+    ctx.beginPath(); ctx.arc(toPx(p.x), toPy(p.y), 5.5, 0, Math.PI * 2);
+    if (miss) { ctx.fillStyle = panel; ctx.fill(); ctx.strokeStyle = col; ctx.lineWidth = 2.2; ctx.stroke(); }
+    else { ctx.fillStyle = col; ctx.fill(); ctx.strokeStyle = panel; ctx.lineWidth = 1.5; ctx.stroke(); }
+  }
+  // hover readout
+  const hi = document.getElementById('hoverInfo');
+  if (hover) {
+    const z = score(hover.x, hover.y);
+    hi.textContent = S.model === 'lr'
+      ? `x = (${hover.x.toFixed(2)}, ${hover.y.toFixed(2)})   z = ${z.toFixed(2)}   p(y=1|x) = ${sigmoid(z).toFixed(3)}`
+      : `x = (${hover.x.toFixed(2)}, ${hover.y.toFixed(2)})   f(x) = ${z.toFixed(2)}   ${Math.abs(z) < 1 ? 'inside the margin band' : 'predict ' + (z >= 0 ? 'class 1' : 'class 0')}`;
+  } else hi.textContent = S.model === 'lr' ? 'hover to read p(x)' : 'hover to read f(x)';
+}
+
+function drawSigmoid() {
+  const { ctx, W, H } = fitCanvas(sigC); ctx.clearRect(0, 0, W, H);
+  const L = 38, R = 14, T = 16, B = 30, pw = W - L - R, ph = H - T - B, ZR = 8;
+  const px = z => L + (z + ZR) / (2 * ZR) * pw, py = p => T + (1 - p) * ph;
+  ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 1;
+  for (const p of [0, 0.25, 0.5, 0.75, 1]) { ctx.beginPath(); ctx.moveTo(L, py(p)); ctx.lineTo(W - R, py(p)); ctx.stroke(); }
+  ctx.setLineDash([4, 4]); ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+  ctx.beginPath(); ctx.moveTo(px(0), T); ctx.lineTo(px(0), T + ph); ctx.moveTo(L, py(0.5)); ctx.lineTo(W - R, py(0.5)); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = cssVar('--muted'); ctx.font = '11px ' + cssVar('--mono');
+  for (const p of [0, 0.5, 1]) ctx.fillText(p, 8, py(p) + 4);
+  for (const z of [-8, -4, 0, 4, 8]) ctx.fillText(z, px(z) - 6, H - 10);
+  ctx.fillText('z', W - R - 8, H - 10);
+  // curve
+  ctx.strokeStyle = cssVar('--accent'); ctx.lineWidth = 2; ctx.beginPath();
+  for (let i = 0; i <= 160; i++) { const z = -ZR + i / 160 * 2 * ZR; i ? ctx.lineTo(px(z), py(sigmoid(z))) : ctx.moveTo(px(z), py(sigmoid(z))); }
+  ctx.stroke();
+  // points at (z_i, y_i), misclassified hollow
+  const panel = cssVar('--panel');
+  for (const p of S.pts) {
+    const z = Math.max(-ZR, Math.min(ZR, zOf(phi(p.x, p.y)))), pr = sigmoid(z), miss = (pr >= 0.5) !== (p.c === 1);
+    const col = p.c ? cssVar('--c1') : cssVar('--c0');
+    ctx.beginPath(); ctx.arc(px(z), py(p.c) + (p.c ? 7 : -7), 4.5, 0, Math.PI * 2);
+    if (miss) { ctx.fillStyle = panel; ctx.fill(); ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.stroke(); }
+    else { ctx.globalAlpha = 0.85; ctx.fillStyle = col; ctx.fill(); ctx.globalAlpha = 1; }
+  }
+}
+
+function drawLoss() {
+  const { ctx, W, H } = fitCanvas(lossC); ctx.clearRect(0, 0, W, H);
+  const L = 46, R = 16, T = 16, B = 28, pw = W - L - R, ph = H - T - B;
+  const h = S.hist, n = h.length;
+  const lr = document.getElementById('lossRange');
+  if (!n) { ctx.fillStyle = cssVar('--muted'); ctx.font = '12px ' + cssVar('--font'); ctx.fillText('Press Step or Run to start optimizing.', L, T + 20); lr.textContent = ''; return; }
+  const oh = overlayOn() ? S.cmp[otherModel()].hist : null;           // the other model's training curve
+  let ymax = 0; for (const r of h) if (isFinite(r.loss)) ymax = Math.max(ymax, r.loss);
+  if (oh) for (const r of oh) if (isFinite(r.loss)) ymax = Math.max(ymax, r.loss);
+  ymax = Math.max(ymax * 1.08, 0.05);
+  const nn = Math.max(n, oh ? oh.length : 0);
+  const px = i => L + (nn > 1 ? i / (nn - 1) : 0.5) * pw, py = v => T + (1 - v / ymax) * ph;
+  ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 1;
+  ctx.fillStyle = cssVar('--muted'); ctx.font = '11px ' + cssVar('--mono');
+  for (let k = 0; k <= 4; k++) { const v = ymax * k / 4; ctx.beginPath(); ctx.moveTo(L, py(v)); ctx.lineTo(W - R, py(v)); ctx.stroke(); ctx.fillText(v.toFixed(2), 6, py(v) + 4); }
+  ctx.fillText('0', L - 3, H - 10); ctx.fillText(String(nn), W - R - 6 * String(nn).length, H - 10); ctx.fillText('iteration', L + pw / 2 - 24, H - 10);
+  // reference: the loss at w = 0 (ln 2 for cross-entropy, 1 for hinge)
+  const ref = S.model === 'lr' ? Math.LN2 : 1, refTxt = S.model === 'lr' ? 'ln 2' : '1 (w = 0)';
+  if (ymax > ref) { ctx.setLineDash([3, 4]); ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.beginPath(); ctx.moveTo(L, py(ref)); ctx.lineTo(W - R, py(ref)); ctx.stroke(); ctx.setLineDash([]); ctx.fillText(refTxt, W - R - 7 * refTxt.length, py(ref) - 4); }
+  if (oh && oh.length) {
+    ctx.strokeStyle = cssVar('--other'); ctx.lineWidth = 1.6; ctx.setLineDash([6, 4]); ctx.beginPath();
+    const st = Math.max(1, Math.floor(oh.length / pw / 2));
+    for (let i = 0; i < oh.length; i += st) { const v = oh[i].loss; if (!isFinite(v)) continue; i ? ctx.lineTo(px(i), py(v)) : ctx.moveTo(px(i), py(v)); }
+    ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = cssVar('--other'); ctx.font = '11px ' + cssVar('--font');
+    ctx.fillText((otherModel() === 'svm' ? 'SVM hinge' : 'LR cross-entropy') + ' (overlay, own units)', L + 6, T + 10);
+  }
+  ctx.strokeStyle = cssVar('--loss'); ctx.lineWidth = 2; ctx.beginPath();
+  const stride = Math.max(1, Math.floor(n / pw / 2));
+  for (let i = 0; i < n; i += stride) { const v = h[i].loss; if (!isFinite(v)) continue; i ? ctx.lineTo(px(i), py(v)) : ctx.moveTo(px(i), py(v)); }
+  if ((n - 1) % stride) ctx.lineTo(px(n - 1), py(h[n - 1].loss));
+  ctx.stroke();
+  const last = h[n - 1];
+  if (isFinite(last.loss)) {
+    ctx.fillStyle = cssVar('--loss'); ctx.beginPath(); ctx.arc(px(n - 1), py(last.loss), 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = cssVar('--fg'); ctx.fillText(last.loss.toFixed(4), Math.min(px(n - 1) + 8, W - 60), py(last.loss) - 8);
+  }
+  lr.textContent = `min ${Math.min(...h.map(r => r.loss)).toFixed(4)}`;
+}
+
+// ---------- loss vs margin: the one picture that separates the two methods ----------
+const marginC = document.getElementById('marginCanvas');
+function drawMargin() {
+  const { ctx, W, H } = fitCanvas(marginC); ctx.clearRect(0, 0, W, H);
+  const L = 36, R = 14, T = 22, B = 64, pw = W - L - R, ph = H - T - B, MR = 3, VMAX = 3.2;
+  const px = m => L + (m + MR) / (2 * MR) * pw, py = v => T + (1 - Math.min(v, VMAX) / VMAX) * ph;
+  const hinge = m => Math.max(0, 1 - m), logis = m => softplus(-m), zeroone = m => m < 0 ? 1 : 0;
+  const mono = '11px ' + cssVar('--mono');
+  ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 1; ctx.fillStyle = cssVar('--muted'); ctx.font = mono;
+  for (const v of [0, 1, 2, 3]) { ctx.beginPath(); ctx.moveTo(L, py(v)); ctx.lineTo(W - R, py(v)); ctx.stroke(); ctx.fillText(v, 14, py(v) + 4); }
+  for (const m of [-3, -2, -1, 0, 1, 2, 3]) ctx.fillText(m, px(m) - 4, H - 50);
+  // reference verticals: decision boundary (m = 0) and the SVM margin (m = 1)
+  ctx.setLineDash([4, 4]); ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  ctx.beginPath(); ctx.moveTo(px(0), T); ctx.lineTo(px(0), T + ph); ctx.moveTo(px(1), T); ctx.lineTo(px(1), T + ph); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = cssVar('--muted'); ctx.font = '10px ' + cssVar('--font');
+  ctx.fillText('wrong side', px(0) - 58, T + 10); ctx.fillText('right side', px(0) + 5, T + 10); ctx.fillText('m = 1', px(1) + 4, T + 22);
+  // curves
+  const curve = (fn, color, lw, dash, alpha) => {
+    ctx.globalAlpha = alpha; ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.setLineDash(dash); ctx.beginPath();
+    for (let i = 0; i <= 240; i++) { const m = -MR + i / 240 * 2 * MR; const v = fn(m); i ? ctx.lineTo(px(m), py(v)) : ctx.moveTo(px(m), py(v)); }
+    ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+  };
+  const svm = S.model === 'svm';
+  curve(zeroone, cssVar('--muted'), 1.2, [3, 3], 0.8);
+  curve(logis, cssVar('--loss'), svm ? 1.4 : 2.6, [], svm ? 0.45 : 1);
+  curve(hinge, cssVar('--accent'), svm ? 2.6 : 1.4, [], svm ? 1 : 0.45);
+  // every data point at its own margin, sitting on the active loss curve
+  const act = svm ? hinge : logis, panel = cssVar('--panel');
+  for (const p of S.pts) {
+    const t = 2 * p.c - 1, m = Math.max(-MR, Math.min(MR, t * score(p.x, p.y))), col = p.c ? cssVar('--c1') : cssVar('--c0');
+    if (svm && m <= 1 + 1e-9) { ctx.beginPath(); ctx.arc(px(m), py(act(m)), 8, 0, Math.PI * 2); ctx.strokeStyle = cssVar('--accent'); ctx.lineWidth = 1.2; ctx.stroke(); }
+    ctx.beginPath(); ctx.arc(px(m), py(act(m)), 4.5, 0, Math.PI * 2);
+    if (m < 0) { ctx.fillStyle = panel; ctx.fill(); ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.stroke(); }
+    else { ctx.globalAlpha = 0.9; ctx.fillStyle = col; ctx.fill(); ctx.strokeStyle = panel; ctx.lineWidth = 1; ctx.stroke(); ctx.globalAlpha = 1; }
+  }
+}
+
+// ---------- equations & stats ----------
+const f3 = v => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(3);
+const f2 = v => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2);
+const names = () => S.feat === 'linear' ? ['x₁', 'x₂'] : ['x₁', 'x₂', 'x₁²', 'x₂²', 'x₁x₂'];
+function updateText() {
+  const ev = S.pts.length ? evaluate(allIdx()) : null;
+  const wn = Math.sqrt(S.w.reduce((a, v) => a + v * v, 0));
+  const svm = S.model === 'svm', N = S.pts.length;
+  document.getElementById('sIter').textContent = S.iter;
+  document.getElementById('sLoss').textContent = ev ? (isFinite(ev.loss) ? ev.loss.toFixed(4) : 'NaN') : '\u2013';
+  document.getElementById('sAcc').textContent = ev ? (ev.acc * 100).toFixed(1) + '%' : '\u2013';
+  document.getElementById('sWn').textContent = wn.toFixed(2);
+  document.getElementById('sGn').textContent = ev ? ev.gn.toExponential(2) : '\u2013';
+  document.getElementById('sNk').textContent = svm ? 'Support vectors' : 'N points';
+  document.getElementById('sN').textContent = svm ? `${ev ? ev.nsv : 0} / ${N}` : N;
+  document.getElementById('eqMode').textContent = (svm ? 'SVM \u00B7 ' : 'LR \u00B7 ') + (S.feat === 'linear' ? 'linear, d = 2' : 'quadratic, d = 5');
+  const nm = names();
+  const zexpr = S.w.map((v, i) => `<span class="n">${f2(v)}</span>\u00B7${nm[i]}`).join(' ') + ` <span class="n">${f2(S.b)}</span>`;
+  const lossTxt = ev && isFinite(ev.loss) ? ev.loss.toFixed(4) : '\u2013';
+  const gvec = ev ? `[${ev.gw.map(v => f3(v)).join(', ')}],  \u2202L/\u2202b = <span class="n">${f3(ev.gb)}</span>` : '\u2013';
+  if (!svm) {
+    document.getElementById('eqModel').innerHTML = `p = \u03C3(z),  z = w\u00B7\u03C6(x) + b<br>z = ${zexpr}`;
+    const lamTxt = S.lam ? ` + (\u03BB/2)\u2016w\u2016\u00B2  (\u03BB = ${S.lam})` : '';
+    document.getElementById('eqLoss').innerHTML = `L = \u2212(1/N) \u03A3 [ <span class="y1">y\u1D62</span> log p\u1D62 + (1 \u2212 <span class="y1">y\u1D62</span>) log(1 \u2212 p\u1D62) ]${lamTxt}<br>L = <span class="n">${lossTxt}</span>  over N = ${N}   (per point: log(1 + e<sup>\u2212m</sup>) with m = t\u1D62 z\u1D62)`;
+    document.getElementById('eqGrad').innerHTML = `\u2202L/\u2202w = (1/N) \u03A3 (p\u1D62 \u2212 y\u1D62) \u03C6(x\u1D62)${S.lam ? ' + \u03BBw' : ''}  \u2192  <span class="n">${gvec}</span><br><span style="color:var(--muted)">(p\u1D62 \u2212 y\u1D62) is the residual: every point contributes, more so the more wrong it is.</span>`;
+  } else {
+    const margin = wn > 1e-9 ? (2 / wn).toFixed(3) : '\u221E';
+    document.getElementById('eqModel').innerHTML = `f(x) = w\u00B7\u03C6(x) + b,  predict sign(f),  labels t = 2y \u2212 1 \u2208 {\u22121, +1}<br>f = ${zexpr}<br><span style="color:var(--muted)">margin band f = \u00B11 has width 2/\u2016w\u2016 = <span class="n">${margin}</span></span>`;
+    const Ctxt = S.C >= 10 ? S.C.toFixed(0) : S.C.toFixed(2), lamTxt2 = S.lam.toExponential(2);
+    document.getElementById('eqLoss').innerHTML = `\u00BD\u2016w\u2016\u00B2 + C \u03A3 \u03BE\u1D62,  \u03BE\u1D62 = max(0, 1 \u2212 t\u1D62 f(x\u1D62))  (slack)   with C = <span class="n">${Ctxt}</span><br>scaled by 1/(CN):  L = (\u03BB/2)\u2016w\u2016\u00B2 + (1/N) \u03A3 \u03BE\u1D62,  \u03BB = 1/(CN) = ${lamTxt2}<br>L = <span class="n">${lossTxt}</span>  over N = ${N}`;
+    document.getElementById('eqGrad').innerHTML = `\u2202L/\u2202w = \u03BBw \u2212 (1/N) \u03A3<sub>t\u1D62 f(x\u1D62) &lt; 1</sub> t\u1D62 \u03C6(x\u1D62)  \u2192  <span class="n">${gvec}</span><br><span style="color:var(--muted)">subgradient: only the ${ev ? ev.nviol : 0} points inside or across the margin contribute; the rest are invisible to the loss.</span>`;
+  }
+  let upd;
+  if (S.opt === 'newton' && !svm) upd = `[w, b] \u2190 [w, b] \u2212 H\u207B\u00B9 \u2207L,  H = (1/N) \u03A3 p\u1D62(1 \u2212 p\u1D62) \u03C6\u0303\u1D62\u03C6\u0303\u1D62\u1D40${S.lam ? ' + \u03BBI' : ''}   (\u03B7 is not used)`;
+  else upd = `w \u2190 w \u2212 \u03B7 \u2202L/\u2202w,  b \u2190 b \u2212 \u03B7 \u2202L/\u2202b   with \u03B7 = <span class="n">${S.lr.toFixed(S.lr < 0.1 ? 3 : 2)}</span>${S.opt === 'sgd' ? ', gradient from a random mini-batch of ' + S.batch : ''}${svm ? '  (Pegasos-style subgradient descent)' : ''}`;
+  document.getElementById('eqUpd').innerHTML = upd;
+  // teaching note
+  const note = document.getElementById('teachNote');
+  let msg = '', strong = false;
+  const conv = converged(ev);
+  if (S.diverged) { msg = 'The weights blew up to NaN/Infinity. The learning rate is too large for this problem. Lower \u03B7 and reset the weights.'; strong = true; }
+  else if (!N) msg = 'Add points by clicking on the canvas, or pick a dataset.';
+  else if (!svm && ev.acc === 1 && S.lam === 0 && wn > 6) { msg = 'The data is separable in feature space and \u03BB = 0, so \u2016w\u2016 keeps growing: the loss approaches 0 but never reaches it, and the sigmoid becomes a step. Add L2 regularization to get a finite optimum.'; strong = true; }
+  else if (svm && S.C >= 100) { msg = `C = ${S.C.toFixed(0)} is large: slack is expensive, so the fit approaches a hard margin. Outliers get to pull the boundary and the margin 2/\u2016w\u2016 shrinks. Compare with a small C.`; strong = true; }
+  else if (svm && S.C <= 0.1) { msg = `C = ${S.C.toFixed(2)} is small: slack is cheap, so the margin term \u00BD\u2016w\u2016\u00B2 dominates. The band widens, many points sit inside it (all become support vectors) and the fit may underfit.`; strong = true; }
+  else if (S.feat === 'linear' && S.iter > 150 && ev.acc < 0.75 && ev.gn < 0.05) { msg = 'The loss has flattened but accuracy is poor: a straight line cannot separate this data. Switch to quadratic features \u03C6(x) to get a curved boundary while the model stays linear in w.'; strong = true; }
+  else if (conv && svm) msg = `Converged. Only the ${ev.nsv} ringed support vectors touch the loss: drag-free test \u2014 right-click a point far outside the margin band and the boundary will not move. With logistic regression every point pulls a little.`;
+  else if (conv) msg = 'Converged: the gradient is (almost) zero. Cross-entropy is convex in w, so this is the global minimum for the current \u03BB.';
+  else if (S.iter === 0 && svm) msg = 'At w = 0 every f(x\u1D62) = 0, so every point violates the margin (t\u1D62 f = 0 < 1) and the hinge loss is exactly 1. All points are support vectors at the start.';
+  else if (S.iter === 0) msg = 'At w = 0 every p\u1D62 = 0.5, so the loss is ln 2 \u2248 0.693 regardless of the data. Step through the first iterations slowly.';
+  else if (S.opt === 'sgd') msg = 'Mini-batch SGD uses a noisy gradient estimate, so the loss curve jitters even near the optimum. Lower \u03B7 to reduce the noise.';
+  else if (S.opt === 'newton' && !svm) msg = 'Newton\u2019s method uses the curvature (Hessian) and typically converges in a handful of iterations, at the cost of an O(d\u00B3) solve per step.';
+  else if (svm) msg = 'Each step uses only the points inside or across the margin band (t\u1D62 f(x\u1D62) < 1). Correct points beyond the band contribute nothing, so the hinge loss can reach exactly 0 on separable data.';
+  else msg = 'Each step moves w against the gradient. Watch the boundary rotate toward the misclassified (hollow) points, which have the largest residuals.';
+  note.textContent = msg; note.classList.toggle('quiet', !strong);
+  // status badge
+  const st = document.getElementById('status');
+  st.innerHTML = S.diverged ? '<span class="badge div">diverged</span>' : S.running ? '<span class="badge run">running</span>' : conv ? '<span class="badge conv">converged</span>' : '';
+  // manual sliders follow current weights
+  if (S.feat === 'linear') {
+    const set = (id, v) => { const el = document.getElementById(id); const c = Math.max(-10, Math.min(10, v)); if (document.activeElement !== el) el.value = c; document.getElementById(id + 'v').textContent = v.toFixed(2); };
+    set('mw1', S.w[0]); set('mw2', S.w[1]); set('mb', S.b);
+  }
+  document.getElementById('runBtn').textContent = S.running ? 'Pause' : 'Run';
+}
+
+
+// ---------- 3D surface view: (x1, x2) on the floor, label y / probability p on the vertical axis ----------
+const V = { az: -0.62, el: 0.42, mode: '3d', drag: null };
+const ZH = 1.6;            // vertical scale: the full vertical range is drawn ZH data units tall
+// vertical-axis setup per model: LR plots y and p in [0,1]; SVM plots t = +-1 and the score f clipped to [-2,2]
+const zSetup = () => S.model === 'lr'
+  ? { lo: 0, hi: 1, ticks: [0, 0.5, 1], label: 'y, p', val: (x, y) => sigmoid(score(x, y)), h: pt => pt.c, level: 0, bands: [] }
+  : { lo: -2, hi: 2, ticks: [-2, -1, 0, 1, 2], label: 't, f', val: (x, y) => Math.max(-2, Math.min(2, score(x, y))), h: pt => 2 * pt.c - 1, level: 0, bands: [-1, 1] };
+function drawSurface() {
+  const { ctx, W, H } = fitCanvas(surfC); ctx.clearRect(0, 0, W, H);
+  const ca = Math.cos(V.az), sa = Math.sin(V.az), ce = Math.cos(V.el), se = Math.sin(V.el);
+  const Z = zSetup(), zspan = Z.hi - Z.lo;
+  // rotate: yaw about the vertical axis, then tilt the camera down by el
+  const rot = (x, y, z) => { const xr = x * ca - y * sa, yr = x * sa + y * ca, zz = (z - Z.lo) / zspan * ZH; return [xr, yr * se + zz * ce, yr * ce - zz * se]; }; // [sx, sy(up), depth]
+  // fit the bounding box of the 8 corners into the canvas
+  let minx = 1e9, maxx = -1e9, miny = 1e9, maxy = -1e9;
+  for (const x of [-RANGE, RANGE]) for (const y of [-RANGE, RANGE]) for (const z of [Z.lo, Z.hi]) { const r = rot(x, y, z); minx = Math.min(minx, r[0]); maxx = Math.max(maxx, r[0]); miny = Math.min(miny, r[1]); maxy = Math.max(maxy, r[1]); }
+  const pad = 30, sc = Math.min((W - 2 * pad) / (maxx - minx), (H - 2 * pad - 10) / (maxy - miny));
+  const cx = W / 2 - sc * (minx + maxx) / 2, cy = H / 2 - 6 + sc * (miny + maxy) / 2;
+  const P = (x, y, z) => { const r = rot(x, y, z); return [cx + sc * r[0], cy - sc * r[1], r[2]]; };
+  const mono = '11px ' + cssVar('--mono');
+  const line = (a, b, style, lw, dash) => { ctx.strokeStyle = style; ctx.lineWidth = lw; ctx.setLineDash(dash || []); ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); ctx.setLineDash([]); };
+  const R = RANGE;
+  // floor grid + back frame
+  const lo = Z.lo, hi = Z.hi;
+  for (let v = -1; v <= 1; v += 0.5) { line(P(v, -R, lo), P(v, R, lo), 'rgba(255,255,255,0.06)', 1); line(P(-R, v, lo), P(R, v, lo), 'rgba(255,255,255,0.06)', 1); }
+  const corners = [[-R, -R], [R, -R], [R, R], [-R, R]];
+  const frames = S.model === 'lr' ? [hi] : [0, hi];
+  for (let i = 0; i < 4; i++) { const a = corners[i], b = corners[(i + 1) % 4]; line(P(a[0], a[1], lo), P(b[0], b[1], lo), 'rgba(255,255,255,0.18)', 1); for (const fz of frames) line(P(a[0], a[1], fz), P(b[0], b[1], fz), 'rgba(255,255,255,0.08)', 1, [3, 4]); }
+  // the vertical axis goes on the corner farthest from the camera so it does not cover the data
+  let far = corners[0], fd = -1e9; for (const c of corners) { const d = P(c[0], c[1], lo)[2]; if (d > fd) { fd = d; far = c; } }
+  line(P(far[0], far[1], lo), P(far[0], far[1], hi), 'rgba(255,255,255,0.3)', 1);
+  ctx.fillStyle = cssVar('--muted'); ctx.font = mono;
+  for (const t of Z.ticks) { const q = P(far[0], far[1], t); ctx.fillText(String(t), q[0] - 26, q[1] + 4); }
+  { const q = P(far[0], far[1], hi + 0.08 * zspan); ctx.fillText(Z.label, q[0] - 28, q[1]); }
+  { const q = P(R + 0.12, -R, lo); ctx.fillText('x\u2081', q[0] - 4, q[1] + 4); }
+  { const q = P(-R, R + 0.12, lo); ctx.fillText('x\u2082', q[0] - 4, q[1] + 4); }
+  // gather depth-sorted drawables: surface quads, points, stems
+  const items = [];
+  const M = 44, cell = 2 * R / M;
+  const node = new Array((M + 1) * (M + 1));
+  const mid = (lo + hi) / 2;
+  for (let j = 0; j <= M; j++) for (let i = 0; i <= M; i++) { const x = -R + i * cell, y = -R + j * cell; node[j * (M + 1) + i] = S.pts.length ? Z.val(x, y) : mid; }
+  if (S.pts.length) for (let j = 0; j < M; j++) for (let i = 0; i < M; i++) {
+    const x0 = -R + i * cell, y0 = -R + j * cell, x1 = x0 + cell, y1 = y0 + cell;
+    const p00 = node[j * (M + 1) + i], p10 = node[j * (M + 1) + i + 1], p11 = node[(j + 1) * (M + 1) + i + 1], p01 = node[(j + 1) * (M + 1) + i];
+    const q = [P(x0, y0, p00), P(x1, y0, p10), P(x1, y1, p11), P(x0, y1, p01)];
+    const pm = (p00 + p10 + p11 + p01) / 4, depth = 0.5 * Math.max(q[0][2], q[1][2], q[2][2], q[3][2]) + 0.125 * (q[0][2] + q[1][2] + q[2][2] + q[3][2]);
+    items.push({ depth, kind: 'quad', q, p: pm });
+  }
+  for (const pt of S.pts) {
+    const z = score(pt.x, pt.y), sv = S.model === 'svm' && (2 * pt.c - 1) * z <= 1 + 1e-9;
+    const a = P(pt.x, pt.y, Z.h(pt)), b = P(pt.x, pt.y, Z.val(pt.x, pt.y));
+    items.push({ depth: a[2] - 0.001, kind: 'pt', a, b, c: pt.c, miss: (z >= 0) !== (pt.c === 1), sv });
+  }
+  items.sort((u, v) => v.depth - u.depth);   // far first
+  const panel = cssVar('--panel');
+  const shade = (v) => { const t = mixT(v); const r = COL.c0[0] + (COL.c1[0] - COL.c0[0]) * t, g = COL.c0[1] + (COL.c1[1] - COL.c0[1]) * t, b = COL.c0[2] + (COL.c1[2] - COL.c0[2]) * t; const k = 0.75 + 0.45 * mixA(v); return `rgba(${r * k | 0},${g * k | 0},${b * k | 0},0.9)`; };
+  for (const it of items) {
+    if (it.kind === 'quad') {
+      ctx.fillStyle = shade(it.p); ctx.strokeStyle = 'rgba(10,14,22,0.3)'; ctx.lineWidth = 0.5;
+      ctx.beginPath(); ctx.moveTo(it.q[0][0], it.q[0][1]); for (let k = 1; k < 4; k++) ctx.lineTo(it.q[k][0], it.q[k][1]); ctx.closePath(); ctx.fill(); ctx.stroke();
+    } else {
+      line(it.a, it.b, 'rgba(255,255,255,0.45)', 1, [3, 3]);
+      const col = it.c ? cssVar('--c1') : cssVar('--c0');
+      if (it.sv) { ctx.beginPath(); ctx.arc(it.a[0], it.a[1], 8, 0, Math.PI * 2); ctx.strokeStyle = cssVar('--accent'); ctx.lineWidth = 1.2; ctx.stroke(); }
+      ctx.beginPath(); ctx.arc(it.a[0], it.a[1], 4.5, 0, Math.PI * 2);
+      if (it.miss) { ctx.fillStyle = panel; ctx.fill(); ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.stroke(); }
+      else { ctx.fillStyle = col; ctx.fill(); ctx.strokeStyle = panel; ctx.lineWidth = 1.2; ctx.stroke(); }
+    }
+  }
+  // decision curve (p = 0.5 or f = 0) drawn on the surface, plus its shadow on the floor; SVM also gets the f = +-1 margin curves
+  if (S.pts.length) {
+    const lvl = S.model === 'lr' ? 0.5 : 0, segs = contour(lvl);
+    ctx.strokeStyle = 'rgba(243,201,105,0.45)'; ctx.lineWidth = 1.2; ctx.beginPath();
+    for (const [a, b] of segs) { const u = P(a[0], a[1], lo), v = P(b[0], b[1], lo); ctx.moveTo(u[0], u[1]); ctx.lineTo(v[0], v[1]); }
+    ctx.stroke();
+    for (const bz of Z.bands) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1.2; ctx.setLineDash([5, 4]); ctx.beginPath();
+      for (const [a, b] of contour(bz)) { const u = P(a[0], a[1], bz), v = P(b[0], b[1], bz); ctx.moveTo(u[0], u[1]); ctx.lineTo(v[0], v[1]); }
+      ctx.stroke(); ctx.setLineDash([]);
+    }
+    ctx.strokeStyle = cssVar('--accent'); ctx.lineWidth = 2.2; ctx.beginPath();
+    for (const [a, b] of segs) { const u = P(a[0], a[1], lvl), v = P(b[0], b[1], lvl); ctx.moveTo(u[0], u[1]); ctx.lineTo(v[0], v[1]); }
+    ctx.stroke();
+    if (overlayOn()) {   // the other model's boundary, on the floor and at the decision level
+      computeOtherGrid();
+      const os = contour(0, grid2);
+      ctx.strokeStyle = cssVar('--other'); ctx.lineWidth = 2; ctx.setLineDash([8, 5]); ctx.beginPath();
+      for (const [a, b] of os) { const u = P(a[0], a[1], lo), v = P(b[0], b[1], lo); ctx.moveTo(u[0], u[1]); ctx.lineTo(v[0], v[1]); }
+      for (const [a, b] of os) { const u = P(a[0], a[1], lvl), v = P(b[0], b[1], lvl); ctx.moveTo(u[0], u[1]); ctx.lineTo(v[0], v[1]); }
+      ctx.stroke(); ctx.setLineDash([]);
+    }
+  }
+}
+// rotate by dragging
+surfC.addEventListener('pointerdown', e => { V.drag = { x: e.clientX, y: e.clientY, az: V.az, el: V.el }; surfC.setPointerCapture(e.pointerId); });
+surfC.addEventListener('pointermove', e => { if (!V.drag) return; V.az = V.drag.az + (e.clientX - V.drag.x) * 0.01; V.el = Math.max(0.08, Math.min(1.5, V.drag.el + (e.clientY - V.drag.y) * 0.01)); drawSurface(); });
+surfC.addEventListener('pointerup', () => { V.drag = null; });
+surfC.addEventListener('pointercancel', () => { V.drag = null; });
+function setMode(m) {
+  V.mode = m;
+  surfC.hidden = m !== '3d'; sigC.hidden = m !== '1d'; marginC.hidden = m !== 'm'; document.getElementById('surfHint').hidden = m !== '3d'; document.getElementById('marginHint').hidden = m !== 'm';
+  for (const [id, k] of [['tab3d', '3d'], ['tabM', 'm'], ['tab1d', '1d']]) document.getElementById(id).setAttribute('aria-selected', m === k);
+  const svm = S.model === 'svm';
+  document.getElementById('sigTitle').innerHTML = m === '3d'
+    ? (svm ? 'Score surface f(x) over (x&#8321;, x&#8322;, t = &plusmn;1)' : 'Fitted surface p(x) = &sigma;(f(x)) over (x&#8321;, x&#8322;, y)')
+    : m === 'm' ? 'Per-point loss vs. margin m = t&middot;f(x)'
+    : 'Sigmoid: each point at (z&#7522;, y&#7522;), z = w&middot;&phi;(x) + b';
+  document.getElementById('surfHint').innerHTML = svm
+    ? 'Drag to rotate. Points sit at height t (&minus;1 or +1); the plane is the score f(x), clipped to &plusmn;2. Yellow: f = 0. Dashed white: margins f = &plusmn;1. Ringed points are support vectors.'
+    : 'Drag to rotate. Points sit at height y (0 or 1); dashed stems show the residual p&#7522; &minus; y&#7522;. Yellow curve: p = 0.5.';
+  redraw();
+}
+function setModel(m) {
+  S.model = m; const svm = m === 'svm';
+  document.getElementById('cmpTable').dataset.model = m;
+  const newtonOpt = document.querySelector('#optimizer option[value=newton]'); newtonOpt.disabled = svm;
+  newtonOpt.textContent = svm ? "Newton's method (n/a: hinge has no Hessian)" : "Newton's method (uses Hessian)";
+  if (svm && S.opt === 'newton') { S.opt = 'gd'; document.getElementById('optimizer').value = 'gd'; }
+  document.getElementById('lamRow').hidden = svm; document.getElementById('cRow').hidden = !svm;
+  syncLam();
+  S.running = false;
+  if (S.cmp && S.cmp[m] && S.cmp[m].w.length === dim()) {                               // a fitted pair exists: jump to this model's solution
+    const r = S.cmp[m]; S.w = r.w.slice(); S.b = r.b; S.hist = r.hist.slice(); S.iter = r.iter; S.diverged = r.diverged;
+  } else { S.hist = []; S.iter = 0; S.diverged = false; }                                // otherwise weights are deliberately kept
+  document.getElementById('legOther').hidden = !overlayOn();
+  document.getElementById('modelHint').textContent = S.cmp
+    ? 'A fitted pair exists: switching loads that model\u2019s own solution while the other stays as the violet overlay.'
+    : 'Same data, features and optimizer; only the loss changes. Weights are kept when you switch, so both losses can be compared at the same w.';
+  document.getElementById('tab1d').hidden = svm; if (svm && V.mode === '1d') V.mode = 'm';
+  document.getElementById('legSV').hidden = !svm;
+  document.getElementById('legB').innerHTML = svm ? '&mdash; f = 0 boundary, - - f = &plusmn;1 margins' : '&mdash; p = 0.5 boundary, - - p = 0.25 / 0.75';
+  document.getElementById('lossTitle').textContent = svm ? 'Training loss (hinge + \u03BB/2\u2016w\u2016\u00B2) per iteration' : 'Training loss (cross-entropy) per iteration';
+  document.getElementById('hdrSub').innerHTML = svm ? 'Binary classification: f(x) = w&middot;x + b, fit by minimizing hinge loss + margin penalty' : 'Binary classification: p(y=1|x) = &sigma;(w&middot;x + b), fit by minimizing cross-entropy loss';
+  setMode(V.mode);
+}
+document.getElementById('tab3d').addEventListener('click', () => setMode('3d'));
+document.getElementById('tabM').addEventListener('click', () => setMode('m'));
+document.getElementById('tab1d').addEventListener('click', () => setMode('1d'));
+document.querySelectorAll('input[name=model]').forEach(r => r.addEventListener('change', e => setModel(e.target.value)));
+
+function redraw() { drawMain(); if (V.mode === '3d') drawSurface(); else if (V.mode === 'm') drawMargin(); else drawSigmoid(); drawLoss(); updateText(); }
+
+// ---------- animation ----------
+function frame() {
+  if (!S.running) return;
+  for (let i = 0; i < S.speed && S.running; i++) step();
+  redraw();
+  if (S.running) requestAnimationFrame(frame);
+}
+function toggleRun() {
+  if (!S.pts.length || S.diverged) return;
+  S.running = !S.running;
+  if (S.running) requestAnimationFrame(frame); else redraw();
+}
+
+// ---------- events ----------
+const $ = id => document.getElementById(id);
+function loadDataset() { S.pts = makeDataset($('dataset').value); syncLam(); invalidateCmp(); resetWeights(false); redraw(); }
+$('dataset').addEventListener('change', loadDataset);
+$('resample').addEventListener('click', () => { S.seed = (S.seed * 31 + 17) % 100003; loadDataset(); });
+document.querySelectorAll('input[name=feat]').forEach(r => r.addEventListener('change', e => {
+  S.feat = e.target.value; $('manualSec').hidden = S.feat !== 'linear'; invalidateCmp(); resetWeights(false); redraw();
+}));
+$('optimizer').addEventListener('change', e => { S.opt = e.target.value; redraw(); });
+const lrFromSlider = () => { S.lr = Math.pow(10, parseFloat($('lr').value)); $('lrVal').textContent = S.lr < 0.1 ? S.lr.toFixed(3) : S.lr.toFixed(2); };
+$('lr').addEventListener('input', () => { lrFromSlider(); updateText(); });
+const lamFromSlider = () => { S.lamLR = LAMS[parseInt($('lam').value)]; $('lamVal').textContent = S.lamLR; syncLam(); };
+$('lam').addEventListener('input', () => { lamFromSlider(); invalidateCmp(); redraw(); });
+const cFromSlider = () => { S.C = Math.pow(10, parseFloat($('cSl').value)); $('cVal').textContent = S.C >= 10 ? S.C.toFixed(0) : S.C.toFixed(2); syncLam(); };
+$('cSl').addEventListener('input', () => { cFromSlider(); invalidateCmp(); redraw(); });
+$('fitBothBtn').addEventListener('click', fitBoth);
+$('overlayChk').addEventListener('change', e => { S.overlay = e.target.checked; $('legOther').hidden = !overlayOn(); redraw(); });
+$('speed').addEventListener('input', () => { S.speed = parseInt($('speed').value); $('speedVal').textContent = S.speed; });
+$('stepBtn').addEventListener('click', () => { S.running = false; step(); redraw(); });
+$('runBtn').addEventListener('click', toggleRun);
+$('resetBtn').addEventListener('click', () => { resetWeights(false); redraw(); });
+$('randBtn').addEventListener('click', () => { resetWeights(true); redraw(); });
+for (const [id, fn] of [['mw1', v => S.w[0] = v], ['mw2', v => S.w[1] = v], ['mb', v => S.b = v]]) {
+  $(id).addEventListener('input', e => { S.running = false; S.diverged = false; fn(parseFloat(e.target.value)); redraw(); });
+}
+// canvas interaction
+function canvasPoint(e) { const r = mainC.getBoundingClientRect(); return { x: toDx(e.clientX - r.left), y: toDy(e.clientY - r.top) }; }
+mainC.addEventListener('mousemove', e => { hover = canvasPoint(e); drawMain(); });
+mainC.addEventListener('mouseleave', () => { hover = null; drawMain(); });
+mainC.addEventListener('click', e => {
+  const p = canvasPoint(e); let c = parseInt(document.querySelector('input[name=addcls]:checked').value); if (e.shiftKey) c = 1 - c;
+  S.pts.push({ x: p.x, y: p.y, c }); S.diverged = false; syncLam(); invalidateCmp(); redraw();
+});
+mainC.addEventListener('contextmenu', e => {
+  e.preventDefault(); const p = canvasPoint(e); let best = -1, bd = (12 / mainW * 2 * RANGE) ** 2;
+  S.pts.forEach((q, i) => { const d = (q.x - p.x) ** 2 + (q.y - p.y) ** 2; if (d < bd) { bd = d; best = i; } });
+  if (best >= 0) { S.pts.splice(best, 1); syncLam(); invalidateCmp(); redraw(); }
+});
+document.addEventListener('keydown', e => {
+  const t = e.target.tagName; if (t === 'INPUT' || t === 'SELECT' || t === 'TEXTAREA') return;
+  if (e.code === 'Space') { e.preventDefault(); toggleRun(); }
+  else if (e.key === 's' || e.key === 'S') { S.running = false; step(); redraw(); }
+  else if (e.key === 'r' || e.key === 'R') { resetWeights(false); redraw(); }
+});
+window.addEventListener('resize', redraw);
+
+// ---------- init ----------
+lrFromSlider(); lamFromSlider(); cFromSlider();
+S.pts = makeDataset($('dataset').value);
+syncLam();
+resetWeights(false);
+redraw();
+})();
+</script>
+</body>
+</html>
