@@ -7,13 +7,12 @@
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body {
-  font-family: 'Segoe UI', Arial, sans-serif;
-  background: #07071a;
-  color: #d0d0ee;
+  font-family:"IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+  background: #0e1118;
+  color: #e4e8f0;
   height: 100vh;
   overflow: hidden;
-  user-select: none;
-}
+  user-select: none; font-size:15px; line-height:1.55;}
 #app {
   display: grid;
   grid-template-columns: 1fr 310px;
@@ -26,8 +25,8 @@ body {
 }
 header {
   grid-area: hdr;
-  background: #0e0e28;
-  border-bottom: 1px solid #22225a;
+  background: #161b25;
+  border-bottom: 1px solid #2a3243;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -35,15 +34,15 @@ header {
   gap: 2px;
 }
 .header-row1 { display: flex; align-items: baseline; gap: 14px; }
-header h1 { font-size:20px; color:#7799ff; font-weight:700; letter-spacing:.5px; }
+header h1 { font-size:20px; color:#e4e8f0; font-weight:700; letter-spacing:.5px; }
 .header-subtitle { font-size:13px; color:#5566aa; }
 .header-author { font-size:12px; color:#6677bb; }
-.header-author a { color:#7799ff; text-decoration:none; }
+.header-author a { color:#4da3ff; text-decoration:none; }
 .header-author a:hover { text-decoration:underline; }
 #view3d {
   grid-area: view3d;
   position: relative;
-  background: #040410;
+  background: #0e1118;
   overflow: hidden;
 }
 #canvas3d { display:block; width:100%; height:100%; }
@@ -54,7 +53,7 @@ header h1 { font-size:20px; color:#7799ff; font-weight:700; letter-spacing:.5px;
 #step-label {
   position:absolute; bottom:12px; left:50%; transform:translateX(-50%);
   background: rgba(10,10,40,0.85);
-  border:1px solid #33336a;
+  border:1px solid #3b4457;
   border-radius:20px;
   padding:5px 18px;
   font-size:13px; color:#9999dd;
@@ -64,18 +63,18 @@ header h1 { font-size:20px; color:#7799ff; font-weight:700; letter-spacing:.5px;
   grid-area: proj;
   display:grid;
   grid-template-columns: 1fr 1fr;
-  border-top: 1px solid #1a1a44;
+  border-top: 1px solid #2a3243;
 }
 #proj > div { position:relative; }
-#proj > div:first-child { border-right:1px solid #1a1a44; }
+#proj > div:first-child { border-right:1px solid #2a3243; }
 .proj-label {
   position:absolute; top:7px; left:8px;
   font-size:12px; color:#7788aa; pointer-events:none; z-index:1;
 }
 #side {
   grid-area: side;
-  background: #0e0e28;
-  border-left: 1px solid #1a1a44;
+  background: #161b25;
+  border-left: 1px solid #2a3243;
   overflow-y: auto;
   padding: 12px 14px 20px;
 }
@@ -84,38 +83,38 @@ header h1 { font-size:20px; color:#7799ff; font-weight:700; letter-spacing:.5px;
   color:#7788cc; margin-bottom:9px; font-weight:700;
 }
 .row { display:flex; align-items:center; gap:8px; margin-bottom:7px; }
-.lbl { font-size:13px; color:#aabbcc; width:66px; flex-shrink:0; }
-input[type=range] { flex:1; accent-color:#5577ff; height:14px; cursor:pointer; }
+.lbl { font-size:13px; color:#b4bccb; width:66px; flex-shrink:0; }
+input[type=range] { flex:1; accent-color:#4da3ff; height:14px; cursor:pointer; }
 .val { font-size:13px; color:#aabbee; width:36px; text-align:right; }
-.divider { border:none; border-top:1px solid #1a1a44; margin:12px 0; }
+.divider { border:none; border-top:1px solid #2a3243; margin:12px 0; }
 .btn {
-  background:#1a1a44; border:1px solid #333377; color:#8899cc;
+  background:#2a3243; border:1px solid #3b4457; color:#8b95a8;
   padding:6px 14px; border-radius:4px; cursor:pointer; font-size:13px;
   transition:background .15s;
 }
-.btn:hover { background:#252560; }
-.btn-hi { background:#253060; border-color:#4455aa; color:#bbccff; }
+.btn:hover { background:#3b4457; }
+.btn-hi { background:#253060; border-color:#4455aa; color:#b4bccb; }
 .btn-hi:hover { background:#2d3870; }
-.btn-active { background:#1a3388 !important; border-color:#4466cc !important; color:#ccdeff !important; }
+.btn-active { background:#1a3388 !important; border-color:#4466cc !important; color:#e4e8f0 !important; }
 
 /* Eigenvalue bars */
 .ev-row { display:flex; align-items:center; gap:7px; margin-bottom:6px; }
 .dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
 .ev-lbl { font-size:13px; width:32px; }
-.bar-bg { flex:1; height:8px; background:#1a1a3a; border-radius:4px; overflow:hidden; }
+.bar-bg { flex:1; height:8px; background:#1d2331; border-radius:4px; overflow:hidden; }
 .bar-fill { height:100%; border-radius:4px; transition:width .4s ease; }
-.ev-pct { font-size:13px; color:#aabbcc; width:42px; text-align:right; }
+.ev-pct { font-size:13px; color:#b4bccb; width:42px; text-align:right; }
 
 .info-box {
-  background:#0a0a22; border:1px solid #1e1e44; border-radius:5px;
-  padding:9px 11px; font-size:12px; color:#aabbcc; line-height:1.65;
+  background:#0e1118; border:1px solid #2a3243; border-radius:5px;
+  padding:9px 11px; font-size:12px; color:#b4bccb; line-height:1.65;
 }
-.info-box strong { color:#ccddf0; }
-.info-box code { color:#77aaff; font-family:monospace; }
+.info-box strong { color:#e4e8f0; }
+.info-box code { color:#77aaff; font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
 
 /* checkboxes */
-label { font-size:13px; color:#aabbcc; cursor:pointer; display:flex; align-items:center; gap:6px; margin-bottom:5px; }
-input[type=checkbox] { accent-color:#5577ff; cursor:pointer; }
+label { font-size:13px; color:#b4bccb; cursor:pointer; display:flex; align-items:center; gap:6px; margin-bottom:5px; }
+input[type=checkbox] { accent-color:#4da3ff; cursor:pointer; }
 
 .step-btns { display:flex; gap:5px; flex-wrap:wrap; }
 
@@ -124,9 +123,9 @@ input[type=checkbox] { accent-color:#5577ff; cursor:pointer; }
   gap:2px; margin-top:5px;
 }
 .cov-cell {
-  background:#0c0c28; border:1px solid #1e1e44; border-radius:3px;
-  text-align:center; font-size:12px; padding:4px 2px; color:#8899cc;
-  font-family:monospace;
+  background:#0e1118; border:1px solid #2a3243; border-radius:3px;
+  text-align:center; font-size:12px; padding:4px 2px; color:#8b95a8;
+  font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 .cov-cell.diag { color:#ffcc44; }
 
@@ -149,12 +148,15 @@ input[type=checkbox] { accent-color:#5577ff; cursor:pointer; }
   }
   #side {
     border-left:none;
-    border-top:1px solid #1a1a44;
+    border-top:1px solid #2a3243;
     overflow-y:visible;
   }
   .step-btns button { font-size:12px; padding:5px 10px; }
 }
 </style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 <div id="app">
@@ -682,7 +684,7 @@ function draw2D() {
   const ctx=cv.getContext('2d');
   const W=cv.width, H=cv.height;
   ctx.clearRect(0,0,W,H);
-  ctx.fillStyle='#0a0a20'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#0e1118'; ctx.fillRect(0,0,W,H);
   if (!PCA||!COLORS) return;
 
   const s=PCA.scores2D;
@@ -693,7 +695,7 @@ function draw2D() {
   const cx=W/2, cy=H/2;
 
   // Grid lines (center axes)
-  ctx.strokeStyle='#2a2a55'; ctx.lineWidth=1;
+  ctx.strokeStyle='#2a3243'; ctx.lineWidth=1;
   ctx.beginPath(); ctx.moveTo(cx,4); ctx.lineTo(cx,H-4);
   ctx.moveTo(4,cy); ctx.lineTo(W-4,cy); ctx.stroke();
 
@@ -720,7 +722,7 @@ function draw2D() {
   ctx.save(); ctx.translate(cx+8, 16); ctx.fillText('↑ PC2', 0, 0); ctx.restore();
 
   // Variance text — bright enough to read
-  ctx.fillStyle='#8899cc'; ctx.font='12px sans-serif';
+  ctx.fillStyle='#8b95a8'; ctx.font='12px sans-serif';
   ctx.fillText(`PC1: ${(PCA.varRatio[0]*100).toFixed(1)}%  ·  PC2: ${(PCA.varRatio[1]*100).toFixed(1)}%  →  ${((PCA.varRatio[0]+PCA.varRatio[1])*100).toFixed(1)}% variance retained`, 8, H-8);
 }
 
@@ -732,7 +734,7 @@ function draw1D() {
   const ctx=cv.getContext('2d');
   const W=cv.width, H=cv.height;
   ctx.clearRect(0,0,W,H);
-  ctx.fillStyle='#0a0a20'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#0e1118'; ctx.fillRect(0,0,W,H);
   if (!PCA||!COLORS) return;
 
   const vals=PCA.scores1D.map(s=>s[0]);
@@ -741,7 +743,7 @@ function draw1D() {
   const cx=W/2, cy=H/2;
 
   // Center axis (vertical tick reference)
-  ctx.strokeStyle='#2a2a55'; ctx.lineWidth=1;
+  ctx.strokeStyle='#2a3243'; ctx.lineWidth=1;
   ctx.beginPath(); ctx.moveTo(cx,4); ctx.lineTo(cx,H-4); ctx.stroke();
 
   // PC1 axis line
@@ -772,7 +774,7 @@ function draw1D() {
   // KDE on axis
   drawKDE(ctx,vals,sc,cx,cy,W,H);
 
-  ctx.fillStyle='#8899cc'; ctx.font='12px sans-serif';
+  ctx.fillStyle='#8b95a8'; ctx.font='12px sans-serif';
   ctx.fillText(`PC1: ${(PCA.varRatio[0]*100).toFixed(1)}% variance retained — optimal 1D projection`, 8, H-8);
 }
 

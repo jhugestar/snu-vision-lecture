@@ -17,16 +17,17 @@
   --c0: #3b8de8;      /* class 0 (blue) */
   --c1: #e86a2c;      /* class 1 (orange) */
   --accent: #f3c969;  /* highlights, boundary */
+  --ui: #4da3ff;      /* shared UI accent (same as the demo index) */
   --loss: #2fbf8a;    /* loss curve */
   --danger: #e66767;
   --other: #c792ea;   /* the other model's fitted boundary (overlay) */
-  --font: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
-  --mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+  --font: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-html, body { margin: 0; }
+html, body { margin: 0; font-size:15px; line-height:1.55;}
 body {
   background: var(--bg); color: var(--fg);
   font-family: var(--font); font-size: 14px; line-height: 1.45;
@@ -95,20 +96,20 @@ select, button, input[type=number] {
 select { flex: 1; min-width: 0; }
 button { cursor: pointer; transition: background .12s, border-color .12s; }
 button:hover { background: #253044; border-color: #3a4660; }
-button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-button.primary { background: var(--accent); color: #1a1405; border-color: var(--accent); font-weight: 600; }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--ui); outline-offset: 1px; }
+button.primary { background: var(--ui); color: #0e1118; border-color: var(--ui); font-weight: 600; }
 button.primary:hover { background: #ffd97a; }
 button.wide { flex: 1; }
 .seg { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
 .seg label { flex: 1; text-align: center; padding: 6px 8px; cursor: pointer; background: var(--panel2); color: var(--muted); user-select: none; }
 .seg input { position: absolute; opacity: 0; width: 0; height: 0; }
 .seg input:checked + label { background: #2b3550; color: var(--fg); font-weight: 600; }
-.seg input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: -2px; }
+.seg input:focus-visible + label { outline: 2px solid var(--ui); outline-offset: -2px; }
 .seg label.cls0 b { color: var(--c0); } .seg label.cls1 b { color: var(--c1); }
 .slider { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; }
 .slider .name { font-size: 13px; color: var(--muted); }
 .slider .val { font-family: var(--mono); font-size: 12px; color: var(--fg); font-variant-numeric: tabular-nums; min-width: 64px; text-align: right; }
-.slider input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); margin: 0; }
+.slider input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--ui); margin: 0; }
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .stat { background: var(--panel2); border-radius: 6px; padding: 7px 9px; }
 .stat .k { font-size: 10px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
@@ -143,6 +144,9 @@ button.wide { flex: 1; }
 .note.quiet { border-left-color: var(--faint); color: var(--muted); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 <div class="wrap">

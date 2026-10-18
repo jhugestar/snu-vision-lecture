@@ -1,11 +1,15 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PASCAL VOC — mAP Deep Dive</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,600;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+/* Chart.js paints on a canvas and cannot resolve var(), so tokens are read here */
+function CV(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+</script>
 <style>
 :root {
   --bg:    #ffffff;
@@ -13,6 +17,8 @@
   --bg3:   #eceae6;
   --border:  rgba(0,0,0,0.08);
   --border2: rgba(0,0,0,0.15);
+  --wash:    var(--wash);
+  --wash2:   rgba(0,0,0,0.05);
   --text:  #18181a;
   --text2: #6b6966;
   --text3: #a8a5a0;
@@ -23,16 +29,38 @@
   --amber:   #d97706;
   --teal:    #0d9488;
   --coral:   #e11d48;
-  --mono: 'DM Mono', monospace;
-  --sans: 'DM Sans', sans-serif;
-  --serif: 'Fraunces', serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+  --serif: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+}
+
+/* --- dark mode (current default). The :root block above is the white mode:
+   flip <html data-theme="dark"> to data-theme="light" to get it back. --- */
+:root[data-theme="dark"] {
+  --bg:    #0e1118;
+  --bg2:   #161b25;
+  --bg3:   #1d2331;
+  --border:  rgba(255,255,255,0.10);
+  --border2: rgba(255,255,255,0.18);
+  --wash:    rgba(255,255,255,0.04);
+  --wash2:   rgba(255,255,255,0.07);
+  --text:  #e4e8f0;
+  --text2: #b4bccb;
+  --text3: #8b95a8;
+  --accent:  #4da3ff;
+  --accent2: #c792ea;
+  --green:   #3ddc97;
+  --red:     #ff8574;
+  --amber:   #e6b45c;
+  --teal:    #4fd1c5;
+  --coral:   #ff7a9a;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--sans); }
 #slides { width: 100vw; height: 100vh; position: relative; }
 .slide { position: absolute; inset: 0; display: flex; flex-direction: column; padding: 44px 64px 56px; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
 .slide.active { opacity: 1; pointer-events: all; }
-#nav { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 14px; z-index: 100; background: rgba(255,255,255,0.94); backdrop-filter: blur(12px); border: 1px solid var(--border2); border-radius: 40px; padding: 7px 18px; box-shadow: 0 2px 20px rgba(0,0,0,0.08); }
+#nav { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 14px; z-index: 100; background: var(--bg2); backdrop-filter: blur(12px); border: 1px solid var(--border2); border-radius: 40px; padding: 7px 18px; box-shadow: 0 2px 20px rgba(0,0,0,0.08); }
 #nav button { background: none; border: none; color: var(--text2); cursor: pointer; font-size:27px; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: color 0.2s, background 0.2s; }
 #nav button:hover { color: var(--text); background: var(--bg2); }
 #nav button:disabled { opacity: 0.25; cursor: default; }
@@ -99,8 +127,8 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 .det-table-wrap { flex: 1; overflow-y: auto; border: 1px solid var(--border); border-radius: 12px; }
 table { width: 100%; border-collapse: collapse; font-size:22px; }
 thead th { position: sticky; top: 0; background: var(--bg2); padding: 9px 12px; font-family: var(--mono); font-size:20px; letter-spacing: .07em; text-transform: uppercase; color: var(--text3); text-align: left; border-bottom: 1px solid var(--border); }
-tbody td { padding: 8px 12px; border-bottom: 1px solid rgba(0,0,0,0.04); color: var(--text2); }
-tbody tr:hover td { background: rgba(0,0,0,0.015); }
+tbody td { padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--text2); }
+tbody tr:hover td { background: var(--wash); }
 tr.row-active td { color: var(--text); }
 tr.row-active td:first-child { border-left: 2px solid var(--accent); }
 /* Interp */
@@ -126,6 +154,9 @@ tr.row-active td:first-child { border-left: 2px solid var(--accent); }
 /* Class bars */
 .class-bars { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
 </style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 <div id="slides">
@@ -575,7 +606,7 @@ tr.row-active td:first-child { border-left: 2px solid var(--accent); }
     <div class="card" style="gap:10px;align-items:center;">
       <div style="font-family:var(--mono);font-size:20px;letter-spacing:.1em;color:var(--coral);text-transform:uppercase;">Case 3 — Hallucination</div>
       <svg viewBox="0 0 220 165" width="100%" style="max-height:165px;flex-shrink:0;">
-        <rect x="10" y="10" width="200" height="140" rx="6" fill="rgba(0,0,0,0.02)" stroke="rgba(0,0,0,0.06)" stroke-width="1"/>
+        <rect x="10" y="10" width="200" height="140" rx="6" fill="var(--wash)" stroke="var(--border)" stroke-width="1"/>
         <rect x="18" y="18" width="58" height="50" rx="3" fill="rgba(37,99,235,0.07)" stroke="#2563eb" stroke-width="1.5"/>
         <text x="22" y="32" font-size="20" fill="#2563eb" font-family="DM Mono,monospace">GT (person)</text>
         <rect x="118" y="68" width="84" height="68" rx="4" fill="rgba(220,38,38,0.07)" stroke="#dc2626" stroke-width="2" stroke-dasharray="5,3"/>
@@ -728,7 +759,7 @@ function calcAP11(pts){
 function drawIoU(){
   var canvas=document.getElementById('iouCanvas');if(!canvas)return;
   var ctx=canvas.getContext('2d');var W=360,H=290;
-  ctx.clearRect(0,0,W,H);ctx.fillStyle='#f5f5f3';ctx.fillRect(0,0,W,H);
+  ctx.clearRect(0,0,W,H);ctx.fillStyle=CV('--bg2');ctx.fillRect(0,0,W,H);
   var gx=80,gy=70,gw=155,gh=140;
   var px=parseInt(document.getElementById('px-slider').value);
   var py=parseInt(document.getElementById('py-slider').value);
@@ -829,8 +860,8 @@ function updatePRandTable(){
     {data:[curPt],pointRadius:8,pointBackgroundColor:'#dc2626',pointBorderColor:'#fff',pointBorderWidth:2,showLine:false,order:1}
   ]},options:{responsive:true,maintainAspectRatio:false,animation:false,
     plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return 'P='+ctx.parsed.y.toFixed(2)+', R='+ctx.parsed.x.toFixed(2);}}}},
-    scales:{x:{min:0,max:1.05,title:{display:true,text:'Recall',color:'#6b6966'},ticks:{color:'#a8a5a0'},grid:{color:'rgba(0,0,0,0.05)'}},
-            y:{min:0,max:1.05,title:{display:true,text:'Precision',color:'#6b6966'},ticks:{color:'#a8a5a0'},grid:{color:'rgba(0,0,0,0.05)'}}}}});
+    scales:{x:{min:0,max:1.05,title:{display:true,text:'Recall',color:CV('--text2')},ticks:{color:CV('--text3')},grid:{color:CV('--border')}},
+            y:{min:0,max:1.05,title:{display:true,text:'Precision',color:CV('--text2')},ticks:{color:CV('--text3')},grid:{color:CV('--border')}}}}});
 
   // Sample table
   var tbody=document.getElementById('pr-tbl-body');
@@ -847,13 +878,13 @@ function updatePRandTable(){
               :isFP?'<span style="font-family:var(--mono);font-size:20px;padding:2px 6px;border-radius:10px;background:rgba(220,38,38,0.12);color:#dc2626;">FP</span>'
               :'<span style="font-family:var(--mono);font-size:20px;color:var(--text3);">—</span>';
     html+='<tr style="'+bgStyle+borderLeft+'">'
-      +'<td style="padding:5px 7px;border-bottom:1px solid rgba(0,0,0,0.04);font-family:var(--mono);'+txtColor+'">'+(i+1)+'</td>'
-      +'<td style="padding:5px 7px;border-bottom:1px solid rgba(0,0,0,0.04);font-family:var(--mono);font-size:20px;'+txtColor+'">'+r.img.slice(-6)+'</td>'
-      +'<td style="padding:5px 7px;border-bottom:1px solid rgba(0,0,0,0.04);font-family:var(--mono);'+txtColor+'">'+r.conf.toFixed(2)+'</td>'
-      +'<td style="padding:5px 7px;border-bottom:1px solid rgba(0,0,0,0.04);font-family:var(--mono);color:'+(r.iou>=iouT?'#16a34a':'#dc2626')+';">'+r.iou.toFixed(2)+'</td>'
-      +'<td style="padding:5px 7px;border-bottom:1px solid rgba(0,0,0,0.04);">'+vBadge+'</td>'
-      +'<td style="padding:5px 7px;border-bottom:1px solid rgba(0,0,0,0.04);font-family:var(--mono);text-align:right;color:#16a34a;">'+(active?r.precision.toFixed(2):'—')+'</td>'
-      +'<td style="padding:5px 7px;border-bottom:1px solid rgba(0,0,0,0.04);font-family:var(--mono);text-align:right;color:#d97706;">'+(active?r.recall.toFixed(2):'—')+'</td>'
+      +'<td style="padding:5px 7px;border-bottom:1px solid var(--border);font-family:var(--mono);'+txtColor+'">'+(i+1)+'</td>'
+      +'<td style="padding:5px 7px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:20px;'+txtColor+'">'+r.img.slice(-6)+'</td>'
+      +'<td style="padding:5px 7px;border-bottom:1px solid var(--border);font-family:var(--mono);'+txtColor+'">'+r.conf.toFixed(2)+'</td>'
+      +'<td style="padding:5px 7px;border-bottom:1px solid var(--border);font-family:var(--mono);color:'+(r.iou>=iouT?'#16a34a':'#dc2626')+';">'+r.iou.toFixed(2)+'</td>'
+      +'<td style="padding:5px 7px;border-bottom:1px solid var(--border);">'+vBadge+'</td>'
+      +'<td style="padding:5px 7px;border-bottom:1px solid var(--border);font-family:var(--mono);text-align:right;color:#16a34a;">'+(active?r.precision.toFixed(2):'—')+'</td>'
+      +'<td style="padding:5px 7px;border-bottom:1px solid var(--border);font-family:var(--mono);text-align:right;color:#d97706;">'+(active?r.recall.toFixed(2):'—')+'</td>'
       +'</tr>';
   });
   tbody.innerHTML=html;
@@ -954,8 +985,8 @@ function praRender(){
   if(praChartInst)praChartInst.destroy();
   praChartInst=new Chart(canvas,{type:'scatter',data:{datasets:ds},options:{responsive:true,maintainAspectRatio:false,animation:false,
     plugins:{legend:{display:false}},
-    scales:{x:{min:0,max:1.05,title:{display:true,text:'Recall',color:'#6b6966'},ticks:{color:'#a8a5a0'},grid:{color:'rgba(0,0,0,0.05)'}},
-            y:{min:0,max:1.1,title:{display:true,text:'Precision',color:'#6b6966'},ticks:{color:'#a8a5a0'},grid:{color:'rgba(0,0,0,0.05)'}}}}});
+    scales:{x:{min:0,max:1.05,title:{display:true,text:'Recall',color:CV('--text2')},ticks:{color:CV('--text3')},grid:{color:CV('--border')}},
+            y:{min:0,max:1.1,title:{display:true,text:'Precision',color:CV('--text2')},ticks:{color:CV('--text3')},grid:{color:CV('--border')}}}}});
 }
 
 // Slide 7: Annotated curve
@@ -977,9 +1008,9 @@ function buildAnnotCanvas(){
     {data:tpPts,showLine:false,pointRadius:8,pointBackgroundColor:'rgba(22,163,74,0.75)',pointBorderColor:'#16a34a',pointBorderWidth:1.5,label:'TP — Recall ↑',order:2},
     {data:fpPts,showLine:false,pointRadius:8,pointBackgroundColor:'rgba(220,38,38,0.65)',pointBorderColor:'#dc2626',pointBorderWidth:1.5,label:'FP — Precision ↓',order:2},
   ]},options:{responsive:true,maintainAspectRatio:false,animation:false,
-    plugins:{legend:{display:true,position:'bottom',labels:{font:{size:12},color:'#6b6966',usePointStyle:true,padding:16}}},
-    scales:{x:{min:0,max:1.05,title:{display:true,text:'Recall',color:'#6b6966'},ticks:{color:'#a8a5a0'},grid:{color:'rgba(0,0,0,0.05)'}},
-            y:{min:0,max:1.1,title:{display:true,text:'Precision',color:'#6b6966'},ticks:{color:'#a8a5a0'},grid:{color:'rgba(0,0,0,0.05)'}}}}});
+    plugins:{legend:{display:true,position:'bottom',labels:{font:{size:12},color:CV('--text2'),usePointStyle:true,padding:16}}},
+    scales:{x:{min:0,max:1.05,title:{display:true,text:'Recall',color:CV('--text2')},ticks:{color:CV('--text3')},grid:{color:CV('--border')}},
+            y:{min:0,max:1.1,title:{display:true,text:'Precision',color:CV('--text2')},ticks:{color:CV('--text3')},grid:{color:CV('--border')}}}}});
 }
 
 // Slide 8: 11-pt vs All-point
@@ -1007,7 +1038,7 @@ function buildInterpCharts(){
   document.getElementById('itp-apall').textContent=(apAll*100).toFixed(2)+'%';
   var diffEl=document.getElementById('itp-diff');
   diffEl.textContent=(diff>=0?'+':'')+(diff*100).toFixed(2)+'%';
-  diffEl.style.color=diff>0.005?'#dc2626':diff<-0.005?'#16a34a':'#6b6966';
+  diffEl.style.color=diff>0.005?CV('--red'):diff<-0.005?CV('--green'):CV('--text2');
   var curveData=rawPts.map(function(p){return{x:parseFloat(p.r.toFixed(3)),y:parseFloat(p.p.toFixed(3))};});
   var datasets=[];
   if(itpMode==='11'){
@@ -1030,8 +1061,8 @@ function buildInterpCharts(){
   if(itpChartInst)itpChartInst.destroy();
   itpChartInst=new Chart(canvas,{data:{datasets:datasets},options:{responsive:true,maintainAspectRatio:false,animation:false,
     plugins:{legend:{display:false}},
-    scales:{x:{type:'linear',min:0,max:1.1,title:{display:true,text:'Recall',color:'#6b6966'},ticks:{color:'#a8a5a0',stepSize:.1},grid:{color:'rgba(0,0,0,0.05)'}},
-            y:{min:0,max:1.1,title:{display:true,text:'Precision',color:'#6b6966'},ticks:{color:'#a8a5a0'},grid:{color:'rgba(0,0,0,0.05)'}}}}});
+    scales:{x:{type:'linear',min:0,max:1.1,title:{display:true,text:'Recall',color:CV('--text2')},ticks:{color:CV('--text3'),stepSize:.1},grid:{color:CV('--border')}},
+            y:{min:0,max:1.1,title:{display:true,text:'Precision',color:CV('--text2')},ticks:{color:CV('--text3')},grid:{color:CV('--border')}}}}});
 }
 
 // Slide 9: Envelope
@@ -1073,8 +1104,8 @@ function buildEnvSlide(){
   if(envChartInst)envChartInst.destroy();
   envChartInst=new Chart(canvas,{data:{datasets:datasets},options:{responsive:true,maintainAspectRatio:false,animation:false,
     plugins:{legend:{display:false}},
-    scales:{x:{type:'linear',min:0,max:1.05,title:{display:true,text:'Recall',color:'#6b6966'},ticks:{color:'#a8a5a0',stepSize:.2},grid:{color:'rgba(0,0,0,0.05)'}},
-            y:{min:0,max:1.1,title:{display:true,text:'Precision',color:'#6b6966'},ticks:{color:'#a8a5a0'},grid:{color:'rgba(0,0,0,0.05)'}}}}});
+    scales:{x:{type:'linear',min:0,max:1.05,title:{display:true,text:'Recall',color:CV('--text2')},ticks:{color:CV('--text3'),stepSize:.2},grid:{color:CV('--border')}},
+            y:{min:0,max:1.1,title:{display:true,text:'Precision',color:CV('--text2')},ticks:{color:CV('--text3')},grid:{color:CV('--border')}}}}});
 }
 
 // Slide 10: Class bars
@@ -1113,7 +1144,7 @@ function buildVocCoco(){
     ['Key venue','VOC Challenge','COCO Challenge, ECCV/CVPR'],
   ];
   document.getElementById('cmp-rows').innerHTML=rows.map(function(r,i){
-    return '<div style="background:'+(i%2===0?'rgba(0,0,0,0.02)':'transparent')+';padding:8px 13px;font-size:21px;color:var(--text2);display:flex;align-items:center;">'+r[0]+'</div><div style="background:'+(i%2===0?'rgba(37,99,235,0.03)':'transparent')+';padding:8px 14px;font-size:21px;color:var(--text);display:flex;align-items:center;">'+r[1]+'</div><div style="background:'+(i%2===0?'rgba(124,58,237,0.03)':'transparent')+';padding:8px 14px;font-size:21px;color:var(--text);display:flex;align-items:center;">'+r[2]+'</div>';
+    return '<div style="background:'+(i%2===0?'var(--wash)':'transparent')+';padding:8px 13px;font-size:21px;color:var(--text2);display:flex;align-items:center;">'+r[0]+'</div><div style="background:'+(i%2===0?'rgba(37,99,235,0.03)':'transparent')+';padding:8px 14px;font-size:21px;color:var(--text);display:flex;align-items:center;">'+r[1]+'</div><div style="background:'+(i%2===0?'rgba(124,58,237,0.03)':'transparent')+';padding:8px 14px;font-size:21px;color:var(--text);display:flex;align-items:center;">'+r[2]+'</div>';
   }).join('');
 }
 
@@ -1132,7 +1163,7 @@ var TIMELINE=[
 function buildTimeline(){
   var wrap=document.getElementById('timeline-wrap');wrap.innerHTML='';
   var line=document.createElement('div');
-  line.style.cssText='position:absolute;left:8px;top:12px;bottom:0;width:2px;background:rgba(0,0,0,0.07);border-radius:2px;';
+  line.style.cssText='position:absolute;left:8px;top:12px;bottom:0;width:2px;background:var(--wash2);border-radius:2px;';
   wrap.appendChild(line);
   TIMELINE.forEach(function(d){
     var el=document.createElement('div');el.style.cssText='position:relative;margin-bottom:16px;padding-left:20px;';
@@ -1158,8 +1189,8 @@ function buildDatasetChart(){
     data:{datasets:DS_DATA.map(function(d){return{label:d.name,data:[{x:d.year,y:parseFloat(Math.log10(d.instances+1).toFixed(2)),r:Math.min(36,Math.max(5,Math.log10(d.imgs+1)*6))}],backgroundColor:d.color+'25',borderColor:d.color,borderWidth:2};})},
     options:{responsive:true,maintainAspectRatio:false,animation:false,
       plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){var d=DS_DATA[ctx.datasetIndex];return[d.name+' ('+d.year+')','Images: '+d.imgs.toLocaleString(),'Classes: '+(d.cls||'seg only'),'Instances: '+d.instances.toLocaleString()];}}}},
-      scales:{x:{title:{display:true,text:'Year',color:'#6b6966'},ticks:{color:'#a8a5a0',stepSize:2},grid:{color:'rgba(0,0,0,0.04)'},min:2004,max:2025},
-              y:{title:{display:true,text:'log₁₀(instances)',color:'#6b6966'},ticks:{color:'#a8a5a0'},grid:{color:'rgba(0,0,0,0.04)'},min:3,max:10}}}});
+      scales:{x:{title:{display:true,text:'Year',color:CV('--text2')},ticks:{color:CV('--text3'),stepSize:2},grid:{color:CV('--border')},min:2004,max:2025},
+              y:{title:{display:true,text:'log₁₀(instances)',color:CV('--text2')},ticks:{color:CV('--text3')},grid:{color:CV('--border')},min:3,max:10}}}});
   document.getElementById('ds-cards').innerHTML=DS_DATA.map(function(d){
     return '<div style="background:var(--bg2);border:1px solid '+d.color+'22;border-left:3px solid '+d.color+';border-radius:9px;padding:10px 12px;"><div style="display:flex;align-items:center;gap:7px;margin-bottom:5px;"><span style="font-size:22px;font-weight:500;color:var(--text)">'+d.name+'</span><span style="font-family:var(--mono);font-size:20px;color:var(--text3)">'+d.year+'</span></div><div style="font-size:20px;color:var(--text2);line-height:1.6"><div>Images: '+d.imgs.toLocaleString()+'</div><div>Classes: '+(d.cls||'seg')+'</div><div>Instances: '+d.instances.toLocaleString()+'</div></div></div>';
   }).join('');
@@ -1253,12 +1284,12 @@ var yearLabelPlugin={
       var d=data[i];
       var x=bar.x, yTop=bar.y;
       // mAP value
-      ctx.fillStyle='#18181a';
+      ctx.fillStyle=CV('--text');
       ctx.font='bold 26px DM Mono,monospace';
       ctx.textAlign='center';
       ctx.fillText(d.map+'%', x, yTop-6);
       // year
-      ctx.fillStyle='#a8a5a0';
+      ctx.fillStyle=CV('--text3');
       ctx.font='26px DM Mono,monospace';
       ctx.fillText(String(d.year), x, yTop-30);
     });
@@ -1277,8 +1308,8 @@ function buildPerfChart(){
     data:{labels:labels,datasets:[{data:vals,backgroundColor:bgColors,borderColor:bdColors,borderWidth:1.5,borderRadius:4}]},
     options:{responsive:true,maintainAspectRatio:false,animation:false,
       plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){var d=data[ctx.dataIndex];return d.model+': '+d.map+'% mAP ('+d.era+')';}}}},
-      scales:{x:{ticks:{color:'#a8a5a0',font:{size:10,family:'DM Mono,monospace'},maxRotation:55,minRotation:40},grid:{display:false}},
-              y:{min:0,max:100,title:{display:true,text:'mAP (%)',color:'#6b6966'},ticks:{color:'#a8a5a0',stepSize:20},grid:{color:'rgba(0,0,0,0.05)'}}}},
+      scales:{x:{ticks:{color:CV('--text3'),font:{size:10,family:'DM Mono,monospace'},maxRotation:55,minRotation:40},grid:{display:false}},
+              y:{min:0,max:100,title:{display:true,text:'mAP (%)',color:CV('--text2')},ticks:{color:CV('--text3'),stepSize:20},grid:{color:CV('--border')}}}},
     plugins:[yearLabelPlugin]});
   // Build legend
   var eras=[];var seen={};data.forEach(function(d){if(!seen[d.era]){seen[d.era]=true;eras.push(d.era);}});

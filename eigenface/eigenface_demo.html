@@ -9,32 +9,31 @@
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body {
-  font-family: 'Segoe UI', Arial, sans-serif;
-  background: #07071a;
-  color: #d0d0ee;
+  font-family:"IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+  background: #0e1118;
+  color: #e4e8f0;
   height: 100vh;
   overflow: hidden;
-  user-select: none;
-}
+  user-select: none; font-size:15px; line-height:1.55;}
 
 /* ── Loading Screen ─────────────────────────────── */
 #loading {
   position: fixed; inset: 0;
-  background: #07071a;
+  background: #0e1118;
   display: flex; align-items: center; justify-content: center;
   z-index: 100;
 }
 .loading-box {
-  background: #0e0e28; border: 1px solid #2a2a5a;
+  background: #161b25; border: 1px solid #2a3243;
   border-radius: 10px; padding: 32px 40px;
   max-width: 520px; text-align: center;
 }
-.loading-title { font-size: 26px; color: #7799ff; font-weight: 700; margin-bottom: 12px; }
-#load-msg { color: #8899cc; font-size: 16px; }
+.loading-title { font-size: 26px; color: #e4e8f0; font-weight: 700; margin-bottom: 12px; }
+#load-msg { color: #8b95a8; font-size: 16px; }
 #load-error { text-align: left; font-size: 15px; color: #cc9999; line-height: 1.8; }
 #load-error code {
-  background: #1a1a44; color: #aaccff;
-  padding: 1px 6px; border-radius: 3px; font-family: monospace;
+  background: #2a3243; color: #b4bccb;
+  padding: 1px 6px; border-radius: 3px; font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 #load-error ol { margin: 8px 0 8px 20px; }
 #load-error a { color: #6688ff; }
@@ -46,16 +45,16 @@ body {
   height: 100vh;
 }
 header {
-  background: #0e0e28;
-  border-bottom: 1px solid #22225a;
+  background: #161b25;
+  border-bottom: 1px solid #2a3243;
   display: flex; flex-direction: column; justify-content: center;
   padding: 0 16px; gap: 2px;
 }
 .header-row1 { display: flex; align-items: baseline; gap: 12px; }
-header h1  { font-size: 22px; color: #7799ff; font-weight: 700; }
-.subtitle  { font-size: 14px; color: #5566aa; }
+header h1  { font-size: 22px; color: #e4e8f0; font-weight: 700; }
+.subtitle  { font-size: 14px; color: #6a7385; }
 .author    { font-size: 12px; color: #6677bb; }
-.author a  { color: #7799ff; text-decoration: none; }
+.author a  { color: #4da3ff; text-decoration: none; }
 .author a:hover { text-decoration: underline; }
 
 #main-layout {
@@ -66,8 +65,8 @@ header h1  { font-size: 22px; color: #7799ff; font-weight: 700; }
 
 /* ── Left Sidebar ───────────────────────────────── */
 #left-panel {
-  background: #0a0a22;
-  border-right: 1px solid #1a1a44;
+  background: #0e1118;
+  border-right: 1px solid #2a3243;
   padding: 12px 12px 16px;
   overflow-y: auto;
   display: flex; flex-direction: column; gap: 10px;
@@ -78,7 +77,7 @@ header h1  { font-size: 22px; color: #7799ff; font-weight: 700; }
   display: flex; align-items: center; gap: 8px;
 }
 .badge {
-  font-size: 11px; color: #ffcc44; background: #1a1a3a;
+  font-size: 11px; color: #ffcc44; background: #1d2331;
   padding: 1px 7px; border-radius: 10px; text-transform: none; letter-spacing: 0;
 }
 
@@ -105,13 +104,13 @@ header h1  { font-size: 22px; color: #7799ff; font-weight: 700; }
 .ef-item canvas { width: 100%; display: block; image-rendering: auto; }
 .ef-item .ef-lbl {
   position: absolute; bottom: 0; left: 0; right: 0;
-  background: rgba(0,0,0,.55); color: #aabbee;
+  background: rgba(0,0,0,.55); color: #b4bccb;
   font-size: 11px; text-align: center; padding: 1px 0;
 }
 
 /* Variance formula */
 .var-explain {
-  background: #0a0a22; border: 1px solid #1a1a3a;
+  background: #0e1118; border: 1px solid #1d2331;
   border-radius: 5px; padding: 7px 8px;
   display: flex; flex-direction: column; gap: 5px;
 }
@@ -122,7 +121,7 @@ header h1  { font-size: 22px; color: #7799ff; font-weight: 700; }
   font-size: 11px; color: #4466aa; text-transform: uppercase;
   letter-spacing: 0.8px;
 }
-.var-math { color: #aabbee; }
+.var-math { color: #b4bccb; }
 .var-math .katex { font-size: 0.88em; }
 
 /* Variance chart */
@@ -142,7 +141,7 @@ header h1  { font-size: 22px; color: #7799ff; font-weight: 700; }
   display: flex; gap: 5px; overflow-x: auto; padding-bottom: 4px; flex-shrink: 0;
 }
 #sample-strip::-webkit-scrollbar { height: 4px; }
-#sample-strip::-webkit-scrollbar-thumb { background: #2a2a5a; border-radius: 2px; }
+#sample-strip::-webkit-scrollbar-thumb { background: #2a3243; border-radius: 2px; }
 .sample-thumb {
   cursor: pointer; border-radius: 3px; flex-shrink: 0;
   border: 2px solid transparent; transition: border-color .15s; overflow: hidden;
@@ -150,39 +149,39 @@ header h1  { font-size: 22px; color: #7799ff; font-weight: 700; }
 .sample-thumb:hover  { border-color: #4466aa; }
 .sample-thumb.active { border-color: #ffcc44; }
 .sample-thumb canvas { width: 52px; height: 52px; display: block; image-rendering: auto; }
-.thumb-lbl { font-size: 11px; color: #6677aa; text-align: center; margin-top: 1px; }
+.thumb-lbl { font-size: 11px; color: #6a7385; text-align: center; margin-top: 1px; }
 
 .upload-btn {
-  cursor: pointer; background: #1a1a44; border: 1px solid #3a3a77; color: #8899cc;
+  cursor: pointer; background: #2a3243; border: 1px solid #3b4457; color: #8b95a8;
   padding: 4px 12px; border-radius: 4px; font-size: 13px; margin-left: auto;
   display: inline-block;
   transition: background .15s;
 }
-.upload-btn:hover { background: #252560; }
+.upload-btn:hover { background: #3b4457; }
 
 /* Main face row */
 #face-row {
   display: flex; gap: 14px; flex-shrink: 0; align-items: center;
 }
 .face-panel { display: flex; flex-direction: column; align-items: center; gap: 5px; }
-.face-lbl    { font-size: 14px; color: #8899bb; font-weight: 600; }
+.face-lbl    { font-size: 14px; color: #8b95a8; font-weight: 600; }
 .face-canvas { image-rendering: auto; border-radius: 5px; display: block; }
-.face-info   { font-size: 12px; color: #6677aa; text-align: center; }
+.face-info   { font-size: 12px; color: #6a7385; text-align: center; }
 
 /* Formula */
 #formula {
-  font-size: 12px; color: #6688cc; font-family: monospace;
-  background: #0a0a22; border: 1px solid #1e1e44;
+  font-size: 12px; color: #6688cc; font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: #0e1118; border: 1px solid #2a3243;
   border-radius: 5px; padding: 6px 10px; flex-shrink: 0;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
 /* Formula box */
 #formula-box {
-  background: #0a0a22; border: 1px solid #1e1e44;
+  background: #0e1118; border: 1px solid #2a3243;
   border-radius: 5px; padding: 7px 14px;
   flex-shrink: 0; overflow-x: auto;
-  color: #7799ff;
+  color: #4da3ff;
 }
 #formula-box .katex { font-size: 1.05em; }
 
@@ -190,10 +189,10 @@ header h1  { font-size: 22px; color: #7799ff; font-weight: 700; }
 #slider-row {
   display: flex; align-items: center; gap: 10px; flex-shrink: 0;
 }
-#slider-row label { font-size: 14px; color: #8899bb; white-space: nowrap; }
-#k-slider { flex: 1; accent-color: #5577ff; cursor: pointer; }
+#slider-row label { font-size: 14px; color: #8b95a8; white-space: nowrap; }
+#k-slider { flex: 1; accent-color: #4da3ff; cursor: pointer; }
 .k-num  { font-size: 17px; color: #ffcc44; font-weight: 700; width: 28px; text-align: center; }
-.k-info { font-size: 14px; color: #7788aa; }
+.k-info { font-size: 14px; color: #8b95a8; }
 
 /* Progressive strip */
 #progress-strip {
@@ -201,7 +200,7 @@ header h1  { font-size: 22px; color: #7799ff; font-weight: 700; }
 }
 .prog-item { display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .prog-item canvas { image-rendering: auto; border-radius: 3px; display: block; }
-.prog-lbl { font-size: 12px; color: #6677aa; text-align: center; }
+.prog-lbl { font-size: 12px; color: #6a7385; text-align: center; }
 .prog-var { font-size: 11px; color: #ffaa33; text-align: center; }
 
 /* Coefficient bars */
@@ -209,17 +208,17 @@ header h1  { font-size: 22px; color: #7799ff; font-weight: 700; }
   flex: 1; overflow-y: auto; min-height: 0;
 }
 #coeff-section::-webkit-scrollbar { width: 4px; }
-#coeff-section::-webkit-scrollbar-thumb { background: #2a2a5a; border-radius: 2px; }
+#coeff-section::-webkit-scrollbar-thumb { background: #2a3243; border-radius: 2px; }
 .coeff-row {
   display: flex; align-items: center; gap: 8px;
   margin-bottom: 4px; cursor: pointer; border-radius: 3px;
   padding: 2px 4px; transition: background .12s;
 }
-.coeff-row:hover  { background: #111130; }
-.coeff-row.active { background: #1a1a44; }
-.coeff-lbl   { font-size: 13px; color: #7788aa; width: 36px; flex-shrink: 0; text-align: right; }
+.coeff-row:hover  { background: #1d2331; }
+.coeff-row.active { background: #2a3243; }
+.coeff-lbl   { font-size: 13px; color: #8b95a8; width: 36px; flex-shrink: 0; text-align: right; }
 .coeff-track {
-  flex: 1; height: 16px; background: #111130; border-radius: 3px;
+  flex: 1; height: 16px; background: #1d2331; border-radius: 3px;
   position: relative; overflow: hidden;
 }
 .coeff-bar-pos, .coeff-bar-neg {
@@ -229,43 +228,43 @@ header h1  { font-size: 22px; color: #7799ff; font-weight: 700; }
 .coeff-bar-neg { right: 50%; background: #ff4444; transform-origin: right; }
 .coeff-center-line {
   position: absolute; left: 50%; top: 0; bottom: 0;
-  width: 1px; background: #2a2a5a;
+  width: 1px; background: #2a3243;
 }
-.coeff-val    { font-size: 13px; color: #8899cc; width: 52px; text-align: right; font-family: monospace; flex-shrink: 0; }
+.coeff-val    { font-size: 13px; color: #8b95a8; width: 52px; text-align: right; font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; flex-shrink: 0; }
 .coeff-ef     { width: 24px; height: 24px; border-radius: 2px; flex-shrink: 0; image-rendering: auto; }
 
 /* Detail popup */
 #detail-panel {
   position: fixed; right: 16px; bottom: 16px;
-  background: #0e0e28; border: 1px solid #2a2a5a; border-radius: 8px;
+  background: #161b25; border: 1px solid #2a3243; border-radius: 8px;
   padding: 12px; display: none; z-index: 50; min-width: 260px;
   box-shadow: 0 8px 24px rgba(0,0,0,.5);
 }
-#detail-panel .dp-title { font-size: 15px; color: #7799ff; font-weight: 700; margin-bottom: 8px; }
+#detail-panel .dp-title { font-size: 15px; color: #4da3ff; font-weight: 700; margin-bottom: 8px; }
 #detail-panel .dp-row   { display: flex; gap: 10px; align-items: flex-start; }
-#detail-panel .dp-info  { font-size: 13px; color: #8899bb; line-height: 1.8; }
+#detail-panel .dp-info  { font-size: 13px; color: #8b95a8; line-height: 1.8; }
 #detail-panel .dp-info strong { color: #ccddf0; }
 #detail-close {
   position: absolute; top: 6px; right: 10px;
-  cursor: pointer; color: #5566aa; font-size: 16px;
+  cursor: pointer; color: #6a7385; font-size: 16px;
 }
 #detail-close:hover { color: #aabbff; }
 
 /* ── Detection Preview ──────────────────────────── */
 #detect-preview {
   position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%);
-  background: #0e0e28; border: 1px solid #2a2a5a; border-radius: 10px;
+  background: #161b25; border: 1px solid #2a3243; border-radius: 10px;
   padding: 16px; z-index: 200; display: none;
   box-shadow: 0 12px 36px rgba(0,0,0,.7); min-width: 320px;
 }
 #detect-preview .dp2-title {
-  font-size: 14px; color: #7799ff; font-weight: 700; margin-bottom: 10px;
+  font-size: 14px; color: #4da3ff; font-weight: 700; margin-bottom: 10px;
 }
 #detect-preview .dp2-row { display: flex; gap: 14px; align-items: flex-start; }
 #detect-preview .dp2-col { display: flex; flex-direction: column; align-items: center; gap: 5px; }
-#detect-preview .dp2-lbl { font-size: 12px; color: #7788aa; }
+#detect-preview .dp2-lbl { font-size: 12px; color: #8b95a8; }
 #detect-status {
-  font-size: 12px; color: #aabbcc; margin-top: 10px; line-height: 1.6;
+  font-size: 12px; color: #b4bccb; margin-top: 10px; line-height: 1.6;
 }
 #detect-ok {
   margin-top: 10px; background: #1a3388; border: 1px solid #4466cc;
@@ -274,8 +273,8 @@ header h1  { font-size: 22px; color: #7799ff; font-weight: 700; }
 }
 #detect-ok:hover { background: #2244aa; }
 .det-spinner {
-  width: 20px; height: 20px; border: 2px solid #2a2a5a;
-  border-top-color: #5577ff; border-radius: 50%;
+  width: 20px; height: 20px; border: 2px solid #2a3243;
+  border-top-color: #4da3ff; border-radius: 50%;
   animation: spin .7s linear infinite; display: inline-block;
   vertical-align: middle; margin-right: 6px;
 }
@@ -288,7 +287,7 @@ header h1  { font-size: 22px; color: #7799ff; font-weight: 700; }
   #main-layout { grid-template-columns: 1fr; }
   #left-panel {
     border-right: none;
-    border-bottom: 1px solid #1a1a44;
+    border-bottom: 1px solid #2a3243;
     max-height: 320px;
     overflow-y: auto;
   }
@@ -299,6 +298,9 @@ header h1  { font-size: 22px; color: #7799ff; font-weight: 700; }
   #progress-strip { flex-wrap: wrap; }
 }
 </style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
@@ -306,7 +308,7 @@ header h1  { font-size: 22px; color: #7799ff; font-weight: 700; }
 <div id="loading">
   <div class="loading-box">
     <div class="loading-title">Eigenface Demo</div>
-    <div id="load-msg" style="margin-bottom:10px;">Loading <code style="font-family:monospace;color:#aaccff">eigenfaces_data.json</code>…</div>
+    <div id="load-msg" style="margin-bottom:10px;">Loading <code style="font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;color:#b4bccb">eigenfaces_data.json</code>…</div>
     <div id="load-error" style="display:none;">
       <strong style="color:#ff8888;">Could not load eigenfaces_data.json</strong>
       <ol style="margin-top:8px;">
@@ -315,9 +317,9 @@ header h1  { font-size: 22px; color: #7799ff; font-weight: 700; }
         <li>Serve files: <code>python -m http.server 8080</code></li>
         <li>Open: <a href="http://localhost:8080/eigenface_demo.html">http://localhost:8080/eigenface_demo.html</a></li>
       </ol>
-      <div style="margin-top:10px; color:#8899bb;">
+      <div style="margin-top:10px; color:#8b95a8;">
         Or load the JSON directly:
-        <input type="file" id="json-picker" accept=".json" style="display:block;margin-top:6px;color:#aabbee;">
+        <input type="file" id="json-picker" accept=".json" style="display:block;margin-top:6px;color:#b4bccb;">
       </div>
     </div>
   </div>
@@ -355,7 +357,7 @@ header h1  { font-size: 22px; color: #7799ff; font-weight: 700; }
 
       <div class="panel-title" style="margin-top:4px;">Explained Variance</div>
       <canvas id="variance-canvas" width="256" height="88"></canvas>
-      <div style="font-size:12px;color:#5566aa;">
+      <div style="font-size:12px;color:#6a7385;">
         <span style="color:#4488ff;">■</span> per component &nbsp;
         <span style="color:#ffcc44;">—</span> cumulative
       </div>
@@ -449,7 +451,7 @@ header h1  { font-size: 22px; color: #7799ff; font-weight: 700; }
 
       <!-- Coefficient bars -->
       <div class="panel-title" style="margin-top:4px;">
-        Eigenface Coefficients &nbsp;<span style="color:#5566aa;font-size:12px;text-transform:none;letter-spacing:0;">click row to inspect</span>
+        Eigenface Coefficients &nbsp;<span style="color:#6a7385;font-size:12px;text-transform:none;letter-spacing:0;">click row to inspect</span>
       </div>
       <div id="coeff-section">
         <div id="coeff-chart"></div>
@@ -484,11 +486,11 @@ header h1  { font-size: 22px; color: #7799ff; font-weight: 700; }
   <div class="dp-title" id="dp-title">PC1</div>
   <div class="dp-row">
     <div>
-      <div style="font-size:12px;color:#5566aa;margin-bottom:3px;">Eigenface</div>
+      <div style="font-size:12px;color:#6a7385;margin-bottom:3px;">Eigenface</div>
       <canvas id="dp-ef-canvas" width="64" height="64" style="width:96px;height:96px;border-radius:4px;image-rendering:auto;"></canvas>
     </div>
     <div>
-      <div style="font-size:12px;color:#5566aa;margin-bottom:3px;">Contribution (c·ef)</div>
+      <div style="font-size:12px;color:#6a7385;margin-bottom:3px;">Contribution (c·ef)</div>
       <canvas id="dp-contrib-canvas" width="64" height="64" style="width:96px;height:96px;border-radius:4px;image-rendering:auto;"></canvas>
     </div>
     <div class="dp-info" id="dp-info"></div>
@@ -683,7 +685,7 @@ function buildVarianceChart() {
   const pad = 8;
   const bw  = (W - pad) / n;
 
-  ctx.fillStyle = '#0a0a22';
+  ctx.fillStyle = '#0e1118';
   ctx.fillRect(0, 0, W, H);
 
   const maxEv = ev[0];
@@ -708,7 +710,7 @@ function buildVarianceChart() {
   ctx.stroke();
 
   // Axis labels
-  ctx.fillStyle = '#445566';
+  ctx.fillStyle = '#6a7385';
   ctx.font = '11px sans-serif';
   ctx.fillText('1', pad/2 + 1, H - 2);
   ctx.fillText(`${n}`, (n-1)*bw + pad/2, H - 2);

@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vision &amp; Learning Demos</title>
+<meta name="description" content="Interactive demos for studying computer vision and machine learning algorithms, from the courses at Seoul National University.">
+<style>
+  :root{
+    /* shared palette — same values as the demos (see any demo's :root) */
+    --paper:#0e1118; --surface:#161b25; --surface-2:#1d2331;
+    --line:#2a3243; --line-soft:#3b4457;
+    --text:#e4e8f0; --text-2:#b4bccb; --muted:#8b95a8;
+    --accent:#4da3ff; --accent-2:#f3c969;
+    --shadow:0 1px 2px rgba(0,0,0,.35), 0 12px 30px -22px rgba(0,0,0,.9);
+    --sans:"IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+    --mono:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    color-scheme: dark;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; font-family:var(--sans); background:var(--paper); color:var(--text);
+    display:flex; flex-direction:column; -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--accent)}
+
+  /* ---------- top bar ---------- */
+  header{
+    background:var(--surface); border-bottom:1px solid var(--line);
+    position:sticky; top:0; z-index:10;
+  }
+  .bar{
+    max-width:1180px; margin:0 auto; padding:12px 16px;
+    display:flex; align-items:center; gap:14px;
+  }
+  .home-btn{
+    display:flex; align-items:baseline; gap:9px; background:none; border:0; padding:0;
+    font:inherit; color:var(--text); cursor:pointer; text-align:left;
+  }
+  .home-btn b{font-size:16px; letter-spacing:-.01em}
+  .home-btn span{font-size:12px; color:var(--muted)}
+  .bar .right{margin-left:auto; display:flex; align-items:center; gap:14px; font-size:12.5px}
+  .bar .right a{color:var(--muted); text-decoration:none; white-space:nowrap}
+  .bar .right a:hover{color:var(--accent)}
+
+  /* ---------- tab strip ---------- */
+  nav{background:var(--surface); border-bottom:1px solid var(--line); overflow-x:auto; scrollbar-width:thin}
+  .tabs{max-width:1180px; margin:0 auto; padding:0 10px; display:flex; gap:2px}
+  .tabs button{
+    background:none; border:0; border-bottom:2px solid transparent; padding:9px 11px 8px;
+    font:inherit; font-size:13px; color:var(--muted); cursor:pointer; white-space:nowrap;
+  }
+  .tabs button:hover{color:var(--text)}
+  .tabs button[aria-current="page"]{color:var(--accent); border-bottom-color:var(--accent)}
+  .tabs .sep{width:1px; background:var(--line); margin:7px 8px; flex:none}
+
+  /* ---------- home ---------- */
+  main{flex:1; min-height:0; display:flex; flex-direction:column}
+  .home{overflow-y:auto; padding:0 16px 56px}
+  .inner{max-width:1180px; margin:0 auto}
+  .hero{padding:44px 0 30px; max-width:min(100%, 920px)}
+  .hero h1{font-size:31px; line-height:1.22; letter-spacing:-.02em; margin:0 0 14px}
+  .hero p{margin:0 0 10px; color:var(--text-2); font-size:15px; line-height:1.65; max-width:840px}
+  .hero .who{font-size:13.5px; color:var(--muted)}
+
+  .group{margin:30px 0 0}
+  .group h2{
+    font-size:11.5px; font-family:var(--mono); letter-spacing:.1em; text-transform:uppercase;
+    color:var(--muted); font-weight:500; margin:0 0 12px; padding-bottom:8px; border-bottom:1px solid var(--line);
+  }
+  .cards{display:grid; gap:12px; grid-template-columns:repeat(auto-fill, minmax(268px, 1fr))}
+  .card{
+    text-align:left; background:var(--surface-2); border:1px solid var(--line); border-radius:9px;
+    padding:15px 16px; cursor:pointer; font:inherit; color:inherit; box-shadow:var(--shadow);
+    display:flex; flex-direction:column; gap:7px; transition:border-color .15s ease, transform .15s ease;
+  }
+  .card:hover{border-color:var(--c, var(--accent)); transform:translateY(-1px)}
+  .card .top{display:flex; align-items:center; justify-content:space-between; gap:10px}
+  .card .n{font-family:var(--mono); font-size:10.5px; color:var(--muted)}
+
+  /* icon tile — one hue per group, same geometry everywhere */
+  .ic{
+    width:48px; height:48px; flex:none; border-radius:12px; display:grid; place-items:center;
+    color:var(--c); background:var(--surface); border:1px solid var(--line);
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .card:hover .ic{border-color:var(--c); background:var(--paper)}
+  .ic svg{width:30px; height:30px; fill:none; stroke:currentColor;
+    stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round}
+  .ic .dim{stroke:var(--muted); opacity:.75}
+  .ic .fill{fill:currentColor; stroke:none}
+  .ic .fdim{fill:var(--muted); stroke:none; opacity:.6}
+  .ic .soft{fill:currentColor; stroke:none; opacity:.22}
+  .ic .dash{stroke-dasharray:2.4 2.4}
+  .card h3{margin:0; font-size:14.5px; font-weight:600; line-height:1.35}
+  .card p{margin:0; font-size:12.5px; color:var(--text-2); line-height:1.55}
+  .card .go{font-size:12px; color:var(--accent); margin-top:auto; padding-top:4px}
+
+  .about{
+    margin:40px 0 0; padding:20px 24px; border:1px solid var(--line); border-radius:9px;
+    background:var(--surface); font-size:13.5px; color:var(--text-2); line-height:1.7; max-width:min(100%, 920px);
+  }
+  .about h2{font-size:13.5px; margin:0 0 8px; color:var(--text)}
+
+  /* ---------- demo view ---------- */
+  .stage{flex:1; min-height:0; display:none; flex-direction:column; background:var(--surface)}
+  .stage iframe{flex:1; width:100%; border:0; display:block}
+  body[data-view="demo"] .home{display:none}
+  body[data-view="demo"] .stage{display:flex}
+
+  @media (max-width:640px){
+    .hero{padding:30px 0 20px}
+    .hero h1{font-size:24px}
+    .bar .right .hide-sm{display:none}
+  }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body data-view="home">
+
+<header>
+  <div class="bar">
+    <button class="home-btn" id="homeBtn" type="button">
+      <b>Vision &amp; Learning Demos</b><span>SNU Visual Computing Lab &nbsp;·&nbsp; Prof. Hanbyul Joo</span>
+    </button>
+    <div class="right">
+      <a id="openNew" href="#" target="_blank" rel="noopener" hidden>Open in new tab ↗</a>
+      <a href="https://github.com/jhugestar/snu-vision-lecture" target="_blank" rel="noopener">GitHub ↗</a>
+    </div>
+  </div>
+</header>
+
+<nav><div class="tabs" id="tabs"></div></nav>
+
+<main>
+  <div class="home">
+    <div class="inner">
+      <div class="hero">
+        <h1>Interactive demos for studying computer vision and machine learning algorithms</h1>
+        <p>Every topic below is a small, self-contained page you can play with: move the sliders, change the
+          parameters, and watch each step of the algorithm respond. Built for the computer vision courses at
+          Seoul National University, and free to use in your own class or study.</p>
+        <p class="who"><a href="https://jhugestar.github.io/" target="_blank" rel="noopener">Hanbyul Joo</a>
+          &nbsp;|&nbsp; Visual Computing Lab, Seoul National University</p>
+      </div>
+      <div id="groups"></div>
+      <div class="about">
+        <h2>About these demos</h2>
+        All demos were built with <b>vibe coding</b> using <a href="https://claude.ai/code" target="_blank" rel="noopener">Claude
+        Code</a> — no demo code was written by hand; the entire implementation was generated through natural
+        language conversation. This project is an initial effort to explore how AI can enhance the teaching and
+        learning experience. I believe we are at a pivotal moment to rethink how we leverage AI tools to create
+        more impactful educational content.
+      </div>
+    </div>
+  </div>
+
+  <div class="stage">
+    <iframe id="frame" title="demo" allow="fullscreen"></iframe>
+  </div>
+</main>
+
+<script>
+/* one hue per group — the icons are otherwise identical in geometry */
+const GROUP_COLOR = {
+  'Image Features':             '#4da3ff',
+  '3D Vision':                  '#f3c969',
+  'Learning & Representation':  '#3ddc97',
+  'Detection & Evaluation':     '#c792ea',
+};
+
+/* Each icon draws the idea itself, on a 24x24 grid.
+   .dim = supporting geometry, .fill = data points, .soft = shaded region, .dash = dashed. */
+const ICONS = {
+  /* a corner, with the detection window sitting on the vertex */
+  harris: `<rect class="dim" x="7" y="9" width="13.5" height="12.5" rx="1.6"/>
+    <rect x="3.3" y="5.3" width="7.4" height="7.4" rx="1.7"/>
+    <circle class="fill" cx="7" cy="9" r="1.8"/>`,
+  /* many lines through one point = one peak in the accumulator */
+  hough: `<path class="dim" d="M3.5 8.6 20.5 15.4"/><path class="dim" d="M7.4 19.4 16.6 4.6"/>
+    <path class="dim" d="M4 15.8 20 8.2"/>
+    <circle class="fill" cx="12" cy="12" r="2.6"/>`,
+  /* the same lines, found in a picture */
+  'hough-image': `<rect class="dim" x="3" y="4.8" width="18" height="14.4" rx="2.5"/>
+    <path class="dim" d="M4.4 17.2l3.6-3.8 2.6 2.6 2.1-1.7 4.7 3.5"/>
+    <circle class="fdim" cx="7.6" cy="8.6" r="1.4"/>
+    <path d="M4.6 13.8 19.4 9.4"/><path d="M8.8 18.6 15.2 5.6"/>`,
+  /* cells of a grid, each holding a dominant gradient orientation */
+  hog: `<rect class="dim" x="4" y="4" width="16" height="16" rx="2"/>
+    <path class="dim" d="M12 4v16M4 12h16"/>
+    <path d="M6 8h4"/><path d="M14.6 9.4 17.4 6.6"/>
+    <path d="M8 14v4"/><path d="M14.6 14.6 17.4 17.4"/>`,
+  /* IoU: prediction over ground truth, intersection shaded */
+  map: `<rect class="soft" x="9" y="6" width="6" height="9.5" rx="1"/>
+    <rect class="dim dash" x="3" y="6" width="12" height="12" rx="2"/>
+    <rect x="9" y="3.5" width="12" height="12" rx="2"/>`,
+  /* the spread of the data, and its two principal axes */
+  pca: `<ellipse class="dim" cx="12" cy="12" rx="9" ry="5" transform="rotate(-30 12 12)"/>
+    <path d="M12 12 19.8 7.5"/><path d="M17.5 7.3 19.8 7.5 18.9 9.6"/>
+    <path d="M12 12 14.5 16.3"/><path d="M14.4 14.4 14.5 16.3 12.8 15.4"/>`,
+  /* a face, and the basis it is built from */
+  eigenface: `<rect class="dim" x="8.5" y="2.8" width="12.2" height="15.4" rx="2.6"/>
+    <rect x="3.3" y="5.8" width="12.2" height="15.4" rx="2.6"/>
+    <circle cx="9.4" cy="12" r="4.6"/>
+    <circle class="fill" cx="7.7" cy="11.1" r="1"/><circle class="fill" cx="11.1" cy="11.1" r="1"/>
+    <path d="M7.6 14.2c1.1 1.1 2.5 1.1 3.6 0"/>`,
+  /* two classes, a boundary, and its margin */
+  linear: `<path class="dim dash" d="M4.3 20.6 15.9 3.9"/><path class="dim dash" d="M8.1 21.1 19.7 4.4"/>
+    <path d="M6.2 20.9 17.8 4.2"/>
+    <circle class="fill" cx="6.2" cy="6.6" r="1.5"/><circle class="fill" cx="9.6" cy="5.1" r="1.5"/>
+    <circle class="fill" cx="5.3" cy="11.3" r="1.5"/>
+    <circle class="fdim" cx="17.6" cy="12.6" r="1.5"/><circle class="fdim" cx="18.6" cy="17.4" r="1.5"/>
+    <circle class="fdim" cx="14.2" cy="18" r="1.5"/>`,
+  /* points gathered into groups */
+  clustering: `<circle class="dim" cx="7.4" cy="7.6" r="4.3"/>
+    <circle class="dim" cx="16.8" cy="9" r="4.3"/>
+    <circle class="dim" cx="11.6" cy="17.4" r="4.3"/>
+    <circle class="fill" cx="6.1" cy="6.5" r="1.3"/><circle class="fill" cx="8.9" cy="6.6" r="1.3"/>
+    <circle class="fill" cx="7.2" cy="9.4" r="1.3"/>
+    <circle class="fdim" cx="15.6" cy="7.9" r="1.3"/><circle class="fdim" cx="18.2" cy="8.5" r="1.3"/>
+    <circle class="fdim" cx="16.6" cy="10.9" r="1.3"/>
+    <circle class="fill" cx="10.3" cy="16.4" r="1.3"/><circle class="fill" cx="13" cy="16.6" r="1.3"/>
+    <circle class="fill" cx="11.4" cy="19.2" r="1.3"/>`,
+  /* a model that ignores the outliers */
+  ransac: `<path d="M3.5 18.5 20.5 6.5"/>
+    <circle class="fill" cx="6" cy="16.7" r="1.3"/><circle class="fill" cx="9" cy="14.6" r="1.3"/>
+    <circle class="fill" cx="12" cy="12.5" r="1.3"/><circle class="fill" cx="15" cy="10.4" r="1.3"/>
+    <circle class="fill" cx="18" cy="8.3" r="1.3"/>
+    <path class="dim" d="M4.8 5.4 7.2 7.8M7.2 5.4 4.8 7.8"/>
+    <path class="dim" d="M16.8 16.2 19.2 18.6M19.2 16.2 16.8 18.6"/>`,
+  /* silhouettes from several views carve out a volume */
+  visualhull: `<path class="fdim" d="M1.8 3.2 6.2 5.6 2.1 7.1Z"/><path class="fdim" d="M22.2 3.2 17.8 5.6 21.9 7.1Z"/>
+    <path class="dim" d="M6.2 5.6 9.2 8.4"/><path class="dim" d="M17.8 5.6 14.8 8.4"/>
+    <path d="M12 6.8 18.2 10.2 18.2 16.6 12 20 5.8 16.6 5.8 10.2Z"/>
+    <path class="dim" d="M12 13.4 18.2 10.2M12 13.4 5.8 10.2M12 13.4V20"/>`,
+  /* a 3D point, through the center, onto the image plane */
+  pinhole: `<path class="dim" d="M5.5 12 10.8 7.4M5.5 12 10.8 16.6"/>
+    <path d="M10.8 7.4V16.6"/>
+    <path class="dash" d="M19.6 6 5.5 12"/>
+    <circle class="fill" cx="19.6" cy="6" r="1.8"/>
+    <circle class="fill" cx="10.8" cy="9.75" r="1.25"/>
+    <circle cx="5.5" cy="12" r="1.6"/>`,
+};
+
+const DEMOS = [
+  { id:'harris', group:'Image Features', tab:'Harris', title:'Harris Corner Detection',
+    path:'corner/harris_viz.html',
+    desc:'The structure tensor, the corner response R, and non-maximum suppression on a real image.' },
+  { id:'hough', group:'Image Features', tab:'Hough', title:'Hough Transform (Toy Examples)',
+    path:'hough-transform/hough_viz.html',
+    desc:'Each point votes for a sinusoid in (ρ, θ) space — lines appear where the votes cross.' },
+  { id:'hough-image', group:'Image Features', tab:'Hough (image)', title:'Hough Transform (Real Image)',
+    path:'hough-transform/hough_viz_img.html',
+    desc:'The same accumulator, run on a photograph: edge map → votes → detected lines.' },
+  { id:'hog', group:'Image Features', tab:'HOG', title:'HOG — Histogram of Oriented Gradients',
+    path:'hog/hog.html',
+    desc:'Pixels → gradients → cell histograms → block normalization → a linear detector, step by step.' },
+
+  { id:'ransac', group:'3D Vision', tab:'RANSAC', title:'RANSAC — Line Fitting & Homography',
+    path:'3dvision-ransac/ransac_demo.html',
+    desc:'Random sampling consensus, one iteration at a time, for lines and for homographies.' },
+  { id:'visualhull', group:'3D Vision', tab:'Visual hull', title:'Visual Hull Reconstruction',
+    path:'3dvision-visualhull/visual_hull.html',
+    desc:'Silhouettes from several viewpoints, carved into a 3D shape you can rotate.' },
+  { id:'pinhole', group:'3D Vision', tab:'Pinhole camera', title:'Pinhole Camera & Two-View Geometry',
+    path:'3dvision-pinholecamera/pinhole_camera_demo.html',
+    desc:'Intrinsics, extrinsics and projection — then what a second view adds.' },
+
+  { id:'pca', group:'Learning & Representation', tab:'PCA', title:'PCA — Principal Component Analysis',
+    path:'pca/pca_demo.html',
+    desc:'Principal axes, explained variance, and what is lost when you project onto fewer dimensions.' },
+  { id:'eigenface', group:'Learning & Representation', tab:'Eigenface', title:'Eigenface',
+    path:'eigenface/eigenface_demo.html',
+    desc:'Faces as vectors: the mean face, the eigenfaces, and reconstruction from a handful of them.' },
+  { id:'clustering', group:'Learning & Representation', tab:'Clustering', title:'Clustering & Segmentation',
+    path:'clustering/clustering.html',
+    desc:'k-means and friends, first on points and then on image pixels as a segmentation method.' },
+  { id:'linear', group:'Learning & Representation', tab:'Linear classifier', title:'Linear Classification',
+    path:'ml-linear-classification/linear_classification_demo.html',
+    desc:'Logistic regression against a linear SVM: decision boundary, loss, and training dynamics.' },
+
+  { id:'map', group:'Detection & Evaluation', tab:'mAP', title:'Detection Evaluation & mAP',
+    path:'detection-eval-map/pascal_voc_map.html',
+    desc:'IoU matching, precision–recall curves and mean Average Precision, PASCAL VOC style.' },
+];
+
+const byId = Object.fromEntries(DEMOS.map(d => [d.id, d]));
+const tabsEl = document.getElementById('tabs');
+const groupsEl = document.getElementById('groups');
+const frame = document.getElementById('frame');
+const openNew = document.getElementById('openNew');
+
+/* tab strip: Home, then one tab per demo with a divider between groups */
+const homeTab = document.createElement('button');
+homeTab.type = 'button';
+homeTab.textContent = 'Home';
+homeTab.dataset.id = '';
+tabsEl.append(homeTab);
+
+let lastGroup = null;
+for (const d of DEMOS) {
+  if (lastGroup !== null && d.group !== lastGroup) {
+    const sep = document.createElement('div');
+    sep.className = 'sep';
+    tabsEl.append(sep);
+  }
+  lastGroup = d.group;
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.textContent = d.tab;
+  b.title = d.title;
+  b.dataset.id = d.id;
+  tabsEl.append(b);
+}
+
+/* home cards, grouped */
+let n = 0;
+for (const group of [...new Set(DEMOS.map(d => d.group))]) {
+  const sec = document.createElement('section');
+  sec.className = 'group';
+  sec.style.setProperty('--c', GROUP_COLOR[group] || 'var(--accent)');
+  const h = document.createElement('h2');
+  h.textContent = group;
+  const grid = document.createElement('div');
+  grid.className = 'cards';
+  for (const d of DEMOS.filter(x => x.group === group)) {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'card';
+    card.dataset.id = d.id;
+    card.innerHTML = `<span class="top">
+        <span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[d.id] || ''}</svg></span>
+        <span class="n">${String(++n).padStart(2, '0')}</span>
+      </span>
+      <h3></h3><p></p><span class="go">Try it →</span>`;
+    card.querySelector('h3').textContent = d.title;
+    card.querySelector('p').textContent = d.desc;
+    grid.append(card);
+  }
+  sec.append(h, grid);
+  groupsEl.append(sec);
+}
+
+/* routing: #<demo id>, empty hash = home */
+function show(id) {
+  const d = byId[id];
+  document.body.dataset.view = d ? 'demo' : 'home';
+  for (const b of tabsEl.querySelectorAll('button')) {
+    if (b.dataset.id === (d ? d.id : '')) b.setAttribute('aria-current', 'page');
+    else b.removeAttribute('aria-current');
+  }
+  if (d) {
+    if (frame.getAttribute('src') !== d.path) frame.src = d.path;   /* reload only on change */
+    frame.title = d.title;
+    openNew.href = d.path;
+    openNew.hidden = false;
+    document.title = d.title + ' — Vision & Learning Demos';
+    tabsEl.querySelector(`button[data-id="${d.id}"]`)
+      ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  } else {
+    frame.removeAttribute('src');
+    openNew.hidden = true;
+    document.title = 'Vision & Learning Demos';
+    window.scrollTo(0, 0);
+  }
+}
+
+function go(id) {
+  const next = id ? '#' + id : '#';
+  if (location.hash === next) show(id);
+  else location.hash = next;
+}
+
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-id]');
+  if (t) go(t.dataset.id);
+});
+document.getElementById('homeBtn').addEventListener('click', () => go(''));
+window.addEventListener('hashchange', () => show(location.hash.slice(1)));
+show(location.hash.slice(1));
+</script>
+</body>
+</html>

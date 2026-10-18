@@ -4,6 +4,8 @@ Interactive web-based demos for computer vision courses at Seoul National Univer
 
 **[Hanbyul Joo](https://jhugestar.github.io/) / SNU Visual Computing Lab**
 
+**[→ Open the demo site](https://jhugestar.github.io/snu-vision-lecture/)** — all demos in one page, with tabs.
+
 ---
 
 ## Demos

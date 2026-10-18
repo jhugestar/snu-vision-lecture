@@ -7,41 +7,40 @@
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
-  font-family: 'Segoe UI', system-ui, sans-serif;
-  background: #0d0d1f;
-  color: #e2e8f0;
-  min-height: 100vh;
-}
+  font-family:"IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+  background: #0e1118;
+  color: #e4e8f0;
+  min-height: 100vh; font-size:15px; line-height:1.55;}
 header {
-  background: linear-gradient(135deg, #1a0533, #0d1f4a);
+  background: linear-gradient(135deg, #1d2331, #161b25);
   padding: 18px 24px;
   text-align: center;
-  border-bottom: 2px solid #7c3aed44;
+  border-bottom: 2px solid #2a3243;
 }
-header h1 { font-size: 1.7em; color: #a78bfa; letter-spacing: 1px; }
-header p  { color: #94a3b8; font-size: 0.92em; margin-top: 4px; }
+header h1 { font-size: 1.7em; color: #e4e8f0; letter-spacing: 1px; }
+header p  { color: #8b95a8; font-size: 0.92em; margin-top: 4px; }
 
 .tabs {
   display: flex;
   justify-content: center;
   gap: 12px;
   padding: 16px;
-  background: #12122a;
-  border-bottom: 1px solid #1e1e4a;
+  background: #161b25;
+  border-bottom: 1px solid #2a3243;
 }
 .tab-btn {
   padding: 9px 32px;
-  border: 2px solid #3730a3;
+  border: 2px solid #3b4457;
   background: transparent;
-  color: #94a3b8;
+  color: #8b95a8;
   cursor: pointer;
   border-radius: 30px;
   font-size: 0.95em;
   font-weight: 600;
   transition: all 0.25s;
 }
-.tab-btn.active { background: #7c3aed; border-color: #7c3aed; color: #fff; }
-.tab-btn:hover:not(.active) { border-color: #7c3aed; color: #c4b5fd; }
+.tab-btn.active { background: #4da3ff; border-color: #4da3ff; color: #0e1118; }
+.tab-btn:hover:not(.active) { border-color: #4da3ff; color: #8cc3ff; }
 
 .section { display: none; }
 .section.visible { display: block; }
@@ -55,8 +54,8 @@ header p  { color: #94a3b8; font-size: 0.92em; margin-top: 4px; }
   flex-wrap: wrap;
 }
 .canvas-panel {
-  background: #12122a;
-  border: 1px solid #1e1e4a;
+  background: #161b25;
+  border: 1px solid #2a3243;
   border-radius: 12px;
   padding: 14px;
   box-shadow: 0 4px 24px #00000066;
@@ -65,14 +64,14 @@ header p  { color: #94a3b8; font-size: 0.92em; margin-top: 4px; }
   text-align: center;
   font-size: 0.95em;
   font-weight: 700;
-  color: #a78bfa;
+  color: #4da3ff;
   margin-bottom: 8px;
   letter-spacing: 0.5px;
 }
 .canvas-sub {
   text-align: center;
   font-size: 0.76em;
-  color: #475569;
+  color: #6a7385;
   margin-top: 6px;
 }
 canvas { display: block; border-radius: 6px; }
@@ -84,7 +83,7 @@ canvas { display: block; border-radius: 6px; }
   padding: 0 8px;
   padding-top: 60px;
   font-size: 2em;
-  color: #7c3aed;
+  color: #4da3ff;
   font-weight: bold;
 }
 
@@ -104,8 +103,8 @@ canvas { display: block; border-radius: 6px; }
   font-weight: 600;
   transition: all 0.2s;
 }
-.btn-primary   { background: #7c3aed; color: #fff; }
-.btn-secondary { background: #1e1e4a; color: #a5b4fc; border: 1px solid #3730a3; }
+.btn-primary   { background: #4da3ff; color: #0e1118; }
+.btn-secondary { background: #2a3243; color: #b4bccb; border: 1px solid #3b4457; }
 .btn-green     { background: #065f46; color: #6ee7b7; border: 1px solid #059669; }
 .btn:hover { transform: scale(1.05); filter: brightness(1.15); }
 
@@ -122,14 +121,14 @@ canvas { display: block; border-radius: 6px; }
   border-radius: 14px;
   font-size: 0.79em;
   font-weight: 700;
-  font-family: monospace;
+  font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 /* ===== PRESET PANEL ===== */
 .preset-panel {
   max-width: 900px;
   margin: 2px auto 6px;
-  background: #0c1a30;
+  background: #1d2331;
   border: 1px solid #1e3a6a;
   border-left: 4px solid #fbbf24;
   border-radius: 10px;
@@ -154,9 +153,9 @@ canvas { display: block; border-radius: 6px; }
 }
 .preset-label {
   font-size: 0.8em;
-  color: #94a3b8;
+  color: #8b95a8;
   min-width: 80px;
-  font-family: monospace;
+  font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 .preset-row input[type=range] {
   flex: 1;
@@ -167,14 +166,14 @@ canvas { display: block; border-radius: 6px; }
   font-size: 0.82em;
   font-weight: 700;
   color: #fbbf24;
-  font-family: monospace;
+  font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   min-width: 55px;
   text-align: right;
 }
 .preset-hint {
   margin-top: 8px;
   font-size: 0.78em;
-  color: #475569;
+  color: #6a7385;
 }
 
 .slider-row {
@@ -184,41 +183,44 @@ canvas { display: block; border-radius: 6px; }
   justify-content: center;
   padding: 6px 20px;
   font-size: 0.9em;
-  color: #94a3b8;
+  color: #8b95a8;
 }
-input[type=range] { accent-color: #7c3aed; }
+input[type=range] { accent-color: #4da3ff; }
 
 .info-box {
   max-width: 900px;
   margin: 4px auto 20px;
-  background: #12122a;
-  border: 1px solid #1e1e4a;
-  border-left: 4px solid #7c3aed;
+  background: #161b25;
+  border: 1px solid #2a3243;
+  border-left: 4px solid #4da3ff;
   border-radius: 10px;
   padding: 16px 20px;
   font-size: 0.9em;
   line-height: 1.75;
   color: #cbd5e1;
 }
-.info-box h3 { color: #c4b5fd; margin-bottom: 8px; font-size: 1em; }
-.info-box .math { color: #fbbf24; font-weight: bold; font-family: monospace; }
+.info-box h3 { color: #8cc3ff; margin-bottom: 8px; font-size: 1em; }
+.info-box .math { color: #fbbf24; font-weight: bold; font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
 .info-box .hl { color: #f87171; font-weight: bold; }
 .status-msg {
   text-align: center;
   font-size: 0.84em;
-  color: #64748b;
+  color: #6a7385;
   padding: 2px 16px;
   min-height: 20px;
 }
 .status-msg.ok { color: #6ee7b7; font-weight: bold; }
 </style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
 <header>
   <h1>Hough Transform Interactive Visualization</h1>
   <p>Computer Vision Lecture — Intuitive Understanding of Line &amp; Circle Detection</p>
-  <p style="margin-top:6px;font-size:0.82em;color:#7c3aed">Hanbyul Joo &nbsp;|&nbsp; Visual Computing Lab, Seoul National University &nbsp;|&nbsp; <a href="https://github.com/jhugestar/snu-vision-lecture" target="_blank" style="color:#a78bfa;text-decoration:none;">More Demos ↗</a></p>
+  <p style="margin-top:6px;font-size:0.82em;color:#8b95a8">Hanbyul Joo &nbsp;|&nbsp; Visual Computing Lab, Seoul National University &nbsp;|&nbsp; <a href="https://github.com/jhugestar/snu-vision-lecture" target="_blank" style="color:#4da3ff;text-decoration:none;">More Demos ↗</a></p>
 </header>
 
 <nav class="tabs">
@@ -306,9 +308,9 @@ input[type=range] { accent-color: #7c3aed; }
   </div>
 
   <div class="slider-row">
-    <label>Radius <span style="color:#fbbf24;font-family:monospace">r</span>:</label>
+    <label>Radius <span style="color:#fbbf24;font-family:"IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif</span>:</label>
     <input type="range" id="rSlider" min="20" max="160" value="90" style="width:180px" oninput="circleHT.setRadius(this.value)">
-    <span id="rVal" style="color:#fbbf24;font-weight:bold;font-family:monospace;">90</span> px
+    <span id="rVal" style="color:#fbbf24;font-weight:bold;font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;">90</span> px
   </div>
 
   <!-- Circle Preset Panel -->
@@ -425,7 +427,7 @@ function drawHandle(ctx, x, y, color, shape='circle', size=9) {
   ctx.shadowBlur = 10;
   if (shape === 'diamond') {
     ctx.fillStyle = color;
-    ctx.strokeStyle = '#fff';
+    ctx.strokeStyle = '#e4e8f0';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(x, y-size); ctx.lineTo(x+size, y);
@@ -433,7 +435,7 @@ function drawHandle(ctx, x, y, color, shape='circle', size=9) {
     ctx.closePath(); ctx.fill(); ctx.stroke();
   } else {
     ctx.fillStyle = color;
-    ctx.strokeStyle = '#fff';
+    ctx.strokeStyle = '#e4e8f0';
     ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(x, y, size, 0, Math.PI*2);
     ctx.fill(); ctx.stroke();
@@ -629,11 +631,11 @@ class LineHTViz {
 
   drawImageSpace() {
     const ctx = this.iCtx;
-    ctx.fillStyle='#08081a'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#0e1118'; ctx.fillRect(0,0,W,H);
     drawGrid(ctx);
 
     // Center crosshair
-    ctx.strokeStyle='#1e1e4a'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+    ctx.strokeStyle='#2a3243'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
     ctx.beginPath(); ctx.moveTo(W/2,0); ctx.lineTo(W/2,H); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(0,H/2); ctx.lineTo(W,H/2); ctx.stroke();
     ctx.setLineDash([]);
@@ -675,7 +677,7 @@ class LineHTViz {
     const manyPts = this.points.length > 10;
     for (let i=0;i<this.points.length;i++) {
       const {x,y}=this.points[i]; const col=PALETTE[i%PALETTE.length];
-      ctx.fillStyle=col; ctx.strokeStyle='#fff'; ctx.lineWidth=1.5;
+      ctx.fillStyle=col; ctx.strokeStyle='#e4e8f0'; ctx.lineWidth=1.5;
       ctx.beginPath(); ctx.arc(x,y,manyPts?4:7,0,Math.PI*2); ctx.fill(); ctx.stroke();
       if(!manyPts){ ctx.fillStyle=col; ctx.font='bold 10px monospace'; ctx.fillText(`P${i+1}`,x+9,y-7); }
     }
@@ -702,7 +704,7 @@ class LineHTViz {
 
   drawHoughSpace() {
     const ctx = this.hCtx;
-    ctx.fillStyle='#08081a'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#0e1118'; ctx.fillRect(0,0,W,H);
     drawGrid(ctx);
 
     // Zero-rho dashed line
@@ -1065,7 +1067,7 @@ class CircleHTViz {
 
   drawImageSpace() {
     const ctx=this.iCtx;
-    ctx.fillStyle='#08081a'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#0e1118'; ctx.fillRect(0,0,W,H);
     drawGrid(ctx);
 
     // Preset mode: show target circle outline
@@ -1103,7 +1105,7 @@ class CircleHTViz {
     // Points
     for(let i=0;i<this.points.length;i++){
       const {x,y}=this.points[i]; const col=PALETTE[i%PALETTE.length];
-      ctx.fillStyle=col; ctx.strokeStyle='#fff'; ctx.lineWidth=1.5;
+      ctx.fillStyle=col; ctx.strokeStyle='#e4e8f0'; ctx.lineWidth=1.5;
       ctx.beginPath(); ctx.arc(x,y,7,0,Math.PI*2); ctx.fill(); ctx.stroke();
       ctx.fillStyle=col; ctx.font='bold 10px monospace';
       ctx.fillText(`P${i+1}`,x+9,y-7);
@@ -1129,7 +1131,7 @@ class CircleHTViz {
 
   drawHoughSpace() {
     const ctx=this.hCtx;
-    ctx.fillStyle='#08081a'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#0e1118'; ctx.fillRect(0,0,W,H);
     drawGrid(ctx);
 
     if(this.points.length>0){
