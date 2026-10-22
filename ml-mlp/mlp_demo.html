@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Multi-Layer Perceptron Playground</title>
+<style>
+/* Layout: header -> [decision boundary | hidden space + neurons + loss + network | controls] */
+:root {
+  --bg: #0e1118;
+  --panel: #161b25;
+  --panel2: #1d2331;
+  --border: #2a3243;
+  --fg: #e4e8f0;
+  --muted: #8b95a8;
+  --faint: #3b4457;
+  --c0: #3b8de8;      /* class 0 (blue) */
+  --c1: #e86a2c;      /* class 1 (orange) */
+  --accent: #f3c969;  /* boundary, highlights */
+  --ui: #4da3ff;      /* shared UI accent (same as the demo index) */
+  --loss: #2fbf8a;
+  --danger: #e66767;
+  --other: #c792ea;
+  --font: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font); font-size: 14px; line-height: 1.45;
+}
+.wrap { max-width: 1640px; margin: 0 auto; padding-block: 14px 28px; padding-inline: 18px; display: grid; gap: 14px;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) 340px; grid-template-areas: "hdr hdr hdr" "plot mid ctrl"; align-items: start; }
+header { grid-area: hdr; }
+.plot { grid-area: plot; max-width: 680px; }
+.controls { grid-area: ctrl; }
+.mid { grid-area: mid; display: grid; gap: 14px; min-width: 0; align-content: start; }
+@media (max-width: 1250px) { .wrap { grid-template-columns: minmax(0, 1fr) 340px; grid-template-areas: "hdr hdr" "plot ctrl" "mid mid"; } }
+@media (max-width: 1000px) { .wrap { grid-template-columns: 1fr; grid-template-areas: "hdr" "plot" "ctrl" "mid"; } }
+
+header { display: flex; align-items: baseline; gap: 14px 22px; flex-wrap: wrap; }
+header h1 { font-size: 21px; margin: 0; letter-spacing: .2px; }
+header .sub { color: var(--muted); }
+header .author { margin-left: auto; font-size: 12px; color: var(--muted); }
+header .author a { color: var(--ui); text-decoration: none; }
+header .author a:hover { text-decoration: underline; }
+.kbd { font-family: var(--mono); font-size: 11px; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; color: var(--muted); }
+
+.panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; min-width: 0; }
+.plot { position: relative; }
+#mainCanvas { width: 100%; aspect-ratio: 1; display: block; cursor: crosshair; border-radius: 8px; }
+.overlay { position: absolute; pointer-events: none; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+#hoverInfo { top: 10px; left: 12px; }
+#status { top: 10px; right: 12px; text-align: right; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-family: var(--font); font-weight: 600; letter-spacing: .3px; }
+.badge.run { background: rgba(47,191,138,.15); color: var(--loss); }
+.badge.idle { background: rgba(139,149,168,.15); color: var(--muted); }
+.badge.stuck { background: rgba(230,103,103,.18); color: var(--danger); }
+.badge.solved { background: rgba(243,201,105,.15); color: var(--accent); }
+.legend { position: absolute; bottom: 10px; left: 12px; display: flex; gap: 14px; font-size: 12px; color: var(--muted); pointer-events: none; flex-wrap: wrap; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.dot { width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--panel); box-shadow: 0 0 0 1px var(--faint); }
+.dot.c0 { background: var(--c0); } .dot.c1 { background: var(--c1); }
+.dot.miss { background: transparent; border: 2px solid var(--danger); box-shadow: none; }
+.sw { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 5px; border-radius: 2px; }
+.sw.dash { background: repeating-linear-gradient(90deg, var(--muted) 0 3px, transparent 3px 6px); }
+
+/* controls */
+.controls { padding: 14px; display: grid; gap: 14px; align-content: start; }
+.sec { display: grid; gap: 7px; }
+.sec > .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .9px; color: var(--muted); font-weight: 600; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+select, button, input[type=number] {
+  font: inherit; color: var(--fg); background: var(--panel2); border: 1px solid var(--border);
+  border-radius: 6px; padding: 6px 10px;
+}
+select { flex: 1; min-width: 0; }
+button { cursor: pointer; transition: background .12s, border-color .12s; }
+button:hover { background: #253044; border-color: #3a4660; }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--ui); outline-offset: 1px; }
+button.primary { background: var(--ui); color: #0e1118; border-color: var(--ui); font-weight: 600; }
+button.primary:hover { background: #7fbcff; }
+button.wide { flex: 1; }
+.seg { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.seg label { flex: 1; text-align: center; padding: 6px 8px; cursor: pointer; background: var(--panel2); color: var(--muted); user-select: none; font-size: 13px; }
+.seg input { position: absolute; opacity: 0; width: 0; height: 0; }
+.seg input:checked + label { background: #2b3550; color: var(--fg); font-weight: 600; }
+.seg input:focus-visible + label { outline: 2px solid var(--ui); outline-offset: -2px; }
+.seg label.cls0 b { color: var(--c0); } .seg label.cls1 b { color: var(--c1); }
+.slider { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; }
+.slider .name { font-size: 13px; color: var(--muted); }
+.slider .val { font-family: var(--mono); font-size: 12px; color: var(--fg); font-variant-numeric: tabular-nums; min-width: 54px; text-align: right; }
+.slider input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--ui); margin: 0; }
+.slider.off { opacity: .4; pointer-events: none; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.stat { background: var(--panel2); border-radius: 6px; padding: 7px 9px; }
+.stat .k { font-size: 10px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
+.stat .v { font-family: var(--mono); font-size: 15px; font-variant-numeric: tabular-nums; }
+.hint { font-size: 12px; color: var(--muted); }
+.chk { display: flex; gap: 8px; align-items: center; font-size: 13px; cursor: pointer; color: var(--muted); }
+.chk input { accent-color: var(--ui); margin: 0; }
+
+/* mid column panels */
+.ptitle { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 10px 14px 0; }
+.ptitle h2 { font-size: 13px; margin: 0; font-weight: 600; }
+.ptitle span { font-size: 11.5px; color: var(--muted); font-family: var(--mono); text-align: right; }
+.pad { padding: 8px 14px 12px; }
+#hiddenCanvas { width: 100%; aspect-ratio: 1.35; display: block; }
+#lossCanvas { width: 100%; height: 150px; display: block; }
+#netCanvas { width: 100%; height: 190px; display: block; }
+#actCanvas { width: 100%; height: 104px; display: block; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; }
+.neurons { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 96px)); gap: 8px; justify-content: start; }
+.nb { background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 5px; display: grid; gap: 4px; }
+.nb canvas { width: 100%; aspect-ratio: 1; display: block; border-radius: 3px; }
+.nb .cap { font-family: var(--mono); font-size: 10px; color: var(--muted); text-align: center; overflow: hidden; white-space: nowrap; }
+.params { font-family: var(--mono); font-size: 11.5px; font-variant-numeric: tabular-nums; display: grid; gap: 6px; }
+.params .pr { display: grid; grid-template-columns: 34px 1fr; gap: 8px; align-items: start; }
+.params .pk { color: var(--muted); }
+.params .pv { color: var(--fg); overflow-wrap: anywhere; line-height: 1.5; }
+.params .pos { color: var(--c1); } .params .neg { color: var(--c0); }
+.note { background: var(--panel2); border-left: 3px solid var(--accent); padding: 8px 11px; border-radius: 4px; font-size: 12.5px; color: var(--fg); }
+.note b { color: var(--accent); }
+.note.quiet { border-left-color: var(--faint); color: var(--muted); }
+.note.quiet b { color: var(--fg); }
+.eqline { font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+.eqline b { color: var(--fg); font-weight: 500; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Multi-Layer Perceptron Playground</h1>
+    <div class="sub">Why one straight line is not enough &mdash; and what a hidden layer actually does</div>
+    <div class="hint"><span class="kbd">Space</span> run / pause &nbsp; <span class="kbd">S</span> one step &nbsp; <span class="kbd">R</span> re-init weights</div>
+    <div class="author"><a href="https://jhugestar.github.io/" target="_blank" rel="noopener">Hanbyul Joo</a>
+      &nbsp;|&nbsp; Visual Computing Lab, Seoul National University &nbsp;|&nbsp;
+      <a href="https://github.com/jhugestar/snu-vision-lecture" target="_blank" rel="noopener">More Demos &#8599;</a></div>
+  </header>
+
+  <div class="panel plot">
+    <canvas id="mainCanvas"></canvas>
+    <div class="overlay" id="hoverInfo">hover to read p(x)</div>
+    <div class="overlay" id="status"></div>
+    <div class="legend">
+      <span><i class="dot c0"></i>class 0</span>
+      <span><i class="dot c1"></i>class 1</span>
+      <span><i class="dot miss"></i>misclassified</span>
+      <span id="legBoundary">&mdash; p = 0.5 boundary</span>
+      <span id="legUnits" hidden><i class="sw dash"></i>hidden unit, where its input crosses 0</span>
+    </div>
+  </div>
+
+  <div class="mid">
+
+    <div class="panel">
+      <div class="ptitle">
+        <h2 id="hidTitle">What the hidden layer sees</h2>
+        <span id="hidSub"></span>
+      </div>
+      <canvas id="hiddenCanvas"></canvas>
+      <div class="pad"><div class="note" id="hidNote"></div></div>
+    </div>
+
+    <div class="panel">
+      <div class="ptitle"><h2>Hidden units &mdash; one picture each</h2>
+        <span class="row" style="gap:6px">
+          <span class="seg" id="layerPick" hidden>
+            <input type="radio" name="npick" id="np1" value="0"><label for="np1">layer 1</label>
+            <input type="radio" name="npick" id="np2" value="1" checked><label for="np2">layer 2</label>
+          </span>
+          <span id="neuTitle"></span>
+        </span></div>
+      <div class="pad"><div class="neurons" id="neurons"></div>
+        <div class="hint" style="margin-top:8px">Brightness = how strongly that unit fires. The output layer adds these up with its own weights.</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="ptitle"><h2>Training loss &amp; accuracy</h2><span id="lossSub"></span></div>
+      <canvas id="lossCanvas"></canvas>
+    </div>
+
+    <div class="panel">
+      <div class="ptitle"><h2>Network &amp; parameters</h2><span id="netSub"></span></div>
+      <canvas id="netCanvas"></canvas>
+      <div class="pad">
+        <div class="eqline" id="eqline"></div>
+        <div class="params" id="params" style="margin-top:8px"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="panel controls">
+    <div class="sec">
+      <div class="lbl">Data</div>
+      <div class="row">
+        <select id="dataset">
+          <option value="xor" selected>XOR &mdash; the classic failure case</option>
+          <option value="blobs">Two blobs (linearly separable)</option>
+          <option value="circles">Circle inside a ring</option>
+          <option value="moons">Two moons</option>
+          <option value="spiral">Two spirals</option>
+        </select>
+      </div>
+      <div class="row">
+        <button id="newSample" class="wide">New sample</button>
+        <button id="clearPts">Clear</button>
+      </div>
+      <div class="row">
+        <span class="hint">Click to add:</span>
+        <span class="seg" style="flex:1">
+          <input type="radio" name="paint" id="paint0" value="0" checked><label for="paint0" class="cls0"><b>class 0</b></label>
+          <input type="radio" name="paint" id="paint1" value="1"><label for="paint1" class="cls1"><b>class 1</b></label>
+        </span>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="lbl">Model</div>
+      <div class="seg">
+        <input type="radio" name="depth" id="d0" value="0"><label for="d0">Linear</label>
+        <input type="radio" name="depth" id="d1" value="1" checked><label for="d1">1 hidden</label>
+        <input type="radio" name="depth" id="d2" value="2"><label for="d2">2 hidden</label>
+      </div>
+      <div class="slider" id="w1row">
+        <span class="name">Hidden layer 1 width</span><span class="val" id="w1v">5</span>
+        <input type="range" id="w1" min="1" max="8" step="1" value="5">
+      </div>
+      <div class="slider off" id="w2row">
+        <span class="name">Hidden layer 2 width</span><span class="val" id="w2v">4</span>
+        <input type="range" id="w2" min="1" max="8" step="1" value="4">
+      </div>
+      <div class="row">
+        <span class="hint" style="flex:0 0 auto">Activation</span>
+        <select id="act">
+          <option value="relu">ReLU</option>
+          <option value="tanh" selected>tanh</option>
+          <option value="sigmoid">sigmoid</option>
+          <option value="none">none (identity)</option>
+        </select>
+      </div>
+      <canvas id="actCanvas"></canvas>
+      <div class="hint" id="actHint"></div>
+    </div>
+
+    <div class="sec">
+      <div class="lbl">Optimizer &mdash; gradient descent, momentum 0.9</div>
+      <div class="slider">
+        <span class="name">Learning rate &eta;</span><span class="val" id="lrv">0.30</span>
+        <input type="range" id="lr" min="1" max="200" step="1" value="30">
+      </div>
+      <div class="slider">
+        <span class="name">Steps per frame</span><span class="val" id="spfv">5</span>
+        <input type="range" id="spf" min="1" max="40" step="1" value="5">
+      </div>
+      <div class="row">
+        <button id="run" class="primary wide">&#9654; Run</button>
+        <button id="step">Step</button>
+        <button id="reset">Re-init</button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="lbl">Training state</div>
+      <div class="stats">
+        <div class="stat"><div class="k">Epoch</div><div class="v" id="sEpoch">0</div></div>
+        <div class="stat"><div class="k">Loss</div><div class="v" id="sLoss">&ndash;</div></div>
+        <div class="stat"><div class="k">Accuracy</div><div class="v" id="sAcc">&ndash;</div></div>
+      </div>
+      <div class="stats" style="grid-template-columns: repeat(2, 1fr)">
+        <div class="stat"><div class="k">Parameters</div><div class="v" id="sParams">&ndash;</div></div>
+        <div class="stat"><div class="k">&#8214;&nabla;&#8214;</div><div class="v" id="sGrad">&ndash;</div></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="lbl">Show</div>
+      <label class="chk"><input type="checkbox" id="showUnits" checked> hidden unit lines on the data</label>
+      <label class="chk"><input type="checkbox" id="showMiss" checked> mark misclassified points</label>
+      <label class="chk"><input type="checkbox" id="showProb" checked> shade p(x) as a heat map</label>
+    </div>
+
+    <div class="note quiet" id="tip"></div>
+  </div>
+
+</div>
+
+<script>
+/* ============================================================
+   1. Data
+   ============================================================ */
+const DOM = 1.4;                       // the plane shown is [-1.4, 1.4]^2
+let rngState = 12345;
+function rnd() {                        // deterministic uniform [0,1)
+  rngState = (rngState * 1664525 + 1013904223) >>> 0;
+  return rngState / 4294967296;
+}
+function gauss(s) { return (rnd() + rnd() + rnd() + rnd() - 2) * 1.1 * s; }
+
+function makeData(kind, n) {
+  const X = [], y = [];
+  const push = (a, b, c) => { X.push([a, b]); y.push(c); };
+  if (kind === 'xor') {
+    const per = Math.round(n / 4);
+    const corners = [[-.65, -.65, 1], [.65, .65, 1], [-.65, .65, 0], [.65, -.65, 0]];
+    for (const [cx, cy, c] of corners)
+      for (let i = 0; i < per; i++) push(cx + gauss(.22), cy + gauss(.22), c);
+  } else if (kind === 'blobs') {
+    for (let i = 0; i < n / 2; i++) push(-.55 + gauss(.3), -.35 + gauss(.3), 0);
+    for (let i = 0; i < n / 2; i++) push(.55 + gauss(.3), .4 + gauss(.3), 1);
+  } else if (kind === 'circles') {
+    for (let i = 0; i < n / 2; i++) { const t = rnd() * 6.283, r = .38 * Math.sqrt(rnd()); push(r * Math.cos(t) + gauss(.05), r * Math.sin(t) + gauss(.05), 1); }
+    for (let i = 0; i < n / 2; i++) { const t = rnd() * 6.283, r = .85 + gauss(.07); push(r * Math.cos(t), r * Math.sin(t), 0); }
+  } else if (kind === 'moons') {
+    for (let i = 0; i < n / 2; i++) { const t = rnd() * Math.PI; push(Math.cos(t) * .8 - .25 + gauss(.07), Math.sin(t) * .55 - .18 + gauss(.07), 0); }
+    for (let i = 0; i < n / 2; i++) { const t = rnd() * Math.PI; push(-Math.cos(t) * .8 + .25 + gauss(.07), -Math.sin(t) * .55 + .18 + gauss(.07), 1); }
+  } else if (kind === 'spiral') {
+    for (let k = 0; k < 2; k++)
+      for (let i = 0; i < n / 2; i++) {
+        const t = 1.1 + 2.6 * (i / (n / 2)), r = .13 * t;
+        const a = t * 1.9 + k * Math.PI;
+        push(r * Math.cos(a) + gauss(.045), r * Math.sin(a) + gauss(.045), k);
+      }
+  }
+  return { X, y };
+}
+
+/* ============================================================
+   2. The network — a plain MLP, written out so it can be read
+   ============================================================ */
+const ACT = {
+  relu:    { f: z => z > 0 ? z : 0,            d: (z, a) => z > 0 ? 1 : 0,   name: 'ReLU' },
+  tanh:    { f: z => Math.tanh(z),             d: (z, a) => 1 - a * a,       name: 'tanh' },
+  sigmoid: { f: z => 1 / (1 + Math.exp(-z)),   d: (z, a) => a * (1 - a),     name: 'σ' },
+  none:    { f: z => z,                        d: () => 1,                   name: 'identity' },
+};
+const sigmoid = z => 1 / (1 + Math.exp(-Math.max(-40, Math.min(40, z))));
+
+let net = null;   // { sizes, W[l][j][i], b[l][j], act }
+
+function initNet(sizes, actName) {
+  const W = [], b = [];
+  for (let l = 1; l < sizes.length; l++) {
+    const nin = sizes[l - 1], nout = sizes[l];
+    const scale = Math.sqrt(2 / nin);            // He-style, works for all the activations here
+    const Wl = [], bl = [];
+    for (let j = 0; j < nout; j++) {
+      const row = [];
+      for (let i = 0; i < nin; i++) row.push(gauss(1) * scale);
+      Wl.push(row); bl.push(0.08);          // small positive bias keeps ReLUs alive at the start
+    }
+    W.push(Wl); b.push(bl);
+  }
+  const vW = W.map(Wl => Wl.map(r => r.map(() => 0)));   // momentum buffers
+  const vb = b.map(bl => bl.map(() => 0));
+  return { sizes, W, b, vW, vb, act: actName };
+}
+
+/* forward pass; returns the activation of every layer (a[0] is the input) */
+function forward(nt, x) {
+  const a = [x], zs = [];
+  const L = nt.W.length;
+  for (let l = 0; l < L; l++) {
+    const Wl = nt.W[l], bl = nt.b[l], prev = a[l], out = [], z = [];
+    for (let j = 0; j < Wl.length; j++) {
+      let s = bl[j], row = Wl[j];
+      for (let i = 0; i < row.length; i++) s += row[i] * prev[i];
+      z.push(s);
+      out.push(l === L - 1 ? sigmoid(s) : ACT[nt.act].f(s));   // last layer: sigmoid for p(y=1|x)
+    }
+    zs.push(z); a.push(out);
+  }
+  return { a, zs };
+}
+const predict = (nt, x) => forward(nt, x).a[nt.W.length][0];
+
+/* full-batch gradient descent on binary cross-entropy */
+function trainStep(nt, X, y, lr) {
+  const L = nt.W.length, N = X.length;
+  if (N === 0) return { loss: NaN, gnorm: 0 };
+  const gW = nt.W.map(Wl => Wl.map(r => r.map(() => 0)));
+  const gb = nt.b.map(bl => bl.map(() => 0));
+  let loss = 0;
+  for (let n = 0; n < N; n++) {
+    const { a, zs } = forward(nt, X[n]);
+    const p = a[L][0], t = y[n];
+    loss += -(t * Math.log(p + 1e-9) + (1 - t) * Math.log(1 - p + 1e-9));
+    let delta = [p - t];                                  // dL/dz of the output layer
+    for (let l = L - 1; l >= 0; l--) {
+      const prev = a[l];
+      for (let j = 0; j < nt.W[l].length; j++) {
+        const d = delta[j];
+        for (let i = 0; i < prev.length; i++) gW[l][j][i] += d * prev[i];
+        gb[l][j] += d;
+      }
+      if (l > 0) {                                        // push the error one layer back
+        const nd = new Array(prev.length).fill(0);
+        for (let j = 0; j < nt.W[l].length; j++)
+          for (let i = 0; i < prev.length; i++) nd[i] += nt.W[l][j][i] * delta[j];
+        for (let i = 0; i < prev.length; i++) nd[i] *= ACT[nt.act].d(zs[l - 1][i], a[l][i]);
+        delta = nd;
+      }
+    }
+  }
+  let gnorm = 0;
+  const m = 0.9;                                          // plain gradient descent with momentum
+  for (let l = 0; l < L; l++)
+    for (let j = 0; j < nt.W[l].length; j++) {
+      for (let i = 0; i < nt.W[l][j].length; i++) {
+        const g = gW[l][j][i] / N; gnorm += g * g;
+        nt.vW[l][j][i] = m * nt.vW[l][j][i] - lr * g;
+        nt.W[l][j][i] += nt.vW[l][j][i];
+      }
+      const g = gb[l][j] / N; gnorm += g * g;
+      nt.vb[l][j] = m * nt.vb[l][j] - lr * g;
+      nt.b[l][j] += nt.vb[l][j];
+    }
+  return { loss: loss / N, gnorm: Math.sqrt(gnorm) };
+}
+
+function evaluate(nt, X, y) {
+  let right = 0, loss = 0;
+  const miss = [];
+  if (X.length === 0) return { acc: NaN, loss: NaN, miss };
+  for (let n = 0; n < X.length; n++) {
+    const p = predict(nt, X[n]);
+    loss += -(y[n] * Math.log(p + 1e-9) + (1 - y[n]) * Math.log(1 - p + 1e-9));
+    if ((p >= .5 ? 1 : 0) === y[n]) right++; else miss.push(n);
+  }
+  return { acc: right / X.length, loss: loss / X.length, miss };
+}
+
+/* ============================================================
+   3. State
+   ============================================================ */
+const $ = s => document.querySelector(s);
+const S = {
+  data: makeData('xor', 240),
+  depth: 1, w1: 5, w2: 4, act: 'tanh',
+  lr: .5, spf: 5,
+  epoch: 0, running: false,
+  hist: [],              // {loss, acc} per recorded epoch
+  last: { loss: NaN, acc: NaN, gnorm: NaN, miss: [] },
+  hover: null,
+};
+
+function sizes() {
+  if (S.depth === 0) return [2, 1];
+  if (S.depth === 1) return [2, S.w1, 1];
+  return [2, S.w1, S.w2, 1];
+}
+function paramCount() {
+  const sz = sizes(); let c = 0;
+  for (let l = 1; l < sz.length; l++) c += sz[l] * sz[l - 1] + sz[l];
+  return c;
+}
+function rebuild(keepData) {
+  if (!keepData) S.data = makeData($('#dataset').value, 240);
+  net = initNet(sizes(), S.act);
+  S.epoch = 0; S.hist = [];
+  S.last = { ...evaluate(net, S.data.X, S.data.y), gnorm: NaN };
+  S.hist.push({ loss: S.last.loss, acc: S.last.acc });
+  buildNeuronPanels();
+  drawAll();
+}
+
+/* ============================================================
+   4. Canvas helpers
+   ============================================================ */
+function setup(canvas) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const r = canvas.getBoundingClientRect();
+  canvas.width = Math.max(1, Math.round(r.width * dpr));
+  canvas.height = Math.max(1, Math.round(r.height * dpr));
+  const c = canvas.getContext('2d');
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { c, w: r.width, h: r.height };
+}
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function mix(hex, amount) {          // hex -> rgba string over the panel background
+  const v = parseInt(hex.slice(1), 16);
+  return `rgba(${v >> 16 & 255},${v >> 8 & 255},${v & 255},${amount})`;
+}
+
+/* probability heat map over a 2-D region, drawn through a small offscreen canvas */
+const off = document.createElement('canvas');
+function heat(c, w, h, G, valueAt, toColor) {
+  off.width = G; off.height = G;
+  const octx = off.getContext('2d');
+  const img = octx.createImageData(G, G);
+  for (let gy = 0; gy < G; gy++)
+    for (let gx = 0; gx < G; gx++) {
+      const v = valueAt(gx / (G - 1), 1 - gy / (G - 1));
+      const [r, g, b, a] = toColor(v);
+      const k = (gy * G + gx) * 4;
+      img.data[k] = r; img.data[k + 1] = g; img.data[k + 2] = b; img.data[k + 3] = a;
+    }
+  octx.putImageData(img, 0, 0);
+  c.imageSmoothingEnabled = true;
+  c.drawImage(off, 0, 0, w, h);
+}
+const C0RGB = [59, 141, 232], C1RGB = [232, 106, 44];
+function probColor(p) {                       // 0 -> blue, 1 -> orange, 0.5 -> transparent
+  const t = (p - .5) * 2;
+  const rgb = t >= 0 ? C1RGB : C0RGB;
+  return [rgb[0], rgb[1], rgb[2], Math.round(Math.min(1, Math.abs(t) * 1.25) * 110)];
+}
+
+/* ============================================================
+   5. Main canvas — input space
+   ============================================================ */
+function drawMain() {
+  const cv = $('#mainCanvas'), { c, w, h } = setup(cv);
+  const X2px = x => (x + DOM) / (2 * DOM) * w, Y2px = y => (DOM - y) / (2 * DOM) * h;
+  c.fillStyle = css('--panel'); c.fillRect(0, 0, w, h);
+
+  if ($('#showProb').checked)
+    heat(c, w, h, 76, (u, v) => predict(net, [(u * 2 - 1) * DOM, (v * 2 - 1) * DOM]), probColor);
+
+  // grid + axes
+  c.strokeStyle = css('--border'); c.lineWidth = 1;
+  for (let g = -1; g <= 1; g += .5) {
+    c.beginPath(); c.moveTo(X2px(g), 0); c.lineTo(X2px(g), h); c.stroke();
+    c.beginPath(); c.moveTo(0, Y2px(g)); c.lineTo(w, Y2px(g)); c.stroke();
+  }
+  c.strokeStyle = css('--faint'); c.lineWidth = 1.2;
+  c.beginPath(); c.moveTo(X2px(0), 0); c.lineTo(X2px(0), h); c.stroke();
+  c.beginPath(); c.moveTo(0, Y2px(0)); c.lineTo(w, Y2px(0)); c.stroke();
+
+  // p = 0.5 contour, traced on a grid with marching squares
+  contour(c, (x, y) => predict(net, [x, y]) - .5, w, h, X2px, Y2px, css('--accent'), 2.2);
+
+  // first-layer unit lines: where that unit's pre-activation crosses zero
+  if ($('#showUnits').checked && S.depth > 0) {
+    const pal = [css('--loss'), css('--other'), '#f0a8c0', '#7fd1ff', '#ffd27f', '#9ae6b4', '#f4a3a3', '#b8a1ff'];
+    c.setLineDash([5, 4]); c.lineWidth = 1.4;
+    for (let j = 0; j < net.W[0].length; j++) {
+      const [a1, a2] = net.W[0][j], b0 = net.b[0][j];
+      c.strokeStyle = pal[j % pal.length];
+      lineOnPlane(c, a1, a2, b0, X2px, Y2px, w, h);
+    }
+    c.setLineDash([]);
+  }
+
+  // data
+  const missSet = new Set($('#showMiss').checked ? S.last.miss : []);
+  for (let n = 0; n < S.data.X.length; n++) {
+    const [x, y] = S.data.X[n], px = X2px(x), py = Y2px(y);
+    c.beginPath(); c.arc(px, py, 4.2, 0, 6.283);
+    c.fillStyle = S.data.y[n] ? css('--c1') : css('--c0');
+    c.globalAlpha = .92; c.fill(); c.globalAlpha = 1;
+    if (missSet.has(n)) { c.strokeStyle = css('--danger'); c.lineWidth = 2; c.beginPath(); c.arc(px, py, 7, 0, 6.283); c.stroke(); }
+  }
+}
+
+/* draw the line a1*x + a2*y + b = 0 clipped to the view */
+function lineOnPlane(c, a1, a2, b, X2px, Y2px, w, h) {
+  const pts = [];
+  const atX = x => -(a1 * x + b) / (a2 || 1e-9);
+  const atY = y => -(a2 * y + b) / (a1 || 1e-9);
+  const cand = [[-DOM, atX(-DOM)], [DOM, atX(DOM)], [atY(-DOM), -DOM], [atY(DOM), DOM]];
+  for (const [x, y] of cand)
+    if (isFinite(x) && isFinite(y) && x >= -DOM - 1e-6 && x <= DOM + 1e-6 && y >= -DOM - 1e-6 && y <= DOM + 1e-6) pts.push([x, y]);
+  if (pts.length < 2) return;
+  c.beginPath(); c.moveTo(X2px(pts[0][0]), Y2px(pts[0][1])); c.lineTo(X2px(pts[1][0]), Y2px(pts[1][1])); c.stroke();
+}
+
+/* zero contour of f over the view, via marching squares on a coarse grid */
+function contour(c, f, w, h, X2px, Y2px, color, width) {
+  const G = 90, step = 2 * DOM / G, vals = [];
+  for (let i = 0; i <= G; i++) {
+    const row = [];
+    for (let j = 0; j <= G; j++) row.push(f(-DOM + j * step, -DOM + i * step));
+    vals.push(row);
+  }
+  c.strokeStyle = color; c.lineWidth = width; c.beginPath();
+  const ip = (x1, y1, v1, x2, y2, v2) => { const t = v1 / (v1 - v2); return [x1 + (x2 - x1) * t, y1 + (y2 - y1) * t]; };
+  for (let i = 0; i < G; i++)
+    for (let j = 0; j < G; j++) {
+      const x0 = -DOM + j * step, y0 = -DOM + i * step, x1 = x0 + step, y1 = y0 + step;
+      const v00 = vals[i][j], v01 = vals[i][j + 1], v10 = vals[i + 1][j], v11 = vals[i + 1][j + 1];
+      const pts = [];
+      if ((v00 > 0) !== (v01 > 0)) pts.push(ip(x0, y0, v00, x1, y0, v01));
+      if ((v01 > 0) !== (v11 > 0)) pts.push(ip(x1, y0, v01, x1, y1, v11));
+      if ((v10 > 0) !== (v11 > 0)) pts.push(ip(x0, y1, v10, x1, y1, v11));
+      if ((v00 > 0) !== (v10 > 0)) pts.push(ip(x0, y0, v00, x0, y1, v10));
+      for (let k = 0; k + 1 < pts.length; k += 2) {
+        c.moveTo(X2px(pts[k][0]), Y2px(pts[k][1]));
+        c.lineTo(X2px(pts[k + 1][0]), Y2px(pts[k + 1][1]));
+      }
+    }
+  c.stroke();
+}
+
+/* ============================================================
+   6. Hidden space — the same points, drawn in the coordinates
+      the last hidden layer hands to the output neuron
+   ============================================================ */
+function hiddenActivations() {
+  const L = net.W.length;
+  return S.data.X.map(x => forward(net, x).a[L - 1]);   // input of the output layer
+}
+function drawHidden() {
+  const cv = $('#hiddenCanvas'), { c, w, h } = setup(cv);
+  c.fillStyle = css('--panel'); c.fillRect(0, 0, w, h);
+  const pad = 34;
+
+  if (S.depth === 0) {
+    $('#hidTitle').textContent = 'What the hidden layer sees';
+    $('#hidSub').textContent = 'no hidden layer';
+    c.fillStyle = css('--muted'); c.font = '13px ' + css('--font');
+    c.textAlign = 'center';
+    c.fillText('A linear model has no hidden layer —', w / 2, h / 2 - 10);
+    c.fillText('it must separate the raw x₁, x₂ plane with one straight line.', w / 2, h / 2 + 12);
+    c.textAlign = 'left';
+    return;
+  }
+
+  const H = hiddenActivations(), dim = H[0].length;
+  const Wout = net.W[net.W.length - 1][0], bout = net.b[net.b.length - 1][0];
+
+  // 2 units -> show them directly; otherwise project onto the two strongest output weights
+  let ax = 0, ay = 1, exact = dim === 2;
+  if (!exact) {
+    const order = Wout.map((v, i) => [Math.abs(v), i]).sort((p, q) => q[0] - p[0]);
+    ax = order[0][1]; ay = order[1] ? order[1][1] : 0;
+  }
+  const xs = H.map(v => v[ax]), ys = H.map(v => v[ay]);
+  const lo = a => Math.min(0, ...a), hi = a => Math.max(1e-6, ...a);
+  const x0 = lo(xs), x1 = hi(xs), y0 = lo(ys), y1 = hi(ys);
+  const mx = (x1 - x0) * .12 + 1e-3, my = (y1 - y0) * .12 + 1e-3;
+  const X2px = v => pad + (v - x0 + mx) / (x1 - x0 + 2 * mx) * (w - pad - 14);
+  const Y2px = v => h - pad - (v - y0 + my) / (y1 - y0 + 2 * my) * (h - pad - 14);
+
+  // the output neuron is a linear classifier in this space: shade its two sides
+  const sideOf = (u, v) => {
+    let s = bout;
+    for (let i = 0; i < dim; i++) s += Wout[i] * (i === ax ? u : i === ay ? v : meanH[i]);
+    return sigmoid(s);
+  };
+  const meanH = new Array(dim).fill(0);
+  for (const v of H) for (let i = 0; i < dim; i++) meanH[i] += v[i] / H.length;
+  const ux = v => x0 - mx + v * (x1 - x0 + 2 * mx), uy = v => y0 - my + v * (y1 - y0 + 2 * my);
+  c.save();
+  c.beginPath(); c.rect(pad, 14, w - pad - 14, h - pad - 14); c.clip();
+  heatRegion(c, pad, 14, w - pad - 14, h - pad - 14, 60, (u, v) => sideOf(ux(u), uy(v)));
+  c.restore();
+
+  // axes
+  c.strokeStyle = css('--border'); c.lineWidth = 1;
+  c.beginPath(); c.moveTo(pad, 14); c.lineTo(pad, h - pad); c.lineTo(w - 14, h - pad); c.stroke();
+  c.fillStyle = css('--muted'); c.font = '11px ' + css('--mono');
+  c.fillText('h' + (ax + 1), w - 30, h - pad + 16);
+  c.save(); c.translate(12, 26); c.rotate(-Math.PI / 2); c.fillText('h' + (ay + 1), 0, 0); c.restore();
+
+  // the output layer's boundary in this slice
+  const a1 = Wout[ax], a2 = Wout[ay];
+  let bEff = bout;
+  for (let i = 0; i < dim; i++) if (i !== ax && i !== ay) bEff += Wout[i] * meanH[i];
+  c.strokeStyle = css('--accent'); c.lineWidth = 2.2;
+  clipLine(c, a1, a2, bEff, X2px, Y2px, ux(0), ux(1), uy(0), uy(1));
+
+  // points
+  for (let n = 0; n < H.length; n++) {
+    c.beginPath(); c.arc(X2px(xs[n]), Y2px(ys[n]), 4, 0, 6.283);
+    c.fillStyle = S.data.y[n] ? css('--c1') : css('--c0');
+    c.globalAlpha = .9; c.fill(); c.globalAlpha = 1;
+  }
+
+  $('#hidTitle').textContent = 'What the output neuron sees';
+  $('#hidSub').textContent = exact ? `(h1, h2) after layer ${S.depth}` : `h${ax + 1}, h${ay + 1} of ${dim} units`;
+}
+function heatRegion(c, X, Y, W, H, G, valueAt) {
+  off.width = G; off.height = G;
+  const octx = off.getContext('2d'), img = octx.createImageData(G, G);
+  for (let gy = 0; gy < G; gy++)
+    for (let gx = 0; gx < G; gx++) {
+      const [r, g, b, a] = probColor(valueAt(gx / (G - 1), 1 - gy / (G - 1)));
+      const k = (gy * G + gx) * 4;
+      img.data[k] = r; img.data[k + 1] = g; img.data[k + 2] = b; img.data[k + 3] = a;
+    }
+  octx.putImageData(img, 0, 0);
+  c.imageSmoothingEnabled = true;
+  c.drawImage(off, X, Y, W, H);
+}
+function clipLine(c, a1, a2, b, X2px, Y2px, xmin, xmax, ymin, ymax) {
+  const pts = [];
+  const atX = x => -(a1 * x + b) / (a2 || 1e-9), atY = y => -(a2 * y + b) / (a1 || 1e-9);
+  for (const [x, y] of [[xmin, atX(xmin)], [xmax, atX(xmax)], [atY(ymin), ymin], [atY(ymax), ymax]])
+    if (isFinite(x) && isFinite(y) && x >= xmin - 1e-9 && x <= xmax + 1e-9 && y >= ymin - 1e-9 && y <= ymax + 1e-9) pts.push([x, y]);
+  if (pts.length < 2) return;
+  c.beginPath(); c.moveTo(X2px(pts[0][0]), Y2px(pts[0][1])); c.lineTo(X2px(pts[1][0]), Y2px(pts[1][1])); c.stroke();
+}
+
+/* ============================================================
+   7. One small picture per hidden unit
+   ============================================================ */
+function buildNeuronPanels() {
+  const host = $('#neurons'); host.innerHTML = '';
+  if (S.depth === 0) {
+    host.innerHTML = '<div class="hint">A linear model has no hidden units — only one output neuron.</div>';
+    $('#neuTitle').textContent = '';
+    return;
+  }
+  const layer = pickedLayer();
+  const count = net.W[layer].length;
+  const pick = $('#layerPick'); pick.hidden = S.depth !== 2;
+  for (let j = 0; j < count; j++) {
+    const d = document.createElement('div');
+    d.className = 'nb';
+    d.innerHTML = `<canvas data-unit="${j}"></canvas><div class="cap">h${j + 1}</div>`;
+    host.append(d);
+  }
+  $('#neuTitle').textContent = `${count} unit${count > 1 ? 's' : ''}`;
+}
+function pickedLayer() {
+  if (S.depth !== 2) return 0;
+  return +document.querySelector('input[name=npick]:checked').value;
+}
+function drawNeurons() {
+  if (S.depth === 0) return;
+  const layer = pickedLayer();
+  const feedsOutput = layer === net.W.length - 2;
+  const Wout = net.W[net.W.length - 1][0];
+  document.querySelectorAll('#neurons canvas').forEach(cv => {
+    const j = +cv.dataset.unit;
+    if (!net.W[layer][j]) return;
+    const { c, w, h } = setup(cv);
+    let vmax = 1e-6;
+    const G = 30, grid = [];
+    for (let gy = 0; gy < G; gy++) {
+      const row = [];
+      for (let gx = 0; gx < G; gx++) {
+        const x = (gx / (G - 1) * 2 - 1) * DOM, y = (1 - gy / (G - 1)) * 2 * DOM - DOM;
+        const a = forward(net, [x, y]).a[layer + 1][j];
+        vmax = Math.max(vmax, Math.abs(a)); row.push(a);
+      }
+      grid.push(row);
+    }
+    off.width = G; off.height = G;
+    const octx = off.getContext('2d'), img = octx.createImageData(G, G);
+    const wj = feedsOutput ? Wout[j] : null;             // tinted by how the output uses it
+    const sign = wj === null ? [160, 175, 200] : wj >= 0 ? C1RGB : C0RGB;
+    for (let gy = 0; gy < G; gy++)
+      for (let gx = 0; gx < G; gx++) {
+        const t = Math.min(1, Math.abs(grid[gy][gx]) / vmax);
+        const k = (gy * G + gx) * 4;
+        img.data[k] = sign[0]; img.data[k + 1] = sign[1]; img.data[k + 2] = sign[2];
+        img.data[k + 3] = Math.round(t * 200);
+      }
+    octx.putImageData(img, 0, 0);
+    c.fillStyle = css('--bg'); c.fillRect(0, 0, w, h);
+    c.imageSmoothingEnabled = true; c.drawImage(off, 0, 0, w, h);
+    const cap = cv.parentElement.querySelector('.cap');
+    cap.textContent = wj === null ? `h${j + 1}` : `h${j + 1} · w=${wj >= 0 ? '+' : ''}${wj.toFixed(2)}`;
+    cap.style.color = wj === null ? css('--muted') : wj >= 0 ? css('--c1') : css('--c0');
+  });
+}
+
+/* ============================================================
+   7b. The activation function itself, with its derivative
+   ============================================================ */
+const ACT_NOTE = {
+  relu:    'φ(z) = max(0, z). Flat on the left — a unit pushed there stops learning (“dead ReLU”).',
+  tanh:    'φ(z) = tanh z, squashed into (−1, 1). The slope fades once |z| is large.',
+  sigmoid: 'φ(z) = 1/(1+e⁻ᶻ), squashed into (0, 1). Its slope peaks at 0.25, so gradients shrink fast through layers.',
+  none:    'φ(z) = z. No bend at all, which is why stacking layers buys nothing.',
+};
+function drawAct() {
+  const cv = $('#actCanvas'), { c, w, h } = setup(cv);
+  const ZM = 3, VLO = -1.25, VHI = 1.35, pad = 4;
+  c.fillStyle = css('--panel2'); c.fillRect(0, 0, w, h);
+  const X = z => pad + (z + ZM) / (2 * ZM) * (w - 2 * pad);
+  const Y = v => h - pad - (v - VLO) / (VHI - VLO) * (h - 2 * pad);
+
+  c.strokeStyle = css('--border'); c.lineWidth = 1;                  // axes
+  c.beginPath(); c.moveTo(pad, Y(0)); c.lineTo(w - pad, Y(0)); c.stroke();
+  c.beginPath(); c.moveTo(X(0), pad); c.lineTo(X(0), h - pad); c.stroke();
+  c.fillStyle = css('--muted'); c.font = '9.5px ' + css('--mono');
+  c.fillText('z', w - pad - 8, Y(0) - 4);
+  c.fillText('1', X(0) + 4, Y(1) + 3);
+  c.strokeStyle = css('--faint'); c.setLineDash([2, 3]);
+  c.beginPath(); c.moveTo(pad, Y(1)); c.lineTo(w - pad, Y(1)); c.stroke(); c.setLineDash([]);
+
+  const f = ACT[S.act].f, d = ACT[S.act].d;
+  c.strokeStyle = css('--muted'); c.lineWidth = 1.3; c.setLineDash([3, 3]);   // derivative
+  c.beginPath();
+  for (let i = 0; i <= 160; i++) {
+    const z = -ZM + i / 160 * 2 * ZM, v = d(z, f(z));
+    i ? c.lineTo(X(z), Y(v)) : c.moveTo(X(z), Y(v));
+  }
+  c.stroke(); c.setLineDash([]);
+
+  c.strokeStyle = css('--accent'); c.lineWidth = 2;                            // the function
+  c.beginPath();
+  for (let i = 0; i <= 160; i++) {
+    const z = -ZM + i / 160 * 2 * ZM, v = f(z);
+    i ? c.lineTo(X(z), Y(Math.max(VLO, Math.min(VHI, v)))) : c.moveTo(X(z), Y(Math.max(VLO, Math.min(VHI, v))));
+  }
+  c.stroke();
+
+  c.font = '10px ' + css('--mono');
+  c.fillStyle = css('--accent'); c.fillText('φ(z)', pad + 4, pad + 11);
+  c.fillStyle = css('--muted'); c.fillText("φ'(z)", pad + 36, pad + 11);
+  $('#actHint').textContent = ACT_NOTE[S.act];
+}
+
+/* ============================================================
+   8. Loss / accuracy curve
+   ============================================================ */
+function drawLoss() {
+  const cv = $('#lossCanvas'), { c, w, h } = setup(cv);
+  c.fillStyle = css('--panel'); c.fillRect(0, 0, w, h);
+  const pad = 26, n = S.hist.length;
+  c.strokeStyle = css('--border'); c.lineWidth = 1;
+  c.beginPath(); c.moveTo(pad, 8); c.lineTo(pad, h - 18); c.lineTo(w - 8, h - 18); c.stroke();
+  if (n < 2) { $('#lossSub').textContent = 'press Run'; return; }
+  const lmax = Math.max(.1, ...S.hist.map(d => d.loss));
+  const X = i => pad + i / (n - 1) * (w - pad - 8);
+  const YL = v => h - 18 - v / lmax * (h - 28);
+  const YA = v => h - 18 - v * (h - 28);
+  c.strokeStyle = mix('#2fbf8a', .35); c.lineWidth = 1.5; c.setLineDash([4, 4]);
+  c.beginPath(); c.moveTo(pad, YA(1)); c.lineTo(w - 8, YA(1)); c.stroke(); c.setLineDash([]);
+  c.strokeStyle = css('--other'); c.lineWidth = 1.6; c.beginPath();
+  S.hist.forEach((d, i) => i ? c.lineTo(X(i), YA(d.acc)) : c.moveTo(X(i), YA(d.acc))); c.stroke();
+  c.strokeStyle = css('--loss'); c.lineWidth = 1.8; c.beginPath();
+  S.hist.forEach((d, i) => i ? c.lineTo(X(i), YL(d.loss)) : c.moveTo(X(i), YL(d.loss))); c.stroke();
+  c.fillStyle = css('--muted'); c.font = '10px ' + css('--mono');
+  c.fillText(lmax.toFixed(2), 2, 14); c.fillText('0', 2, h - 20);
+  c.fillStyle = css('--loss'); c.fillText('loss', w - 104, 14);
+  c.fillStyle = css('--other'); c.fillText('accuracy', w - 66, 14);
+  $('#lossSub').textContent = `epoch ${S.epoch}`;
+}
+
+/* ============================================================
+   9. Network diagram + live parameters
+   ============================================================ */
+function drawNet() {
+  const cv = $('#netCanvas'), { c, w, h } = setup(cv);
+  c.fillStyle = css('--panel'); c.fillRect(0, 0, w, h);
+  const sz = sizes(), cols = sz.length;
+  const xs = sz.map((_, l) => 40 + l * (w - 80) / (cols - 1));
+  const posOf = (l, j) => {
+    const n = sz[l], gap = Math.min(34, (h - 46) / Math.max(1, n - 1 || 1));
+    const y0 = h / 2 - (n - 1) * gap / 2;
+    return [xs[l], y0 + j * gap];
+  };
+  let wmax = 1e-6;
+  net.W.forEach(Wl => Wl.forEach(r => r.forEach(v => wmax = Math.max(wmax, Math.abs(v)))));
+  for (let l = 0; l < net.W.length; l++)
+    for (let j = 0; j < net.W[l].length; j++)
+      for (let i = 0; i < net.W[l][j].length; i++) {
+        const v = net.W[l][j][i], t = Math.abs(v) / wmax;
+        const [x1, y1] = posOf(l, i), [x2, y2] = posOf(l + 1, j);
+        c.strokeStyle = mix(v >= 0 ? '#e86a2c' : '#3b8de8', .15 + .75 * t);
+        c.lineWidth = .4 + 3.2 * t;
+        c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke();
+      }
+  for (let l = 0; l < cols; l++)
+    for (let j = 0; j < sz[l]; j++) {
+      const [x, y] = posOf(l, j);
+      c.beginPath(); c.arc(x, y, 9, 0, 6.283);
+      c.fillStyle = css('--panel2'); c.fill();
+      c.strokeStyle = l === 0 ? css('--muted') : l === cols - 1 ? css('--accent') : css('--border');
+      c.lineWidth = 1.5; c.stroke();
+      c.fillStyle = css('--muted'); c.font = '9.5px ' + css('--mono'); c.textAlign = 'center';
+      c.fillText(l === 0 ? 'x' + (j + 1) : l === cols - 1 ? 'p' : 'h' + (j + 1), x, y + 3);
+      c.textAlign = 'left';
+    }
+  c.fillStyle = css('--muted'); c.font = '10px ' + css('--mono'); c.textAlign = 'center';
+  const names = sz.map((n, l) => l === 0 ? 'input' : l === cols - 1 ? 'σ' : ACT[S.act].name);
+  names.forEach((t, l) => c.fillText(t, xs[l], h - 8));
+  c.textAlign = 'left';
+  $('#netSub').textContent = sizes().join(' → ');
+}
+
+function fmt(v) { return (v >= 0 ? ' ' : '') + v.toFixed(2); }
+function matHTML(M) {
+  return M.map(r => r.map(v => `<span class="${v >= 0 ? 'pos' : 'neg'}">${fmt(v)}</span>`).join('  ')).join('<br>');
+}
+function drawParams() {
+  const host = $('#params'); host.innerHTML = '';
+  const L = net.W.length;
+  for (let l = 0; l < L; l++) {
+    const rows = net.W[l].length;
+    const cap = 6;
+    const Wshow = net.W[l].slice(0, cap), bShow = net.b[l].slice(0, cap);
+    host.insertAdjacentHTML('beforeend',
+      `<div class="pr"><span class="pk">W${l + 1}</span><span class="pv">${matHTML(Wshow)}${rows > cap ? '<br>…' : ''}</span></div>` +
+      `<div class="pr"><span class="pk">b${l + 1}</span><span class="pv">${matHTML([bShow])}${rows > cap ? '  …' : ''}</span></div>`);
+  }
+  const sz = sizes();
+  $('#eqline').innerHTML = S.depth === 0
+    ? '<b>p = σ(w·x + b)</b> — one linear boundary, nothing else is available.'
+    : S.depth === 1
+      ? `<b>p = σ(W₂ · ${ACT[S.act].name}(W₁x + b₁) + b₂)</b>`
+      : `<b>p = σ(W₃ · ${ACT[S.act].name}(W₂ · ${ACT[S.act].name}(W₁x + b₁) + b₂) + b₃)</b>`;
+}
+
+/* ============================================================
+   10. The teaching notes that react to what you set up
+   ============================================================ */
+function notes() {
+  const acc = S.last.acc, ds = $('#dataset').value, linearData = ds === 'blobs';
+  let hid = '', tip = '';
+  if (S.depth === 0) {
+    hid = linearData
+      ? '<b>A straight line is enough here.</b> These two blobs can be split by one line, so a linear model already does the job — no hidden layer needed.'
+      : '<b>One line, and that is all you get.</b> Run it: the loss stops falling and the accuracy sticks well below 100%. Every decision boundary this model can draw is a straight line, and no straight line separates these classes.';
+    tip = ds === 'xor'
+      ? 'XOR is the textbook case: the two classes sit on opposite diagonals, so no single line can split them. Switch to “1 hidden” and watch what changes.'
+      : 'Switch to “1 hidden” to give the model a chance to bend its boundary.';
+  } else if (S.act === 'none') {
+    hid = '<b>Hidden layers without a non-linearity are pointless.</b> W₂(W₁x + b₁) + b₂ multiplies out to W′x + b′ — one matrix, one bias, a linear model again. Look at the boundary: still a straight line, however many layers you stack.';
+    tip = 'This is the whole reason activations exist. Switch Activation back to ReLU and the boundary bends immediately.';
+  } else if (S.depth === 1) {
+    hid = `<b>The hidden layer re-draws the plane.</b> Each unit cuts the input with its own line (dashed, left), and the points land in new coordinates (h₁, h₂, above). The output neuron is still just a line — but in <i>these</i> coordinates the classes line up on either side of it.`;
+    tip = S.w1 < 2
+      ? 'One hidden unit is still one line. Give the layer at least 2 units for XOR.'
+      : (acc > .97 ? 'Solved. Now drag the width down to 1 and watch it fail again — the number of units is the number of lines it can cut with.'
+        : (S.epoch > 600 && S.last.gnorm < 1e-3
+          ? 'Stuck at a plateau with no gradient left — a bad starting point, not a limit of the model. Press Re-init. (With ReLU this is usually a unit that died: it outputs 0 everywhere, so nothing flows back to it.)'
+          : 'Not converged yet — keep it running, or raise η.'));
+  } else {
+    hid = '<b>Two layers compose regions.</b> Layer 1 cuts lines, layer 2 combines those pieces into regions, and the output neuron separates what layer 2 produced. Curvy data (spirals, circles) needs far fewer units this way.';
+    tip = 'Try the spiral with 1 hidden layer vs 2 — same total units, very different boundaries.';
+  }
+  $('#hidNote').innerHTML = hid;
+  $('#tip').innerHTML = tip;
+
+  const st = $('#status');
+  if (S.running) st.innerHTML = '<span class="badge run">training</span>';
+  else if (acc >= .99) st.innerHTML = '<span class="badge solved">solved</span>';
+  else if (S.epoch > 400 && acc < .9) st.innerHTML = '<span class="badge stuck">stuck at ' + (acc * 100).toFixed(0) + '%</span>';
+  else st.innerHTML = '<span class="badge idle">paused</span>';
+}
+
+/* ============================================================
+   11. Draw everything / the training loop
+   ============================================================ */
+let frame = 0;
+function drawAll() {
+  drawMain(); drawHidden(); drawLoss(); drawNet(); drawParams(); drawNeurons(); drawAct(); notes();
+  $('#sEpoch').textContent = S.epoch;
+  $('#sLoss').textContent = isFinite(S.last.loss) ? S.last.loss.toFixed(4) : '–';
+  $('#sAcc').textContent = isFinite(S.last.acc) ? (S.last.acc * 100).toFixed(1) + '%' : '–';
+  $('#sParams').textContent = paramCount();
+  $('#sGrad').textContent = isFinite(S.last.gnorm) ? S.last.gnorm.toFixed(3) : '–';
+  $('#legUnits').hidden = !($('#showUnits').checked && S.depth > 0);
+}
+
+function stepOnce(k) {
+  if (S.data.X.length === 0) { setRunning(false); return; }
+  let out = null;
+  for (let i = 0; i < k; i++) { out = trainStep(net, S.data.X, S.data.y, S.lr); S.epoch++; }
+  const ev = evaluate(net, S.data.X, S.data.y);
+  S.last = { ...ev, gnorm: out.gnorm };
+  S.hist.push({ loss: ev.loss, acc: ev.acc });
+  if (S.hist.length > 600) S.hist = S.hist.filter((_, i) => i % 2 === 0);
+}
+
+function loop() {
+  if (S.running) {
+    stepOnce(S.spf);
+    frame++;
+    drawMain(); drawHidden(); drawLoss(); drawNet(); notes();
+    $('#sEpoch').textContent = S.epoch;
+    $('#sLoss').textContent = isFinite(S.last.loss) ? S.last.loss.toFixed(4) : '–';
+    $('#sAcc').textContent = isFinite(S.last.acc) ? (S.last.acc * 100).toFixed(1) + '%' : '–';
+    $('#sGrad').textContent = isFinite(S.last.gnorm) ? S.last.gnorm.toFixed(3) : '–';
+    if (frame % 4 === 0) { drawParams(); drawNeurons(); }     // heavier panels, a little less often
+  }
+  requestAnimationFrame(loop);
+}
+
+/* ============================================================
+   12. Wiring
+   ============================================================ */
+function setRunning(on) {
+  S.running = on;
+  $('#run').innerHTML = on ? '&#10073;&#10073; Pause' : '&#9654; Run';
+  notes();
+}
+$('#run').onclick = () => setRunning(!S.running);
+$('#step').onclick = () => { stepOnce(1); drawAll(); };
+$('#reset').onclick = () => { setRunning(false); rebuild(true); };
+$('#newSample').onclick = () => { setRunning(false); rngState = (Date.now() % 100000) | 0; rebuild(false); };
+$('#clearPts').onclick = () => { setRunning(false); S.data = { X: [], y: [] }; S.last = { loss: NaN, acc: NaN, gnorm: NaN, miss: [] }; drawAll(); };
+$('#dataset').onchange = () => { setRunning(false); rebuild(false); };
+
+document.querySelectorAll('input[name=depth]').forEach(r => r.onchange = () => {
+  S.depth = +r.value;
+  $('#w1row').classList.toggle('off', S.depth === 0);
+  $('#w2row').classList.toggle('off', S.depth !== 2);
+  setRunning(false); rebuild(true);
+});
+$('#w1').oninput = e => { S.w1 = +e.target.value; $('#w1v').textContent = S.w1; setRunning(false); rebuild(true); };
+$('#w2').oninput = e => { S.w2 = +e.target.value; $('#w2v').textContent = S.w2; setRunning(false); rebuild(true); };
+$('#act').onchange = e => { S.act = e.target.value; drawAct(); setRunning(false); rebuild(true); };
+$('#lr').oninput = e => { S.lr = +e.target.value / 100; $('#lrv').textContent = S.lr.toFixed(2); };
+$('#spf').oninput = e => { S.spf = +e.target.value; $('#spfv').textContent = S.spf; };
+['showUnits', 'showMiss', 'showProb'].forEach(id => $('#' + id).onchange = drawAll);
+document.querySelectorAll('input[name=npick]').forEach(r => r.onchange = () => { buildNeuronPanels(); drawNeurons(); });
+
+const cv = $('#mainCanvas');
+function toData(ev) {
+  const r = cv.getBoundingClientRect();
+  return [((ev.clientX - r.left) / r.width * 2 - 1) * DOM, (1 - (ev.clientY - r.top) / r.height * 2) * DOM];
+}
+cv.addEventListener('mousemove', ev => {
+  const [x, y] = toData(ev);
+  $('#hoverInfo').textContent = `x = (${x.toFixed(2)}, ${y.toFixed(2)})   p = ${predict(net, [x, y]).toFixed(3)}`;
+});
+cv.addEventListener('mouseleave', () => $('#hoverInfo').textContent = 'hover to read p(x)');
+cv.addEventListener('click', ev => {
+  const [x, y] = toData(ev);
+  const cls = +document.querySelector('input[name=paint]:checked').value;
+  S.data.X.push([x, y]); S.data.y.push(ev.shiftKey ? 1 - cls : cls);
+  S.last = { ...evaluate(net, S.data.X, S.data.y), gnorm: S.last.gnorm };
+  drawAll();
+});
+
+addEventListener('keydown', e => {
+  if (e.target.matches('input, select, button')) return;
+  if (e.code === 'Space') { e.preventDefault(); setRunning(!S.running); }
+  if (e.key === 's' || e.key === 'S') { stepOnce(1); drawAll(); }
+  if (e.key === 'r' || e.key === 'R') { setRunning(false); rebuild(true); }
+});
+addEventListener('resize', () => drawAll());
+
+/* the browser restores form state on reload, so the state object is read off the
+   controls rather than assumed */
+function syncFromDOM() {
+  S.depth = +document.querySelector('input[name=depth]:checked').value;
+  S.w1 = +$('#w1').value; S.w2 = +$('#w2').value;
+  S.act = $('#act').value;
+  S.lr = +$('#lr').value / 100; S.spf = +$('#spf').value;
+  $('#w1v').textContent = S.w1; $('#w2v').textContent = S.w2;
+  $('#lrv').textContent = S.lr.toFixed(2); $('#spfv').textContent = S.spf;
+  $('#w1row').classList.toggle('off', S.depth === 0);
+  $('#w2row').classList.toggle('off', S.depth !== 2);
+}
+syncFromDOM();
+rebuild(false);
+loop();
+</script>
+</body>
+</html>

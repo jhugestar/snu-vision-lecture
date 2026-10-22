@@ -20,6 +20,7 @@ Interactive web-based demos for computer vision courses at Seoul National Univer
 | Eigenface | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/eigenface/eigenface_demo.html) |
 | HOG (Histogram of Oriented Gradients) | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/hog/hog.html) |
 | Linear Classification (Logistic Regression vs SVM) | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/ml-linear-classification/linear_classification_demo.html) |
+| Multi-Layer Perceptron (XOR, hidden layers) | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/ml-mlp/mlp_demo.html) |
 | Clustering & Segmentation | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/clustering/clustering.html) |
 | RANSAC (Line Fitting & Homography) | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/3dvision-ransac/ransac_demo.html) |
 | Visual Hull Reconstruction | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/3dvision-visualhull/visual_hull.html) |
