@@ -1030,6 +1030,12 @@ S.vars = { ...FUNCS[S.key].vars };
 buildControls();
 refresh(true);
 tick();
+
+/* Land on the page and the pass is already running — most visitors will not press
+   Step on their own. Any click or key stops it, and reduced-motion opts out. */
+if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  setTimeout(() => { if (S.cursor === 0 && !S.playing && !TR.on) play(); }, 900);
+}
 </script>
 </body>
 </html>
