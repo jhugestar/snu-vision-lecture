@@ -246,6 +246,11 @@ const ICONS = {
     <circle class="fdim" cx="4.6" cy="9.2" r="1.7"/><circle class="fdim" cx="4.6" cy="14.8" r="1.7"/>
     <circle class="fill" cx="12" cy="5.2" r="1.8"/><circle class="fill" cx="12" cy="12" r="1.8"/><circle class="fill" cx="12" cy="18.8" r="1.8"/>
     <circle cx="19.4" cy="12" r="2"/>`,
+  /* a chain of gates with the gradient flowing back over the top */
+  backprop: `<path class="dim" d="M6.8 16.5 10.2 16.5M13.8 16.5 17.2 16.5"/>
+    <circle class="fdim" cx="5" cy="16.5" r="1.9"/><circle class="fdim" cx="12" cy="16.5" r="1.9"/><circle class="fdim" cx="19" cy="16.5" r="1.9"/>
+    <path d="M19 12.4C19 6.6 13.4 4.6 9.2 6.6 7.2 7.6 6 9.4 5.6 11.6"/>
+    <path d="M7.6 10.6 5.4 12.4 3.9 10.1"/>`,
   /* a 3D point, through the center, onto the image plane */
   pinhole: `<path class="dim" d="M5.5 12 10.8 7.4M5.5 12 10.8 16.6"/>
     <path d="M10.8 7.4V16.6"/>
@@ -294,6 +299,9 @@ const DEMOS = [
   { id:'mlp', group:'Learning & Representation', tab:'MLP', title:'Multi-Layer Perceptron',
     path:'ml-mlp/mlp_demo.html',
     desc:'Why XOR defeats a straight line, and what a hidden layer does about it — trained live.' },
+  { id:'backprop', group:'Learning & Representation', tab:'Backprop', title:'Backpropagation, Step by Step',
+    path:'ml-backprop/backprop_demo.html',
+    desc:'A computational graph, one gate at a time: local derivative × upstream gradient, flowing back.' },
 
   { id:'map', group:'Detection & Evaluation', tab:'mAP', title:'Detection Evaluation & mAP',
     path:'detection-eval-map/pascal_voc_map.html',

@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Backpropagation — Step by Step</title>
+<style>
+/* Layout: header -> [computational graph | controls] -> [current step | gradient table] */
+:root {
+  --bg: #0e1118;
+  --panel: #161b25;
+  --panel2: #1d2331;
+  --border: #2a3243;
+  --fg: #e4e8f0;
+  --muted: #8b95a8;
+  --faint: #3b4457;
+  --fwd: #4da3ff;      /* forward values */
+  --bwd: #f3c969;      /* gradients */
+  --pos: #3ddc97;
+  --neg: #e86a2c;
+  --ui: #4da3ff;
+  --font: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 14px; line-height: 1.45; }
+.wrap { max-width: 1640px; margin: 0 auto; padding: 14px 18px 28px; display: grid; gap: 14px;
+  grid-template-columns: minmax(0, 1fr) 340px; grid-template-areas: "hdr hdr" "graph ctrl" "steps ctrl"; align-items: start; }
+header { grid-area: hdr; display: flex; align-items: baseline; gap: 14px 22px; flex-wrap: wrap; }
+header h1 { font-size: 21px; margin: 0; letter-spacing: .2px; }
+header .sub { color: var(--muted); }
+header .author { margin-left: auto; font-size: 12px; color: var(--muted); }
+header .author a { color: var(--ui); text-decoration: none; }
+header .author a:hover { text-decoration: underline; }
+.kbd { font-family: var(--mono); font-size: 11px; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; color: var(--muted); }
+
+.panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; min-width: 0; }
+.graph { grid-area: graph; position: relative; }
+#graphCanvas { width: 100%; aspect-ratio: 1.65; display: block; border-radius: 8px; }
+.gtitle { position: absolute; top: 10px; left: 14px; font-family: var(--mono); font-size: 12px; color: var(--muted); pointer-events: none; }
+.gtitle b { color: var(--fg); font-weight: 500; }
+.glegend { position: absolute; right: 14px; top: 10px; display: flex; gap: 14px; font-size: 11.5px; color: var(--muted); pointer-events: none; }
+.glegend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+.phase { position: absolute; left: 14px; bottom: 12px; font-size: 12px; color: var(--muted); font-family: var(--mono); pointer-events: none; }
+
+.steps { grid-area: steps; display: grid; gap: 14px; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
+@media (max-width: 1100px) { .wrap { grid-template-columns: 1fr; grid-template-areas: "hdr" "graph" "ctrl" "steps"; } .steps { grid-template-columns: 1fr; } }
+.ptitle { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 10px 14px 0; }
+.ptitle h2 { font-size: 13px; margin: 0; font-weight: 600; }
+.ptitle span { font-size: 11.5px; color: var(--muted); font-family: var(--mono); }
+.pad { padding: 10px 14px 14px; }
+.chain { font-family: var(--mono); font-size: 13px; line-height: 1.85; }
+.chain .op { color: var(--fg); font-weight: 500; }
+.chain .up { color: var(--bwd); }
+.chain .loc { color: var(--fwd); }
+.chain .res { color: var(--pos); }
+.chain .dim { color: var(--muted); }
+.chain .hl { background: rgba(243,201,105,.12); border-radius: 3px; padding: 0 3px; }
+.rule { color: var(--muted); font-size: 12.5px; font-family: var(--font); margin-top: 8px; border-left: 3px solid var(--bwd); background: var(--panel2); padding: 7px 10px; border-radius: 4px; }
+.rule b { color: var(--fg); }
+table.g { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+table.g th, table.g td { text-align: right; padding: 4px 6px; border-top: 1px solid var(--border); }
+table.g th { font-family: var(--font); font-size: 10px; letter-spacing: .7px; text-transform: uppercase; color: var(--muted); border-top: none; font-weight: 600; }
+table.g td:first-child, table.g th:first-child { text-align: left; color: var(--muted); }
+table.g td.v { color: var(--fwd); } table.g td.g { color: var(--bwd); } table.g td.n { color: var(--muted); }
+table.g tr.wait td { color: var(--faint); }
+
+.controls { grid-area: ctrl; padding: 14px; display: grid; gap: 14px; align-content: start; }
+.sec { display: grid; gap: 7px; }
+.sec > .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .9px; color: var(--muted); font-weight: 600; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+select, button { font: inherit; color: var(--fg); background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; }
+select { flex: 1; min-width: 0; }
+button { cursor: pointer; transition: background .12s, border-color .12s; }
+button:hover { background: #253044; border-color: #3a4660; }
+button:disabled { opacity: .4; cursor: default; }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--ui); outline-offset: 1px; }
+button.primary { background: var(--ui); color: #0e1118; border-color: var(--ui); font-weight: 600; }
+button.primary:hover { background: #7fbcff; }
+button.wide { flex: 1; }
+.expr { font-family: var(--mono); font-size: 14px; color: var(--fg); background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 9px 11px; overflow-wrap: anywhere; }
+.slider { display: grid; grid-template-columns: 30px 1fr 54px; gap: 8px; align-items: center; }
+.slider .name { font-family: var(--mono); font-size: 13px; color: var(--fg); }
+.slider .val { font-family: var(--mono); font-size: 12px; color: var(--fwd); text-align: right; font-variant-numeric: tabular-nums; }
+.slider input[type=range] { width: 100%; accent-color: var(--ui); margin: 0; }
+.hint { font-size: 12px; color: var(--muted); }
+.chk { display: flex; gap: 8px; align-items: center; font-size: 13px; cursor: pointer; color: var(--muted); }
+.chk input { accent-color: var(--ui); margin: 0; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Backpropagation &mdash; Step by Step</h1>
+    <div class="sub">One gate at a time: local derivative &times; upstream gradient</div>
+    <div class="hint"><span class="kbd">Space</span> play / pause &nbsp; <span class="kbd">&rarr;</span> step &nbsp; <span class="kbd">&larr;</span> back &nbsp; <span class="kbd">R</span> reset</div>
+    <div class="author"><a href="https://jhugestar.github.io/" target="_blank" rel="noopener">Hanbyul Joo</a>
+      &nbsp;|&nbsp; Visual Computing Lab, Seoul National University &nbsp;|&nbsp;
+      <a href="https://github.com/jhugestar/snu-vision-lecture" target="_blank" rel="noopener">More Demos &#8599;</a></div>
+  </header>
+
+  <div class="panel graph">
+    <canvas id="graphCanvas"></canvas>
+    <div class="gtitle" id="gtitle"></div>
+    <div class="glegend">
+      <span><i style="background:var(--fwd)"></i>forward value</span>
+      <span><i style="background:var(--bwd)"></i>gradient &part;L/&part;·</span>
+    </div>
+    <div class="phase" id="phase"></div>
+  </div>
+
+  <div class="steps">
+    <div class="panel">
+      <div class="ptitle"><h2 id="stepTitle">Current step</h2><span id="stepCount"></span></div>
+      <div class="pad">
+        <div class="chain" id="chain"></div>
+        <div class="rule" id="rule"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="ptitle"><h2>Gradients at the leaves</h2><span id="checkNote"></span></div>
+      <div class="pad">
+        <table class="g" id="gradTable"></table>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel controls">
+    <div class="sec">
+      <div class="lbl">Function</div>
+      <select id="func"></select>
+      <div class="expr" id="exprLine"></div>
+      <div class="hint" id="funcNote"></div>
+    </div>
+
+    <div class="sec">
+      <div class="lbl">Inputs</div>
+      <div id="vars"></div>
+      <div class="hint">Change any input and the pass restarts from the beginning.</div>
+    </div>
+
+    <div class="sec">
+      <div class="lbl">Walk through the pass</div>
+      <div class="row">
+        <button id="play" class="primary wide">&#9654; Play</button>
+        <button id="prev">&#9664;</button>
+        <button id="next">&#9654;&#9654;</button>
+      </div>
+      <div class="row">
+        <button id="toBack" class="wide">Skip to backward</button>
+        <button id="reset">Reset</button>
+      </div>
+      <div class="slider" style="grid-template-columns: 1fr 54px">
+        <input type="range" id="speed" min="250" max="1800" step="50" value="850">
+        <span class="val" id="speedv">850ms</span>
+      </div>
+      <label class="chk"><input type="checkbox" id="showLocal" checked> show local derivatives on the gates</label>
+    </div>
+
+    <div class="sec">
+      <div class="lbl">How to read it</div>
+      <div class="hint">
+        The forward pass fills in every intermediate value (blue). The backward pass starts with
+        <span style="font-family:var(--mono);color:var(--bwd)">&part;L/&part;L = 1</span> at the output and walks back:
+        each gate multiplies the gradient arriving from above by its own local derivative, then hands the
+        result to its inputs. A node used in two places adds up what arrives from both.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ============================================================
+   1. Ops — forward value and local derivatives w.r.t. each input
+   ============================================================ */
+const OPS = {
+  add:     { sym: '+',  f: (a, b) => a + b,       d: (ins, out) => [1, 1],
+             rule: 'An <b>add gate</b> passes the upstream gradient through unchanged — both inputs get the same thing.' },
+  sub:     { sym: '−',  f: (a, b) => a - b,       d: () => [1, -1],
+             rule: 'A <b>subtract gate</b> passes the gradient through, flipping the sign on the second input.' },
+  mul:     { sym: '×',  f: (a, b) => a * b,       d: (ins) => [ins[1], ins[0]],
+             rule: 'A <b>multiply gate</b> <i>swaps</i> its inputs: each one receives the upstream gradient times the <i>other</i> input’s value.' },
+  div:     { sym: '÷',  f: (a, b) => a / b,       d: (ins) => [1 / ins[1], -ins[0] / (ins[1] * ins[1])] ,
+             rule: 'A <b>divide gate</b> gives 1/b to the numerator and −a/b² to the denominator.' },
+  max:     { sym: 'max', f: (a, b) => Math.max(a, b), d: (ins) => [ins[0] >= ins[1] ? 1 : 0, ins[1] > ins[0] ? 1 : 0],
+             rule: 'A <b>max gate</b> is a router: the whole gradient goes to the winner, the loser gets exactly 0.' },
+  sigmoid: { sym: 'σ',  f: a => 1 / (1 + Math.exp(-a)), d: (ins, out) => [out * (1 - out)],
+             rule: 'For <b>σ</b> the local derivative is σ(1−σ) — it is largest at σ = 0.5 and vanishes once the unit saturates.' },
+  tanh:    { sym: 'tanh', f: a => Math.tanh(a),   d: (ins, out) => [1 - out * out],
+             rule: 'For <b>tanh</b> the local derivative is 1 − tanh², so a saturated unit lets almost nothing through.' },
+  exp:     { sym: 'eˣ', f: a => Math.exp(a),      d: (ins, out) => [out],
+             rule: '<b>exp</b> is its own derivative: the gradient is multiplied by the value the node already computed.' },
+  log:     { sym: 'ln', f: a => Math.log(a),      d: (ins) => [1 / ins[0]],
+             rule: '<b>ln</b> contributes 1/a, so small inputs blow the gradient up.' },
+  neg:     { sym: '−x', f: a => -a,               d: () => [-1],
+             rule: 'Negation just flips the sign of the gradient.' },
+  sin:     { sym: 'sin', f: a => Math.sin(a),     d: (ins) => [Math.cos(ins[0])],
+             rule: '<b>sin</b> contributes cos(a) — the gradient changes sign as the input moves.' },
+  square:  { sym: 'x²', f: a => a * a,            d: (ins) => [2 * ins[0]],
+             rule: '<b>x²</b> contributes 2x, so the further off you are, the stronger the pull.' },
+  halfsq:  { sym: '½x²', f: a => .5 * a * a,      d: (ins) => [ins[0]],
+             rule: 'The ½ in <b>½x²</b> exists so the derivative is exactly the input — the plain error.' },
+  relu:    { sym: 'relu', f: a => Math.max(0, a), d: (ins) => [ins[0] > 0 ? 1 : 0],
+             rule: '<b>ReLU</b> is a gate that is either open (1) or shut (0) — below zero nothing flows back.' },
+};
+
+/* ============================================================
+   2. Graph builder
+   ============================================================ */
+class Graph {
+  constructor() { this.nodes = []; }
+  v(name, val) { return this.push({ kind: 'var', name, val: +val }); }
+  c(name, val) { return this.push({ kind: 'const', name, val: +val }); }
+  op(op, ins, name) { return this.push({ kind: 'op', op, ins, name: name || null }); }
+  push(n) { n.id = this.nodes.length; n.grad = 0; n.ins = n.ins || []; this.nodes.push(n); return n.id; }
+  node(i) { return this.nodes[i]; }
+}
+
+/* ============================================================
+   3. The functions on offer
+   ============================================================ */
+const FUNCS = {
+  sigmoid_neuron: {
+    label: 'Sigmoid neuron',
+    expr: 'f = σ(w₁x₁ + w₂x₂ + b)',
+    note: 'The classic one-neuron graph. Watch the × gates swap their inputs and the σ gate squeeze the gradient.',
+    vars: { w1: 2, x1: -1, w2: -3, x2: -2, b: -3 },
+    build(g, v) {
+      const w1 = g.v('w₁', v.w1), x1 = g.v('x₁', v.x1), w2 = g.v('w₂', v.w2), x2 = g.v('x₂', v.x2), b = g.v('b', v.b);
+      const m1 = g.op('mul', [w1, x1]), m2 = g.op('mul', [w2, x2]);
+      const s1 = g.op('add', [m1, m2]), s2 = g.op('add', [s1, b]);
+      return g.op('sigmoid', [s2], 'f');
+    },
+  },
+  squared_error: {
+    label: 'Squared error on a neuron',
+    expr: 'L = ½(σ(w₁x₁ + w₂x₂ + b) − y)²',
+    note: 'A loss, so ∂L/∂L = 1 really is the start. Notice ∂L/∂z collapsing to the familiar (σ − y)·σ(1−σ).',
+    vars: { w1: 1.4, x1: .8, w2: -.6, x2: 1.2, b: .3, y: 1 },
+    build(g, v) {
+      const w1 = g.v('w₁', v.w1), x1 = g.v('x₁', v.x1), w2 = g.v('w₂', v.w2), x2 = g.v('x₂', v.x2), b = g.v('b', v.b), y = g.v('y', v.y);
+      const m1 = g.op('mul', [w1, x1]), m2 = g.op('mul', [w2, x2]);
+      const s1 = g.op('add', [m1, m2]), z = g.op('add', [s1, b], 'z');
+      const p = g.op('sigmoid', [z], 'p');
+      const e = g.op('sub', [p, y], 'e');
+      return g.op('halfsq', [e], 'L');
+    },
+  },
+  max_gate: {
+    label: 'Max gate & a shared input',
+    expr: 'f = (x₁ + x₂) · max(x₂, w)',
+    note: 'Two lessons at once: max routes the gradient to the winner only, and x₂ feeds two gates, so its gradients add up.',
+    vars: { x1: 3, x2: -1, w: 2 },
+    build(g, v) {
+      const x1 = g.v('x₁', v.x1), x2 = g.v('x₂', v.x2), w = g.v('w', v.w);
+      const s = g.op('add', [x1, x2]);
+      const m = g.op('max', [x2, w]);
+      return g.op('mul', [s, m], 'f');
+    },
+  },
+  cross_entropy: {
+    label: 'Cross-entropy of a neuron',
+    expr: 'L = −ln σ(w·x + b)',
+    note: 'ln and σ sit back to back, and their local derivatives cancel into something remarkably simple: σ − 1.',
+    vars: { w: 1.2, x: 1.5, b: -.4 },
+    build(g, v) {
+      const w = g.v('w', v.w), x = g.v('x', v.x), b = g.v('b', v.b);
+      const m = g.op('mul', [w, x]);
+      const z = g.op('add', [m, b], 'z');
+      const p = g.op('sigmoid', [z], 'p');
+      const l = g.op('log', [p]);
+      return g.op('neg', [l], 'L');
+    },
+  },
+  tiny_net: {
+    label: 'Tiny 2-layer network',
+    expr: 'L = ½(w₂·tanh(w₁x + b₁) + b₂ − y)²',
+    note: 'The same picture as a real network: the gradient reaches w₁ only after passing through tanh — this is where deep nets lose signal.',
+    vars: { x: 1, w1: 1.5, b1: -.5, w2: 2, b2: .2, y: 1 },
+    build(g, v) {
+      const x = g.v('x', v.x), w1 = g.v('w₁', v.w1), b1 = g.v('b₁', v.b1),
+            w2 = g.v('w₂', v.w2), b2 = g.v('b₂', v.b2), y = g.v('y', v.y);
+      const m1 = g.op('mul', [w1, x]);
+      const z1 = g.op('add', [m1, b1], 'z₁');
+      const h = g.op('tanh', [z1], 'h');
+      const m2 = g.op('mul', [w2, h]);
+      const o = g.op('add', [m2, b2], 'ŷ');
+      const e = g.op('sub', [o, y], 'e');
+      return g.op('halfsq', [e], 'L');
+    },
+  },
+  sin_product: {
+    label: 'sin and a shared path',
+    expr: 'f = x·sin(x) + x·y',
+    note: 'x reaches the output along three routes; the gradient that arrives is the sum of all of them.',
+    vars: { x: 1.2, y: -2 },
+    build(g, v) {
+      const x = g.v('x', v.x), y = g.v('y', v.y);
+      const s = g.op('sin', [x]);
+      const m1 = g.op('mul', [x, s]);
+      const m2 = g.op('mul', [x, y]);
+      return g.op('add', [m1, m2], 'f');
+    },
+  },
+};
+
+/* ============================================================
+   4. Build / evaluate
+   ============================================================ */
+const S = {
+  key: 'sigmoid_neuron',
+  vars: {},
+  g: null, out: 0,
+  fOrder: [], bOrder: [],
+  cursor: 0,              // 0 = nothing done yet
+  playing: false,
+  pulses: [],
+  lastStep: null,
+};
+
+function build() {
+  const F = FUNCS[S.key];
+  const g = new Graph();
+  S.out = F.build(g, S.vars);
+  g.nodes.forEach(n => { n.grad = 0; n.done = false; n.gdone = false; n.gseen = false; });
+  // topological order (ids are already in construction order, which is topological here)
+  const SUB = '₁₂₃₄₅₆₇₈₉';
+  let k = 0;
+  for (const n of g.nodes) if (n.kind === 'op' && !n.name) n.name = 'u' + (SUB[k++] || k);
+  S.g = g;
+  S.fOrder = g.nodes.filter(n => n.kind === 'op').map(n => n.id);
+  S.bOrder = [...S.fOrder].reverse();
+  layout();
+  evaluateAll();                       // values are known internally; the UI reveals them step by step
+  S.cursor = 0; S.pulses = []; S.lastStep = null;
+}
+
+/* one evaluation path for the whole graph: leaves carry their own value,
+   every op is computed from the nodes feeding it, in construction (topological) order */
+function evalGraph(g) {
+  for (const n of g.nodes) {
+    if (n.kind !== 'op') { n.value = n.val; continue; }
+    const ins = n.ins.map(i => g.node(i).value);
+    n.value = OPS[n.op].f(...ins);
+    n.local = OPS[n.op].d(ins, n.value);
+  }
+}
+const evaluateAll = () => evalGraph(S.g);
+const outVal = () => S.g.node(S.out).value;
+
+/* the finite-difference check that the table compares against */
+function numericGrad(name) {
+  if (!(name in S.vars)) return NaN;
+  const h = 1e-4, keep = S.vars[name];
+  const at = t => {
+    S.vars[name] = t;
+    const g = new Graph(), outId = FUNCS[S.key].build(g, S.vars);
+    evalGraph(g);
+    return g.node(outId).value;
+  };
+  const a = at(keep + h), b = at(keep - h);
+  S.vars[name] = keep;
+  return (a - b) / (2 * h);
+}
+
+/* ============================================================
+   5. Layout — columns by depth
+   ============================================================ */
+function layout() {
+  const g = S.g;
+  for (const n of g.nodes) n.depth = 0;
+  for (const n of g.nodes) if (n.kind === 'op') n.depth = Math.max(...n.ins.map(i => g.node(i).depth)) + 1;
+  const maxD = Math.max(...g.nodes.map(n => n.depth));
+  const cols = [];
+  for (let d = 0; d <= maxD; d++) cols.push(g.nodes.filter(n => n.depth === d));
+
+  // leaves spread out; every other node sits at the average height of its inputs,
+  // then the column is de-overlapped and re-centred
+  cols[0].forEach((n, i) => n.ny = (i + .5) / cols[0].length);
+  for (let d = 1; d <= maxD; d++) {
+    const col = cols[d];
+    col.forEach(n => n.ny = n.ins.reduce((a, i) => a + g.node(i).ny, 0) / n.ins.length);
+    col.sort((a, b) => a.ny - b.ny);
+    const sep = Math.min(.16, .92 / Math.max(1, col.length));
+    for (let i = 1; i < col.length; i++) col[i].ny = Math.max(col[i].ny, col[i - 1].ny + sep);
+    const span = col[col.length - 1].ny - col[0].ny;
+    const shift = .5 - (col[0].ny + span / 2);
+    col.forEach(n => n.ny = Math.min(1 - sep / 2, Math.max(sep / 2, n.ny + shift)));
+  }
+  cols.forEach((col, d) => col.forEach(n => { n.col = d; }));
+  S.cols = cols; S.maxD = maxD;
+}
+
+/* ============================================================
+   6. Drawing
+   ============================================================ */
+const $ = s => document.querySelector(s);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function setup(canvas) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1), r = canvas.getBoundingClientRect();
+  canvas.width = Math.max(1, Math.round(r.width * dpr)); canvas.height = Math.max(1, Math.round(r.height * dpr));
+  const c = canvas.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { c, w: r.width, h: r.height };
+}
+const NW = 86, NH = 44;                       // node box
+function nodePos(n, w, h) {
+  const padX = 58, padY = 42;
+  const x = S.maxD === 0 ? w / 2 : padX + n.col * (w - 2 * padX) / S.maxD;
+  return [x, padY + n.ny * (h - 2 * padY)];
+}
+function roundRect(c, x, y, w, h, r) {
+  c.beginPath();
+  c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+}
+const fmt = v => Math.abs(v) >= 100 ? v.toFixed(0) : Math.abs(v) >= 10 ? v.toFixed(2) : v.toFixed(3);
+
+function draw() {
+  const cv = $('#graphCanvas'), { c, w, h } = setup(cv);
+  c.fillStyle = css('--panel'); c.fillRect(0, 0, w, h);
+  const g = S.g, P = new Map();
+  for (const n of g.nodes) P.set(n.id, nodePos(n, w, h));
+
+  // ---- edges
+  for (const n of g.nodes) {
+    if (n.kind !== 'op') continue;
+    const [x2, y2] = P.get(n.id);
+    n.ins.forEach((inId, k) => {
+      const [x1, y1] = P.get(inId);
+      const a = [x1 + NW / 2, y1], b = [x2 - NW / 2, y2];
+      const flowing = n.gdone;                                  // this edge has carried a gradient
+      const gradOnEdge = n.gdone ? n.grad * n.local[k] : 0;
+      c.lineWidth = flowing ? Math.min(4.5, 1.2 + Math.abs(gradOnEdge) * 1.6) : 1.3;
+      c.strokeStyle = flowing
+        ? (gradOnEdge >= 0 ? css('--bwd') : css('--neg'))
+        : (S.g.node(inId).done || S.g.node(inId).kind !== 'op' ? css('--faint') : css('--border'));
+      c.globalAlpha = flowing ? .95 : .7;
+      edgePath(c, a, b); c.stroke();
+      c.globalAlpha = 1;
+      if (flowing && $('#showLocal').checked) {                 // the number this edge carried
+        const [mx, my] = edgeMid(a, b);
+        const t = fmt(gradOnEdge);
+        c.font = '11px ' + css('--mono');
+        const tw = c.measureText(t).width + 8;
+        c.fillStyle = css('--panel'); roundRect(c, mx - tw / 2, my - 9, tw, 16, 4); c.fill();
+        c.fillStyle = gradOnEdge >= 0 ? css('--bwd') : css('--neg');
+        c.textAlign = 'center'; c.fillText(t, mx, my + 3); c.textAlign = 'left';
+      }
+    });
+  }
+
+  // ---- gradient pulses travelling backwards
+  for (const p of S.pulses) {
+    const a = P.get(p.from), b = P.get(p.to);
+    const A = [a[0] - NW / 2, a[1]], B = [b[0] + NW / 2, b[1]];
+    const [x, y] = bezierAt(A, B, p.t);
+    const col = p.v >= 0 ? css('--bwd') : css('--neg');
+    c.save(); c.shadowColor = col; c.shadowBlur = 16;
+    for (let k = 0; k < 4; k++) {                               // a little comet tail
+      const tt = Math.max(0, p.t - k * .045), [tx, ty] = bezierAt(A, B, tt);
+      c.globalAlpha = (1 - k / 4) * .9 * (1 - Math.max(0, p.t - 1));
+      c.fillStyle = col; c.beginPath(); c.arc(tx, ty, 5.5 - k, 0, 6.283); c.fill();
+    }
+    c.restore(); c.globalAlpha = 1;
+  }
+
+  // ---- nodes
+  for (const n of g.nodes) {
+    const [x, y] = P.get(n.id);
+    const active = S.lastStep && S.lastStep.node === n.id;
+    const isLeaf = n.kind !== 'op';
+    const revealed = isLeaf ? true : n.done;
+    c.save();
+    if (active) { c.shadowColor = S.lastStep.phase === 'b' ? css('--bwd') : css('--fwd'); c.shadowBlur = 22; }
+    roundRect(c, x - NW / 2, y - NH / 2, NW, NH, 9);
+    c.fillStyle = isLeaf ? css('--panel2') : revealed ? '#1b2334' : '#141926';
+    c.fill();
+    c.lineWidth = active ? 2 : 1.2;
+    c.strokeStyle = active ? (S.lastStep.phase === 'b' ? css('--bwd') : css('--fwd'))
+      : isLeaf ? css('--border') : revealed ? css('--faint') : css('--border');
+    c.stroke();
+    c.restore();
+
+    // label
+    c.textAlign = 'center';
+    c.font = '12px ' + css('--mono');
+    c.fillStyle = isLeaf ? css('--fg') : css('--muted');
+    const label = isLeaf ? n.name : (n.name ? `${OPS[n.op].sym}  ${n.name}` : OPS[n.op].sym);
+    c.fillText(label, x, y - 6);
+
+    // forward value
+    c.font = '13px ' + css('--mono');
+    if (revealed) { c.fillStyle = css('--fwd'); c.fillText(fmt(n.value), x, y + 12); }
+    else { c.fillStyle = css('--faint'); c.fillText('·', x, y + 12); }
+
+    // gradient under the box
+    if (n.gdone || (isLeaf && n.gseen)) {
+      c.font = '12px ' + css('--mono');
+      c.fillStyle = n.grad >= 0 ? css('--bwd') : css('--neg');
+      c.fillText('∂ ' + fmt(n.grad), x, y + NH / 2 + 15);
+    }
+    c.textAlign = 'left';
+
+    // local derivative tag while this gate is the active one
+    if (active && S.lastStep.phase === 'b' && $('#showLocal').checked && !isLeaf) {
+      const txt = n.ins.map((_, k) => fmt(n.local[k])).join(' , ');
+      c.font = '11px ' + css('--mono');
+      const tw = c.measureText(txt).width + 12;
+      roundRect(c, x - tw / 2, y - NH / 2 - 24, tw, 18, 5);
+      c.fillStyle = 'rgba(77,163,255,.14)'; c.fill();
+      c.strokeStyle = css('--fwd'); c.lineWidth = 1; c.stroke();
+      c.fillStyle = css('--fwd'); c.textAlign = 'center'; c.fillText(txt, x, y - NH / 2 - 11); c.textAlign = 'left';
+    }
+  }
+
+  // the seed of the whole thing
+  const [ox, oy] = P.get(S.out);
+  if (S.g.node(S.out).gdone || (S.lastStep && S.lastStep.phase === 'b')) {
+    c.font = '11.5px ' + css('--mono'); c.fillStyle = css('--bwd');
+    c.textAlign = 'center'; c.fillText('seed: ∂L/∂L = 1', Math.min(ox, w - 62), oy - NH / 2 - 10); c.textAlign = 'left';
+  }
+
+  $('#gtitle').innerHTML = `<b>${FUNCS[S.key].expr}</b>`;
+  const total = 1 + S.fOrder.length + S.bOrder.length;
+  $('#phase').textContent = S.cursor === 0 ? 'ready — press Play'
+    : S.cursor <= S.fOrder.length ? `forward pass · ${S.cursor} / ${S.fOrder.length + 1}`
+    : S.cursor < total ? `backward pass · ${S.cursor - S.fOrder.length - 1} / ${S.bOrder.length}`
+    : 'done — every leaf has its gradient';
+}
+function edgePath(c, a, b) {
+  const dx = Math.max(26, (b[0] - a[0]) * .5);
+  c.beginPath(); c.moveTo(a[0], a[1]); c.bezierCurveTo(a[0] + dx, a[1], b[0] - dx, b[1], b[0], b[1]);
+}
+function bezierAt(a, b, t) {
+  const dx = Math.max(26, (b[0] - a[0]) * .5);
+  const p1 = [a[0] + dx, a[1]], p2 = [b[0] - dx, b[1]], u = 1 - t;
+  return [u * u * u * a[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t * t * t * b[0],
+          u * u * u * a[1] + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t * t * t * b[1]];
+}
+const edgeMid = (a, b) => bezierAt(a, b, .5);
+
+/* ============================================================
+   7. Stepping
+   ============================================================ */
+function totalSteps() { return 1 + S.fOrder.length + S.bOrder.length; }
+
+function applyUpTo(k) {
+  // rebuild the revealed state from scratch so stepping backwards is easy
+  for (const n of S.g.nodes) { n.done = false; n.gdone = false; n.gseen = false; n.grad = 0; }
+  S.lastStep = null;
+  if (k <= 0) { S.cursor = 0; return; }
+  let step = 1;                                   // step 1 = the inputs are loaded
+  for (; step <= Math.min(k, 1); step++) { /* leaves are always visible */ }
+  for (let i = 0; i < S.fOrder.length && 1 + i < k; i++) S.g.node(S.fOrder[i]).done = true;
+  if (k - 1 <= S.fOrder.length) {
+    const i = k - 2;
+    if (i >= 0) { S.g.node(S.fOrder[i]).done = true; S.lastStep = { phase: 'f', node: S.fOrder[i] }; }
+    S.cursor = k; return;
+  }
+  for (const id of S.fOrder) S.g.node(id).done = true;
+  const bk = k - 1 - S.fOrder.length;             // how many backward gates to apply
+  S.g.node(S.out).grad = 1; S.g.node(S.out).gseen = true;
+  for (let i = 0; i < bk; i++) {
+    const n = S.g.node(S.bOrder[i]);
+    n.ins.forEach((inId, idx) => {
+      const child = S.g.node(inId);
+      child.grad += n.grad * n.local[idx];
+      child.gseen = true;
+    });
+    n.gdone = true;
+    if (i === bk - 1) S.lastStep = { phase: 'b', node: n.id };
+  }
+  S.cursor = k;
+}
+
+function go(k) {
+  k = Math.max(0, Math.min(totalSteps(), k));
+  const forward = k > S.cursor;
+  applyUpTo(k);
+  if (forward && S.lastStep && S.lastStep.phase === 'b') spawnPulses(S.lastStep.node);
+  explain();
+  updateTable();
+  draw();
+}
+function spawnPulses(nodeId) {
+  const n = S.g.node(nodeId);
+  n.ins.forEach((inId, k) => S.pulses.push({ from: nodeId, to: inId, t: 0, v: n.grad * n.local[k] }));
+}
+
+/* the words that go with the current step */
+function explain() {
+  const chain = $('#chain'), rule = $('#rule');
+  $('#stepCount').textContent = `step ${S.cursor} / ${totalSteps()}`;
+  if (S.cursor === 0) {
+    $('#stepTitle').textContent = 'Ready';
+    chain.innerHTML = '<span class="dim">Press <b>Play</b> (or →) to run the forward pass first: every gate computes its value from the ones feeding it.</span>';
+    rule.innerHTML = 'Backpropagation needs the forward values — every local derivative is evaluated <b>at the point you just computed</b>.';
+    return;
+  }
+  if (S.cursor === 1) {
+    $('#stepTitle').textContent = 'Inputs';
+    chain.innerHTML = Object.entries(S.vars).map(([k, v]) => `<span class="loc">${k} = ${fmt(v)}</span>`).join('<span class="dim"> · </span>');
+    rule.innerHTML = 'These are the leaves of the graph. Everything else is computed from them.';
+    return;
+  }
+  const st = S.lastStep;
+  if (!st) return;
+  const n = S.g.node(st.node), O = OPS[n.op];
+  const names = n.ins.map(i => nodeName(S.g.node(i)));
+  if (st.phase === 'f') {
+    $('#stepTitle').textContent = 'Forward · ' + O.sym + ' gate';
+    chain.innerHTML = `<span class="op">${nodeName(n)}</span> = <span class="op">${O.sym}</span>(${names.map((nm, k) =>
+      `<span class="loc">${nm}</span>`).join(', ')}) = ${n.ins.map(i => `<span class="loc">${fmt(valOf(S.g.node(i)))}</span>`).join(` <span class="dim">${O.sym}</span> `)}
+      = <span class="res hl">${fmt(n.value)}</span>`;
+    rule.innerHTML = 'Store this value — the backward pass will need it for the local derivative.';
+    return;
+  }
+  // backward
+  $('#stepTitle').textContent = 'Backward · ' + O.sym + ' gate';
+  const up = n.grad;
+  const lines = n.ins.map((inId, k) => {
+    const child = S.g.node(inId), contrib = up * n.local[k];
+    return `<div>∂L/∂<span class="op">${nodeName(child)}</span> <span class="dim">+=</span>
+      <span class="up">${fmt(up)}</span> <span class="dim">×</span> <span class="loc">${fmt(n.local[k])}</span>
+      <span class="dim">=</span> <span class="res hl">${fmt(contrib)}</span>
+      <span class="dim">&nbsp;&nbsp;(∂${nodeName(n)}/∂${nodeName(child)} = ${localExpr(n, k, names)})</span></div>`;
+  }).join('');
+  chain.innerHTML = `<div class="dim">upstream gradient arriving at <span class="op">${nodeName(n)}</span>:
+      <span class="up">∂L/∂${nodeName(n)} = ${fmt(up)}</span></div>` + lines;
+  let extra = O.rule;
+  const shared = n.ins.map(i => S.g.node(i)).filter(ch => usedBy(ch.id).length > 1);
+  if (shared.length) extra += ` <b>${shared.map(ch => nodeName(ch)).join(', ')}</b> feeds more than one gate, so this contribution is <i>added</i> to what it already had.`;
+  rule.innerHTML = extra;
+}
+function nodeName(n) { return n.name; }
+function valOf(n) { return n.value; }
+function usedBy(id) { return S.g.nodes.filter(n => n.ins.includes(id)).map(n => n.id); }
+function localExpr(n, k, names) {
+  switch (n.op) {
+    case 'add': return '1';
+    case 'sub': return k === 0 ? '1' : '−1';
+    case 'mul': return names[1 - k];
+    case 'max': return n.local[k] ? '1 (winner)' : '0 (loser)';
+    case 'sigmoid': return 'σ(1−σ)';
+    case 'tanh': return '1 − tanh²';
+    case 'exp': return 'eˣ';
+    case 'log': return '1/' + names[0];
+    case 'neg': return '−1';
+    case 'sin': return 'cos ' + names[0];
+    case 'square': return '2·' + names[0];
+    case 'halfsq': return names[0];
+    case 'relu': return n.local[k] ? '1' : '0';
+    case 'div': return k === 0 ? '1/' + names[1] : '−' + names[0] + '/' + names[1] + '²';
+    default: return '…';
+  }
+}
+
+/* ============================================================
+   8. Leaf gradient table (with a finite-difference check)
+   ============================================================ */
+function updateTable() {
+  const leaves = S.g.nodes.filter(n => n.kind === 'var');
+  const done = S.cursor >= totalSteps();
+  let html = '<tr><th>leaf</th><th>value</th><th>∂L/∂·</th><th>numeric</th></tr>';
+  for (const n of leaves) {
+    const known = n.gseen;
+    html += `<tr class="${known ? '' : 'wait'}"><td>${n.name}</td><td class="v">${fmt(n.value)}</td>` +
+      `<td class="g">${known ? fmt(n.grad) : '·'}</td>` +
+      `<td class="n">${done ? fmt(numericGrad(varKeyOf(n.name))) : '·'}</td></tr>`;
+  }
+  $('#gradTable').innerHTML = html;
+  $('#checkNote').textContent = done ? 'analytic vs finite difference' : 'filling in as the pass runs';
+}
+function varKeyOf(display) {
+  const map = { 'w₁': 'w1', 'w₂': 'w2', 'x₁': 'x1', 'x₂': 'x2', 'b₁': 'b1', 'b₂': 'b2', 'ŷ': 'yhat' };
+  return map[display] || display;
+}
+
+/* ============================================================
+   9. Controls
+   ============================================================ */
+function buildControls() {
+  const sel = $('#func');
+  sel.innerHTML = Object.entries(FUNCS).map(([k, f]) => `<option value="${k}">${f.label}</option>`).join('');
+  sel.value = S.key;
+  sel.onchange = () => { S.key = sel.value; S.vars = { ...FUNCS[S.key].vars }; refresh(true); };
+}
+function buildVarSliders() {
+  const host = $('#vars'); host.innerHTML = '';
+  for (const [k, v] of Object.entries(S.vars)) {
+    const d = document.createElement('div');
+    d.className = 'slider';
+    d.innerHTML = `<span class="name">${k}</span><input type="range" min="-4" max="4" step="0.1" value="${v}" data-k="${k}">
+                   <span class="val" data-v="${k}">${(+v).toFixed(1)}</span>`;
+    host.append(d);
+  }
+  host.querySelectorAll('input').forEach(r => r.oninput = () => {
+    S.vars[r.dataset.k] = +r.value;
+    host.querySelector(`[data-v="${r.dataset.k}"]`).textContent = (+r.value).toFixed(1);
+    refresh(false);
+  });
+}
+function refresh(rebuildSliders) {
+  stop();
+  if (rebuildSliders) buildVarSliders();
+  $('#exprLine').textContent = FUNCS[S.key].expr;
+  $('#funcNote').textContent = FUNCS[S.key].note;
+  build();
+  go(0);
+}
+
+let timer = null;
+function play() {
+  if (S.cursor >= totalSteps()) go(0);
+  S.playing = true; $('#play').innerHTML = '&#10073;&#10073; Pause';
+  clearInterval(timer);
+  timer = setInterval(() => {
+    if (S.cursor >= totalSteps()) { stop(); return; }
+    go(S.cursor + 1);
+  }, +$('#speed').value);
+}
+function stop() { S.playing = false; clearInterval(timer); $('#play').innerHTML = '&#9654; Play'; }
+
+$('#play').onclick = () => S.playing ? stop() : play();
+$('#next').onclick = () => { stop(); go(S.cursor + 1); };
+$('#prev').onclick = () => { stop(); go(S.cursor - 1); };
+$('#reset').onclick = () => { stop(); go(0); };
+$('#toBack').onclick = () => { stop(); go(1 + S.fOrder.length); };
+$('#speed').oninput = e => { $('#speedv').textContent = e.target.value + 'ms'; if (S.playing) play(); };
+$('#showLocal').onchange = draw;
+addEventListener('keydown', e => {
+  if (e.target.matches('input, select, button')) return;
+  if (e.code === 'Space') { e.preventDefault(); S.playing ? stop() : play(); }
+  if (e.key === 'ArrowRight') { stop(); go(S.cursor + 1); }
+  if (e.key === 'ArrowLeft') { stop(); go(S.cursor - 1); }
+  if (e.key === 'r' || e.key === 'R') { stop(); go(0); }
+});
+addEventListener('resize', draw);
+
+/* pulse animation */
+function tick() {
+  if (S.pulses.length) {
+    for (const p of S.pulses) p.t += .022;
+    S.pulses = S.pulses.filter(p => p.t < 1.05);
+    draw();
+  }
+  requestAnimationFrame(tick);
+}
+
+S.key = 'sigmoid_neuron';
+S.vars = { ...FUNCS[S.key].vars };
+buildControls();
+refresh(true);
+tick();
+</script>
+</body>
+</html>
