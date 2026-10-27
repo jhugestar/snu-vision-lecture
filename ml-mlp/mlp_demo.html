@@ -1052,6 +1052,19 @@ function syncFromDOM() {
 syncFromDOM();
 rebuild(false);
 loop();
+
+/* ---- plays by itself on arrival ----------------------------------------
+   Most visitors never press a button, so the demo runs once on its own.
+   The first click, tap or key press hands control back. */
+(function autoStart() {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  let taken = false;
+  const give = () => taken = true;
+  addEventListener('pointerdown', give, { once: true });
+  addEventListener('keydown', give, { once: true });
+  setTimeout(() => { if (!taken) { setRunning(true); } }, 900);
+  setTimeout(() => { if (!taken) { if (S.running) setRunning(false); } }, 15900);
+})();
 </script>
 </body>
 </html>
