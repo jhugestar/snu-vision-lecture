@@ -26,51 +26,53 @@
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { margin: 0; }
-body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 14px; line-height: 1.45; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 15.5px; line-height: 1.5; }
 .wrap { max-width: 1640px; margin: 0 auto; padding: 14px 18px 28px; display: grid; gap: 14px;
   grid-template-columns: minmax(0, 1fr) 340px; grid-template-areas: "hdr hdr" "graph ctrl" "steps ctrl"; align-items: start; }
 header { grid-area: hdr; display: flex; align-items: baseline; gap: 14px 22px; flex-wrap: wrap; }
-header h1 { font-size: 21px; margin: 0; letter-spacing: .2px; }
+header h1 { font-size: 24px; margin: 0; letter-spacing: .2px; }
 header .sub { color: var(--muted); }
 header .author { margin-left: auto; font-size: 12px; color: var(--muted); }
 header .author a { color: var(--ui); text-decoration: none; }
 header .author a:hover { text-decoration: underline; }
-.kbd { font-family: var(--mono); font-size: 11px; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; color: var(--muted); }
+.kbd { font-family: var(--mono); font-size: 12px; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; color: var(--muted); }
 
 .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; min-width: 0; }
 .graph { grid-area: graph; position: relative; }
-#graphCanvas { width: 100%; aspect-ratio: 1.65; display: block; border-radius: 8px; }
-.gtitle { position: absolute; top: 10px; left: 14px; font-family: var(--mono); font-size: 12px; color: var(--muted); pointer-events: none; }
+#graphCanvas { width: 100%; aspect-ratio: 1.5; display: block; border-radius: 8px; }
+#lossCanvas { width: 100%; height: 104px; display: block; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; }
+.gtitle { position: absolute; top: 26px; left: 0; right: 0; text-align: center; font-family: var(--mono);
+  font-size: 26px; letter-spacing: .4px; color: var(--fg); pointer-events: none; }
 .gtitle b { color: var(--fg); font-weight: 500; }
-.glegend { position: absolute; right: 14px; top: 10px; display: flex; gap: 14px; font-size: 11.5px; color: var(--muted); pointer-events: none; }
+.glegend { position: absolute; right: 14px; top: 12px; display: flex; gap: 14px; font-size: 13px; color: var(--muted); pointer-events: none; }
 .glegend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
-.phase { position: absolute; left: 14px; bottom: 12px; font-size: 12px; color: var(--muted); font-family: var(--mono); pointer-events: none; }
+.phase { position: absolute; left: 16px; bottom: 12px; font-size: 13.5px; color: var(--muted); font-family: var(--mono); pointer-events: none; }
 
 .steps { grid-area: steps; display: grid; gap: 14px; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
 @media (max-width: 1100px) { .wrap { grid-template-columns: 1fr; grid-template-areas: "hdr" "graph" "ctrl" "steps"; } .steps { grid-template-columns: 1fr; } }
 .ptitle { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 10px 14px 0; }
-.ptitle h2 { font-size: 13px; margin: 0; font-weight: 600; }
-.ptitle span { font-size: 11.5px; color: var(--muted); font-family: var(--mono); }
+.ptitle h2 { font-size: 15px; margin: 0; font-weight: 600; }
+.ptitle span { font-size: 13px; color: var(--muted); font-family: var(--mono); }
 .pad { padding: 10px 14px 14px; }
-.chain { font-family: var(--mono); font-size: 13px; line-height: 1.85; }
+.chain { font-family: var(--mono); font-size: 15px; line-height: 1.9; }
 .chain .op { color: var(--fg); font-weight: 500; }
 .chain .up { color: var(--bwd); }
 .chain .loc { color: var(--fwd); }
 .chain .res { color: var(--pos); }
 .chain .dim { color: var(--muted); }
 .chain .hl { background: rgba(243,201,105,.12); border-radius: 3px; padding: 0 3px; }
-.rule { color: var(--muted); font-size: 12.5px; font-family: var(--font); margin-top: 8px; border-left: 3px solid var(--bwd); background: var(--panel2); padding: 7px 10px; border-radius: 4px; }
+.rule { color: var(--muted); font-size: 14px; font-family: var(--font); margin-top: 8px; border-left: 3px solid var(--bwd); background: var(--panel2); padding: 7px 10px; border-radius: 4px; }
 .rule b { color: var(--fg); }
-table.g { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
-table.g th, table.g td { text-align: right; padding: 4px 6px; border-top: 1px solid var(--border); }
-table.g th { font-family: var(--font); font-size: 10px; letter-spacing: .7px; text-transform: uppercase; color: var(--muted); border-top: none; font-weight: 600; }
+table.g { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 14px; font-variant-numeric: tabular-nums; }
+table.g th, table.g td { text-align: right; padding: 6px 7px; border-top: 1px solid var(--border); }
+table.g th { font-family: var(--font); font-size: 11.5px; letter-spacing: .7px; text-transform: uppercase; color: var(--muted); border-top: none; font-weight: 600; }
 table.g td:first-child, table.g th:first-child { text-align: left; color: var(--muted); }
 table.g td.v { color: var(--fwd); } table.g td.g { color: var(--bwd); } table.g td.n { color: var(--muted); }
 table.g tr.wait td { color: var(--faint); }
 
 .controls { grid-area: ctrl; padding: 14px; display: grid; gap: 14px; align-content: start; }
 .sec { display: grid; gap: 7px; }
-.sec > .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .9px; color: var(--muted); font-weight: 600; }
+.sec > .lbl { font-size: 12px; text-transform: uppercase; letter-spacing: .9px; color: var(--muted); font-weight: 600; }
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 select, button { font: inherit; color: var(--fg); background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; }
 select { flex: 1; min-width: 0; }
@@ -81,13 +83,13 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 button.primary { background: var(--ui); color: #0e1118; border-color: var(--ui); font-weight: 600; }
 button.primary:hover { background: #7fbcff; }
 button.wide { flex: 1; }
-.expr { font-family: var(--mono); font-size: 14px; color: var(--fg); background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 9px 11px; overflow-wrap: anywhere; }
-.slider { display: grid; grid-template-columns: 30px 1fr 54px; gap: 8px; align-items: center; }
-.slider .name { font-family: var(--mono); font-size: 13px; color: var(--fg); }
-.slider .val { font-family: var(--mono); font-size: 12px; color: var(--fwd); text-align: right; font-variant-numeric: tabular-nums; }
+.expr { font-family: var(--mono); font-size: 16px; color: var(--fg); background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 9px 11px; overflow-wrap: anywhere; }
+.slider { display: grid; grid-template-columns: 34px 1fr 58px; gap: 8px; align-items: center; }
+.slider .name { font-family: var(--mono); font-size: 15px; color: var(--fg); }
+.slider .val { font-family: var(--mono); font-size: 14px; color: var(--fwd); text-align: right; font-variant-numeric: tabular-nums; }
 .slider input[type=range] { width: 100%; accent-color: var(--ui); margin: 0; }
-.hint { font-size: 12px; color: var(--muted); }
-.chk { display: flex; gap: 8px; align-items: center; font-size: 13px; cursor: pointer; color: var(--muted); }
+.hint { font-size: 13.5px; color: var(--muted); }
+.chk { display: flex; gap: 8px; align-items: center; font-size: 14px; cursor: pointer; color: var(--muted); }
 .chk input { accent-color: var(--ui); margin: 0; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
@@ -101,7 +103,7 @@ button.wide { flex: 1; }
   <header>
     <h1>Backpropagation &mdash; Step by Step</h1>
     <div class="sub">One gate at a time: local derivative &times; upstream gradient</div>
-    <div class="hint"><span class="kbd">Space</span> play / pause &nbsp; <span class="kbd">&rarr;</span> step &nbsp; <span class="kbd">&larr;</span> back &nbsp; <span class="kbd">R</span> reset</div>
+    <div class="hint"><span class="kbd">&rarr;</span> step &nbsp; <span class="kbd">&larr;</span> back &nbsp; <span class="kbd">Space</span> run / pause &nbsp; <span class="kbd">R</span> reset</div>
     <div class="author"><a href="https://jhugestar.github.io/" target="_blank" rel="noopener">Hanbyul Joo</a>
       &nbsp;|&nbsp; Visual Computing Lab, Seoul National University &nbsp;|&nbsp;
       <a href="https://github.com/jhugestar/snu-vision-lecture" target="_blank" rel="noopener">More Demos &#8599;</a></div>
@@ -112,7 +114,9 @@ button.wide { flex: 1; }
     <div class="gtitle" id="gtitle"></div>
     <div class="glegend">
       <span><i style="background:var(--fwd)"></i>forward value</span>
-      <span><i style="background:var(--bwd)"></i>gradient &part;L/&part;·</span>
+      <span><i style="background:var(--bwd)"></i>gradient &gt; 0</span>
+      <span><i style="background:var(--neg)"></i>gradient &lt; 0</span>
+      <span><i style="background:var(--faint)"></i>not reached yet</span>
     </div>
     <div class="phase" id="phase"></div>
   </div>
@@ -150,19 +154,41 @@ button.wide { flex: 1; }
     <div class="sec">
       <div class="lbl">Walk through the pass</div>
       <div class="row">
-        <button id="play" class="primary wide">&#9654; Play</button>
-        <button id="prev">&#9664;</button>
-        <button id="next">&#9654;&#9654;</button>
+        <button id="prev">&#9664; Back</button>
+        <button id="next" class="primary wide">&#9654; Step</button>
+        <button id="play">&#9654;&#9654; Run</button>
       </div>
       <div class="row">
         <button id="toBack" class="wide">Skip to backward</button>
         <button id="reset">Reset</button>
       </div>
-      <div class="slider" style="grid-template-columns: 1fr 54px">
-        <input type="range" id="speed" min="250" max="1800" step="50" value="850">
-        <span class="val" id="speedv">850ms</span>
+      <div class="slider" style="grid-template-columns: 1fr 58px">
+        <input type="range" id="speed" min="150" max="1800" step="50" value="500">
+        <span class="val" id="speedv">500ms</span>
       </div>
-      <label class="chk"><input type="checkbox" id="showLocal" checked> show local derivatives on the gates</label>
+      <div class="hint" style="margin-top:-2px">Pause between steps while <b>Run</b> is playing.</div>
+      <label class="chk"><input type="checkbox" id="showLocal" checked> show the chain rule on the active gate</label>
+    </div>
+
+    <div class="sec" id="trainSec">
+      <div class="lbl">Gradient descent</div>
+      <div class="hint" id="trainIntro">Each update is one full forward + backward pass, then
+        <span style="font-family:var(--mono)">θ ← θ − η·∂L/∂θ</span> on the trainable inputs.</div>
+      <div class="row">
+        <button id="train" class="primary wide">&#9654;&#9654; Train</button>
+        <button id="train1">1 update</button>
+        <button id="trainReset">Reset θ</button>
+      </div>
+      <div class="slider" style="grid-template-columns: 1fr 58px">
+        <input type="range" id="trainLR" min="1" max="100" step="1" value="20">
+        <span class="val" id="trainLRv">0.20</span>
+      </div>
+      <div class="hint" style="margin-top:-2px">Learning rate η — how big a step each update takes.</div>
+      <canvas id="lossCanvas"></canvas>
+      <div class="row" style="justify-content:space-between">
+        <span class="hint">iteration <b id="trIter" style="color:var(--fg);font-family:var(--mono)">0</b></span>
+        <span class="hint">loss <b id="trLoss" style="color:var(--pos);font-family:var(--mono)">–</b></span>
+      </div>
     </div>
 
     <div class="sec">
@@ -187,7 +213,7 @@ const OPS = {
              rule: 'An <b>add gate</b> passes the upstream gradient through unchanged — both inputs get the same thing.' },
   sub:     { sym: '−',  f: (a, b) => a - b,       d: () => [1, -1],
              rule: 'A <b>subtract gate</b> passes the gradient through, flipping the sign on the second input.' },
-  mul:     { sym: '×',  f: (a, b) => a * b,       d: (ins) => [ins[1], ins[0]],
+  mul:     { sym: '*',  f: (a, b) => a * b,       d: (ins) => [ins[1], ins[0]],
              rule: 'A <b>multiply gate</b> <i>swaps</i> its inputs: each one receives the upstream gradient times the <i>other</i> input’s value.' },
   div:     { sym: '÷',  f: (a, b) => a / b,       d: (ins) => [1 / ins[1], -ins[0] / (ins[1] * ins[1])] ,
              rule: 'A <b>divide gate</b> gives 1/b to the numerator and −a/b² to the denominator.' },
@@ -218,7 +244,7 @@ const OPS = {
    ============================================================ */
 class Graph {
   constructor() { this.nodes = []; }
-  v(name, val) { return this.push({ kind: 'var', name, val: +val }); }
+  v(name, val, key) { return this.push({ kind: 'var', name, key: key || name, val: +val }); }
   c(name, val) { return this.push({ kind: 'const', name, val: +val }); }
   op(op, ins, name) { return this.push({ kind: 'op', op, ins, name: name || null }); }
   push(n) { n.id = this.nodes.length; n.grad = 0; n.ins = n.ins || []; this.nodes.push(n); return n.id; }
@@ -231,11 +257,11 @@ class Graph {
 const FUNCS = {
   sigmoid_neuron: {
     label: 'Sigmoid neuron',
-    expr: 'f = σ(w₁x₁ + w₂x₂ + b)',
+    expr: 'f = σ(w₁*x₁ + w₂*x₂ + b)',
     note: 'The classic one-neuron graph. Watch the × gates swap their inputs and the σ gate squeeze the gradient.',
     vars: { w1: 2, x1: -1, w2: -3, x2: -2, b: -3 },
     build(g, v) {
-      const w1 = g.v('w₁', v.w1), x1 = g.v('x₁', v.x1), w2 = g.v('w₂', v.w2), x2 = g.v('x₂', v.x2), b = g.v('b', v.b);
+      const w1 = g.v('w₁', v.w1, 'w1'), x1 = g.v('x₁', v.x1, 'x1'), w2 = g.v('w₂', v.w2, 'w2'), x2 = g.v('x₂', v.x2, 'x2'), b = g.v('b', v.b, 'b');
       const m1 = g.op('mul', [w1, x1]), m2 = g.op('mul', [w2, x2]);
       const s1 = g.op('add', [m1, m2]), s2 = g.op('add', [s1, b]);
       return g.op('sigmoid', [s2], 'f');
@@ -243,11 +269,12 @@ const FUNCS = {
   },
   squared_error: {
     label: 'Squared error on a neuron',
-    expr: 'L = ½(σ(w₁x₁ + w₂x₂ + b) − y)²',
+    expr: 'L = ½(σ(w₁*x₁ + w₂*x₂ + b) − y)²',
+    train: ['w1', 'w2', 'b'],
     note: 'A loss, so ∂L/∂L = 1 really is the start. Notice ∂L/∂z collapsing to the familiar (σ − y)·σ(1−σ).',
     vars: { w1: 1.4, x1: .8, w2: -.6, x2: 1.2, b: .3, y: 1 },
     build(g, v) {
-      const w1 = g.v('w₁', v.w1), x1 = g.v('x₁', v.x1), w2 = g.v('w₂', v.w2), x2 = g.v('x₂', v.x2), b = g.v('b', v.b), y = g.v('y', v.y);
+      const w1 = g.v('w₁', v.w1, 'w1'), x1 = g.v('x₁', v.x1, 'x1'), w2 = g.v('w₂', v.w2, 'w2'), x2 = g.v('x₂', v.x2, 'x2'), b = g.v('b', v.b, 'b'), y = g.v('y', v.y, 'y');
       const m1 = g.op('mul', [w1, x1]), m2 = g.op('mul', [w2, x2]);
       const s1 = g.op('add', [m1, m2]), z = g.op('add', [s1, b], 'z');
       const p = g.op('sigmoid', [z], 'p');
@@ -257,11 +284,11 @@ const FUNCS = {
   },
   max_gate: {
     label: 'Max gate & a shared input',
-    expr: 'f = (x₁ + x₂) · max(x₂, w)',
+    expr: 'f = (x₁ + x₂) * max(x₂, w)',
     note: 'Two lessons at once: max routes the gradient to the winner only, and x₂ feeds two gates, so its gradients add up.',
     vars: { x1: 3, x2: -1, w: 2 },
     build(g, v) {
-      const x1 = g.v('x₁', v.x1), x2 = g.v('x₂', v.x2), w = g.v('w', v.w);
+      const x1 = g.v('x₁', v.x1, 'x1'), x2 = g.v('x₂', v.x2, 'x2'), w = g.v('w', v.w, 'w');
       const s = g.op('add', [x1, x2]);
       const m = g.op('max', [x2, w]);
       return g.op('mul', [s, m], 'f');
@@ -269,11 +296,12 @@ const FUNCS = {
   },
   cross_entropy: {
     label: 'Cross-entropy of a neuron',
-    expr: 'L = −ln σ(w·x + b)',
+    expr: 'L = −ln σ(w*x + b)',
+    train: ['w', 'b'],
     note: 'ln and σ sit back to back, and their local derivatives cancel into something remarkably simple: σ − 1.',
     vars: { w: 1.2, x: 1.5, b: -.4 },
     build(g, v) {
-      const w = g.v('w', v.w), x = g.v('x', v.x), b = g.v('b', v.b);
+      const w = g.v('w', v.w, 'w'), x = g.v('x', v.x, 'x'), b = g.v('b', v.b, 'b');
       const m = g.op('mul', [w, x]);
       const z = g.op('add', [m, b], 'z');
       const p = g.op('sigmoid', [z], 'p');
@@ -283,12 +311,13 @@ const FUNCS = {
   },
   tiny_net: {
     label: 'Tiny 2-layer network',
-    expr: 'L = ½(w₂·tanh(w₁x + b₁) + b₂ − y)²',
+    expr: 'L = ½(w₂*tanh(w₁*x + b₁) + b₂ − y)²',
+    train: ['w1', 'b1', 'w2', 'b2'],
     note: 'The same picture as a real network: the gradient reaches w₁ only after passing through tanh — this is where deep nets lose signal.',
     vars: { x: 1, w1: 1.5, b1: -.5, w2: 2, b2: .2, y: 1 },
     build(g, v) {
-      const x = g.v('x', v.x), w1 = g.v('w₁', v.w1), b1 = g.v('b₁', v.b1),
-            w2 = g.v('w₂', v.w2), b2 = g.v('b₂', v.b2), y = g.v('y', v.y);
+      const x = g.v('x', v.x, 'x'), w1 = g.v('w₁', v.w1, 'w1'), b1 = g.v('b₁', v.b1, 'b1'),
+            w2 = g.v('w₂', v.w2, 'w2'), b2 = g.v('b₂', v.b2, 'b2'), y = g.v('y', v.y, 'y');
       const m1 = g.op('mul', [w1, x]);
       const z1 = g.op('add', [m1, b1], 'z₁');
       const h = g.op('tanh', [z1], 'h');
@@ -298,13 +327,62 @@ const FUNCS = {
       return g.op('halfsq', [e], 'L');
     },
   },
+  regression: {
+    label: 'Linear regression on 3 points  ·  trainable',
+    expr: 'L = Σᵢ ½(w*xᵢ + b − yᵢ)²',
+    note: 'Three data points, two parameters. Press Train and watch w and b slide towards the line of best fit while L falls.',
+    vars: { w: -0.6, b: 1.4 },
+    train: ['w', 'b'],
+    data: [[-1, -1.2], [0.5, 1.1], [2, 2.6]],
+    build(g, v) {
+      const w = g.v('w', v.w, 'w'), b = g.v('b', v.b, 'b');
+      const parts = [];
+      FUNCS.regression.data.forEach(([xi, yi], i) => {
+        const sub = '₁₂₃'[i];
+        const x = g.c('x' + sub, xi), y = g.c('y' + sub, yi);
+        const m = g.op('mul', [w, x]);
+        const p = g.op('add', [m, b], 'ŷ' + sub);
+        const e = g.op('sub', [p, y], 'e' + sub);
+        parts.push(g.op('halfsq', [e], 'ℓ' + sub));
+      });
+      const s12 = g.op('add', [parts[0], parts[1]]);
+      return g.op('add', [s12, parts[2]], 'L');
+    },
+  },
+  logistic: {
+    label: 'Logistic classification + L2  ·  trainable',
+    expr: 'L = Σᵢ −ln σ(tᵢ * (w*xᵢ + b)) + ½λw²',
+    note: 'Classification: labels are tᵢ = ±1, so tᵢ·(w*xᵢ+b) is the margin — the chain runs margin → σ → ln → −. The ½λw² branch is weight decay; without it these two points are separable and w would grow forever.',
+    vars: { w: 0.2, b: 0.6 },
+    train: ['w', 'b'],
+    data: [[-1, -1], [1, 1]],                      // [x, t]
+    build(g, v) {
+      const w = g.v('w', v.w, 'w'), b = g.v('b', v.b, 'b');
+      const terms = [];
+      FUNCS.logistic.data.forEach(([xi, ti], i) => {
+        const sub = '₁₂'[i];
+        const x = g.c('x' + sub, xi), t = g.c('t' + sub, ti);
+        const m = g.op('mul', [w, x]);
+        const z = g.op('add', [m, b], 'z' + sub);
+        const mg = g.op('mul', [t, z], 'm' + sub);  // the margin t·z
+        const p = g.op('sigmoid', [mg], 'p' + sub);
+        const l = g.op('log', [p]);
+        terms.push(g.op('neg', [l], 'ℓ' + sub));
+      });
+      const data = g.op('add', [terms[0], terms[1]]);
+      const lam = g.c('λ', 0.4);                    // weight decay, so the optimum is finite
+      const sq = g.op('halfsq', [w]);
+      const reg = g.op('mul', [lam, sq], 'reg');
+      return g.op('add', [data, reg], 'L');
+    },
+  },
   sin_product: {
     label: 'sin and a shared path',
-    expr: 'f = x·sin(x) + x·y',
+    expr: 'f = x*sin(x) + x*y',
     note: 'x reaches the output along three routes; the gradient that arrives is the sum of all of them.',
     vars: { x: 1.2, y: -2 },
     build(g, v) {
-      const x = g.v('x', v.x), y = g.v('y', v.y);
+      const x = g.v('x', v.x, 'x'), y = g.v('y', v.y, 'y');
       const s = g.op('sin', [x]);
       const m1 = g.op('mul', [x, s]);
       const m2 = g.op('mul', [x, y]);
@@ -397,6 +475,10 @@ function layout() {
     col.forEach(n => n.ny = Math.min(1 - sep / 2, Math.max(sep / 2, n.ny + shift)));
   }
   cols.forEach((col, d) => col.forEach(n => { n.col = d; }));
+  const rows = Math.max(...cols.map(c => c.length));
+  NW = rows >= 7 ? 92 : rows >= 5 ? 100 : 112;
+  NH = rows >= 7 ? 44 : rows >= 5 ? 50 : 58;
+  S.compact = maxD >= 7;        // too many columns for a chip beside every node
   S.cols = cols; S.maxD = maxD;
 }
 
@@ -411,11 +493,12 @@ function setup(canvas) {
   const c = canvas.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
   return { c, w: r.width, h: r.height };
 }
-const NW = 86, NH = 44;                       // node box
+let NW = 112, NH = 58;                        // node box, shrunk for busy graphs
+const fs = base => (base * NH / 58).toFixed(1) + 'px ';
 function nodePos(n, w, h) {
-  const padX = 58, padY = 42;
-  const x = S.maxD === 0 ? w / 2 : padX + n.col * (w - 2 * padX) / S.maxD;
-  return [x, padY + n.ny * (h - 2 * padY)];
+  const padL = 74, padR = S.compact ? 58 : 150, padTop = 96, padBottom = 52;
+  const x = S.maxD === 0 ? w / 2 : padL + n.col * (w - padL - padR) / S.maxD;
+  return [x, padTop + n.ny * (h - padTop - padBottom)];
 }
 function roundRect(c, x, y, w, h, r) {
   c.beginPath();
@@ -425,6 +508,7 @@ function roundRect(c, x, y, w, h, r) {
 const fmt = v => Math.abs(v) >= 100 ? v.toFixed(0) : Math.abs(v) >= 10 ? v.toFixed(2) : v.toFixed(3);
 
 function draw() {
+  if (!S.g) return;                                 // nothing built yet (first paint)
   const cv = $('#graphCanvas'), { c, w, h } = setup(cv);
   c.fillStyle = css('--panel'); c.fillRect(0, 0, w, h);
   const g = S.g, P = new Map();
@@ -446,14 +530,18 @@ function draw() {
       c.globalAlpha = flowing ? .95 : .7;
       edgePath(c, a, b); c.stroke();
       c.globalAlpha = 1;
-      if (flowing && $('#showLocal').checked) {                 // the number this edge carried
-        const [mx, my] = edgeMid(a, b);
+      // the number on a wire only says something new when the source feeds several gates
+      // (otherwise it is the same as the ∂ chip beside it) — or while this gate is the active one
+      const worthLabelling = usedBy(inId).length > 1 || (S.lastStep && S.lastStep.node === n.id);
+      const spot = flowing && worthLabelling && $('#showLocal').checked ? edgeLabelSpot(a, b) : null;
+      if (spot) {
+        const [mx, my] = spot;                                 // the number this edge carried
         const t = fmt(gradOnEdge);
-        c.font = '11px ' + css('--mono');
-        const tw = c.measureText(t).width + 8;
-        c.fillStyle = css('--panel'); roundRect(c, mx - tw / 2, my - 9, tw, 16, 4); c.fill();
+        c.font = '14px ' + css('--mono');
+        const tw = c.measureText(t).width + 10;
+        c.fillStyle = css('--panel'); roundRect(c, mx - tw / 2, my - 11, tw, 21, 5); c.fill();
         c.fillStyle = gradOnEdge >= 0 ? css('--bwd') : css('--neg');
-        c.textAlign = 'center'; c.fillText(t, mx, my + 3); c.textAlign = 'left';
+        c.textAlign = 'center'; c.fillText(t, mx, my + 5); c.textAlign = 'left';
       }
     });
   }
@@ -474,6 +562,7 @@ function draw() {
   }
 
   // ---- nodes
+  let pendingCard = null;
   for (const n of g.nodes) {
     const [x, y] = P.get(n.id);
     const active = S.lastStep && S.lastStep.node === n.id;
@@ -492,41 +581,52 @@ function draw() {
 
     // label
     c.textAlign = 'center';
-    c.font = '12px ' + css('--mono');
-    c.fillStyle = isLeaf ? css('--fg') : css('--muted');
-    const label = isLeaf ? n.name : (n.name ? `${OPS[n.op].sym}  ${n.name}` : OPS[n.op].sym);
-    c.fillText(label, x, y - 6);
-
-    // forward value
-    c.font = '13px ' + css('--mono');
-    if (revealed) { c.fillStyle = css('--fwd'); c.fillText(fmt(n.value), x, y + 12); }
-    else { c.fillStyle = css('--faint'); c.fillText('·', x, y + 12); }
-
-    // gradient under the box
-    if (n.gdone || (isLeaf && n.gseen)) {
-      c.font = '12px ' + css('--mono');
-      c.fillStyle = n.grad >= 0 ? css('--bwd') : css('--neg');
-      c.fillText('∂ ' + fmt(n.grad), x, y + NH / 2 + 15);
+    if (isLeaf) {                                    // an input: name and value together
+      c.font = fs(S.compact ? 15 : 19) + css('--mono'); c.fillStyle = css('--fg');
+      c.fillText(n.name, x, y - NH * (S.compact ? .14 : .1));
+      c.font = fs(S.compact ? 13.5 : 17) + css('--mono'); c.fillStyle = css('--fwd');
+      c.fillText(fmt(n.value), x, y + NH * (S.compact ? .34 : .3));
+    } else {                                         // gates: operator big, its name small above it
+      c.font = fs(13) + css('--mono'); c.fillStyle = css('--muted');
+      c.fillText(n.name, x, y - NH * (S.compact ? .28 : .19));
+      c.font = fs(S.compact ? 19 : 24) + css('--mono'); c.fillStyle = revealed ? css('--fg') : css('--faint');
+      c.fillText(OPS[n.op].sym, x, y + NH * (S.compact ? .08 : .26));
     }
     c.textAlign = 'left';
 
-    // local derivative tag while this gate is the active one
-    if (active && S.lastStep.phase === 'b' && $('#showLocal').checked && !isLeaf) {
-      const txt = n.ins.map((_, k) => fmt(n.local[k])).join(' , ');
-      c.font = '11px ' + css('--mono');
-      const tw = c.measureText(txt).width + 12;
-      roundRect(c, x - tw / 2, y - NH / 2 - 24, tw, 18, 5);
-      c.fillStyle = 'rgba(77,163,255,.14)'; c.fill();
-      c.strokeStyle = css('--fwd'); c.lineWidth = 1; c.stroke();
-      c.fillStyle = css('--fwd'); c.textAlign = 'center'; c.fillText(txt, x, y - NH / 2 - 11); c.textAlign = 'left';
+    // the numbers live on the wire leaving the node: the value flows out (above),
+    // the gradient comes back along the same wire (below) — unless the graph is too dense
+    if (S.compact) {
+      c.textAlign = 'center';
+      if (revealed && !isLeaf) {
+        c.font = fs(13.5) + css('--mono'); c.fillStyle = css('--fwd');
+        c.fillText(fmt(n.value), x, y + NH * .42);
+      }
+      if (n.gdone || (isLeaf && n.gseen)) {
+        c.font = fs(13) + css('--mono');
+        c.fillStyle = n.grad >= 0 ? css('--bwd') : css('--neg');
+        c.fillText('∂ ' + fmt(n.grad), x, y + NH / 2 + 15);
+      }
+      c.textAlign = 'left';
+    } else {
+      const cx = x + NW / 2 + 12;
+      if (revealed && !isLeaf) chip(c, cx, y - 13, fmt(n.value), css('--fwd'), NH >= 52 ? 16 : 14);
+      if (n.gdone || (isLeaf && n.gseen))
+        chip(c, cx, isLeaf ? y : y + 14, '∂ ' + fmt(n.grad), n.grad >= 0 ? css('--bwd') : css('--neg'), NH >= 52 ? 14 : 12.5);
     }
+
+    // the arithmetic for the gate being processed — drawn after every node, so it sits on top
+    // while Run is playing the steps go by too fast to read, so the card is left out
+    if (active && !isLeaf && !S.playing && $('#showLocal').checked) pendingCard = [n, x, y, S.lastStep.phase];
   }
+
+  if (pendingCard) formulaCard(c, w, h, ...pendingCard);
 
   // the seed of the whole thing
   const [ox, oy] = P.get(S.out);
   if (S.g.node(S.out).gdone || (S.lastStep && S.lastStep.phase === 'b')) {
-    c.font = '11.5px ' + css('--mono'); c.fillStyle = css('--bwd');
-    c.textAlign = 'center'; c.fillText('seed: ∂L/∂L = 1', Math.min(ox, w - 62), oy - NH / 2 - 10); c.textAlign = 'left';
+    c.font = '13.5px ' + css('--mono'); c.fillStyle = css('--bwd');
+    c.textAlign = 'center'; c.fillText('seed: ∂L/∂L = 1', ox, oy - NH / 2 - 14); c.textAlign = 'left';
   }
 
   $('#gtitle').innerHTML = `<b>${FUNCS[S.key].expr}</b>`;
@@ -535,6 +635,89 @@ function draw() {
     : S.cursor <= S.fOrder.length ? `forward pass · ${S.cursor} / ${S.fOrder.length + 1}`
     : S.cursor < total ? `backward pass · ${S.cursor - S.fOrder.length - 1} / ${S.bOrder.length}`
     : 'done — every leaf has its gradient';
+}
+/* mixed-colour text on canvas */
+function segsWidth(c, segs, font) { c.font = font; return segs.reduce((a, [t]) => a + c.measureText(t).width, 0); }
+function drawSegs(c, x, y, segs, font) {
+  c.font = font; c.textAlign = 'left';
+  let dx = 0;
+  for (const [t, col] of segs) { c.fillStyle = col; c.fillText(t, x + dx, y); dx += c.measureText(t).width; }
+}
+
+/* The chain rule for the gate currently being processed, drawn next to that gate:
+   upstream × local = what each input receives. */
+function formulaCard(c, w, h, n, x, y, phase) {
+  const F = '14.5px ' + css('--mono');
+  const MU = css('--muted'), UP = css('--bwd'), LOC = css('--fwd'), RES = css('--pos');
+  const names = n.ins.map(i => nodeName(S.g.node(i)));
+  let lines;
+  if (phase === 'f') {
+    const parts = [];
+    n.ins.forEach((i, k) => {
+      if (k) parts.push([' ' + OPS[n.op].sym + ' ', MU]);
+      parts.push([fmt(S.g.node(i).value), LOC]);
+    });
+    lines = [[[n.name + ' = ', MU], ...(n.ins.length === 1 ? [[OPS[n.op].sym + '(', MU], ...parts, [')', MU]] : parts),
+              [' = ', MU], [fmt(n.value), RES]]];
+  } else {
+    lines = [[['∂L/∂' + n.name + ' = ', MU], [fmt(n.grad), UP], ['   (arrives from above)', MU]]];
+    n.ins.forEach((inId, k) => {
+      lines.push([
+        ['∂L/∂' + names[k] + ' += ', MU],
+        [fmt(n.grad), UP], [' * ', MU], [fmt(n.local[k]), LOC],
+        [' = ', MU], [fmt(n.grad * n.local[k]), RES],
+        ['   ∂' + n.name + '/∂' + names[k] + ' = ' + localExpr(n, k, names), MU],
+      ]);
+    });
+  }
+  const pad = 12, lh = 23;
+  const cw = Math.max(...lines.map(l => segsWidth(c, l, F))) + pad * 2;
+  const ch = lines.length * lh + pad * 1.4;
+
+  // try a few spots and take the one that covers the least of the rest of the graph
+  const cand = [
+    [x - cw / 2, y - NH / 2 - 16 - ch],                   // above
+    [x - cw / 2, y + NH / 2 + 18],                        // below
+    [x + NW / 2 + 24, y - ch - 12],                       // up and to the right
+    [x + NW / 2 + 24, y + 12],                            // down and to the right
+    [x - cw - NW / 2 - 24, y - ch / 2],                   // to the left
+    [x - cw + NW / 2, y + NH / 2 + 20],                   // below, pulled left of the chips
+    [x - cw + NW / 2, y - NH / 2 - 20 - ch],              // above, pulled left of the chips
+  ];
+  const occupied = S.g.nodes.map(m => {
+    const [mx, my] = nodePos(m, w, h);
+    return m.id === n.id
+      ? [mx + NW / 2, my - 26, S.compact ? 10 : 150, 52]             // the gate's own chips only
+      : [mx - NW / 2 - 8, my - NH / 2 - 26, NW + (S.compact ? 16 : 160), NH + 52];
+  });
+  const overlap = (r, q) => Math.max(0, Math.min(r[0] + r[2], q[0] + q[2]) - Math.max(r[0], q[0]))
+                          * Math.max(0, Math.min(r[1] + r[3], q[1] + q[3]) - Math.max(r[1], q[1]));
+  let best = cand[0], bestScore = Infinity;
+  for (const [tx, ty] of cand) {
+    const r = [Math.min(Math.max(8, tx), w - cw - 8), ty, cw, ch];
+    let sc = occupied.reduce((a, q) => a + overlap(r, q), 0);
+    if (ty < 8 || ty + ch > h - 8) sc += 1e6;             // must stay on the canvas
+    if (sc < bestScore) { bestScore = sc; best = [r[0], ty]; }
+  }
+  let [cx, cy] = best;
+  cy = Math.min(Math.max(8, cy), h - ch - 8);
+  c.save();
+  c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 18;
+  roundRect(c, cx, cy, cw, ch, 9);
+  c.fillStyle = 'rgba(13,16,23,.96)'; c.fill();
+  c.restore();
+  c.strokeStyle = phase === 'b' ? css('--bwd') : css('--fwd'); c.lineWidth = 1.4; c.stroke();
+  lines.forEach((l, i) => drawSegs(c, cx + pad, cy + pad + 6 + i * lh, l, F));
+}
+
+/* a small label pinned to the wire just outside a node */
+function chip(c, x, y, text, color, size) {
+  c.font = size + 'px ' + css('--mono');
+  const w = c.measureText(text).width + 12, h = size + 9;
+  roundRect(c, x, y - h / 2, w, h, 5);
+  c.fillStyle = 'rgba(14,17,24,.82)'; c.fill();
+  c.strokeStyle = color; c.globalAlpha = .35; c.lineWidth = 1; c.stroke(); c.globalAlpha = 1;
+  c.fillStyle = color; c.textAlign = 'left'; c.fillText(text, x + 6, y + size * .36);
 }
 function edgePath(c, a, b) {
   const dx = Math.max(26, (b[0] - a[0]) * .5);
@@ -546,7 +729,24 @@ function bezierAt(a, b, t) {
   return [u * u * u * a[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t * t * t * b[0],
           u * u * u * a[1] + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t * t * t * b[1]];
 }
-const edgeMid = (a, b) => bezierAt(a, b, .5);
+/* A spot on the wire for its gradient label: past the chips that sit beside the source
+   node, and not so close to the target that it lands on its box. null = no room. */
+const CHIP_ZONE = 108;                                 // how far the value/∂ chips reach
+function edgeLabelSpot(a, b) {
+  const minX = a[0] + CHIP_ZONE, maxX = b[0] - 34;
+  for (let t = .45; t <= .92; t += .02) {
+    const p = bezierAt(a, b, t);
+    if (p[0] < minX) continue;
+    if (p[0] > maxX) break;
+    const q = bezierAt(a, b, Math.min(1, t + .02));
+    let nx = -(q[1] - p[1]), ny = q[0] - p[0];
+    const nl = Math.hypot(nx, ny) || 1;
+    nx /= nl; ny /= nl;
+    if (ny > 0) { nx = -nx; ny = -ny; }                // always sit above the wire
+    return [p[0] + nx * 14, p[1] + ny * 14];
+  }
+  return null;
+}
 
 /* ============================================================
    7. Stepping
@@ -602,7 +802,7 @@ function explain() {
   $('#stepCount').textContent = `step ${S.cursor} / ${totalSteps()}`;
   if (S.cursor === 0) {
     $('#stepTitle').textContent = 'Ready';
-    chain.innerHTML = '<span class="dim">Press <b>Play</b> (or →) to run the forward pass first: every gate computes its value from the ones feeding it.</span>';
+    chain.innerHTML = '<span class="dim">Press <b>Step</b> (or →) to run the forward pass first: every gate computes its value from the ones feeding it.</span>';
     rule.innerHTML = 'Backpropagation needs the forward values — every local derivative is evaluated <b>at the point you just computed</b>.';
     return;
   }
@@ -628,14 +828,14 @@ function explain() {
   $('#stepTitle').textContent = 'Backward · ' + O.sym + ' gate';
   const up = n.grad;
   const lines = n.ins.map((inId, k) => {
-    const child = S.g.node(inId), contrib = up * n.local[k];
-    return `<div>∂L/∂<span class="op">${nodeName(child)}</span> <span class="dim">+=</span>
-      <span class="up">${fmt(up)}</span> <span class="dim">×</span> <span class="loc">${fmt(n.local[k])}</span>
-      <span class="dim">=</span> <span class="res hl">${fmt(contrib)}</span>
-      <span class="dim">&nbsp;&nbsp;(∂${nodeName(n)}/∂${nodeName(child)} = ${localExpr(n, k, names)})</span></div>`;
+    const child = S.g.node(inId);
+    return `<div>∂L/∂<span class="op">${nodeName(child)}</span> <span class="dim">=</span>
+      <span class="up">∂L/∂${nodeName(n)}</span> <span class="dim">·</span>
+      <span class="loc">∂${nodeName(n)}/∂${nodeName(child)}</span>
+      <span class="dim">, &nbsp;where ∂${nodeName(n)}/∂${nodeName(child)} =</span>
+      <span class="loc">${localExpr(n, k, names)}</span></div>`;
   }).join('');
-  chain.innerHTML = `<div class="dim">upstream gradient arriving at <span class="op">${nodeName(n)}</span>:
-      <span class="up">∂L/∂${nodeName(n)} = ${fmt(up)}</span></div>` + lines;
+  chain.innerHTML = `<div class="dim">the chain rule at this gate — the numbers are on the graph above</div>` + lines;
   let extra = O.rule;
   const shared = n.ins.map(i => S.g.node(i)).filter(ch => usedBy(ch.id).length > 1);
   if (shared.length) extra += ` <b>${shared.map(ch => nodeName(ch)).join(', ')}</b> feeds more than one gate, so this contribution is <i>added</i> to what it already had.`;
@@ -675,15 +875,12 @@ function updateTable() {
     const known = n.gseen;
     html += `<tr class="${known ? '' : 'wait'}"><td>${n.name}</td><td class="v">${fmt(n.value)}</td>` +
       `<td class="g">${known ? fmt(n.grad) : '·'}</td>` +
-      `<td class="n">${done ? fmt(numericGrad(varKeyOf(n.name))) : '·'}</td></tr>`;
+      `<td class="n">${done ? fmt(numericGrad(n.key)) : '·'}</td></tr>`;
   }
   $('#gradTable').innerHTML = html;
   $('#checkNote').textContent = done ? 'analytic vs finite difference' : 'filling in as the pass runs';
 }
-function varKeyOf(display) {
-  const map = { 'w₁': 'w1', 'w₂': 'w2', 'x₁': 'x1', 'x₂': 'x2', 'b₁': 'b1', 'b₂': 'b2', 'ŷ': 'yhat' };
-  return map[display] || display;
-}
+
 
 /* ============================================================
    9. Controls
@@ -710,12 +907,80 @@ function buildVarSliders() {
   });
 }
 function refresh(rebuildSliders) {
-  stop();
+  stop(); trainStop();
+  TR.iter = 0; TR.hist = [];
+  $('#trIter').textContent = '0'; $('#trLoss').textContent = '–';
+  const trainable = (FUNCS[S.key].train || []).length > 0;
+  $('#trainSec').hidden = !trainable;
   if (rebuildSliders) buildVarSliders();
   $('#exprLine').textContent = FUNCS[S.key].expr;
   $('#funcNote').textContent = FUNCS[S.key].note;
   build();
   go(0);
+  drawLoss();
+}
+
+/* ============================================================
+   9b. Gradient descent — the same graph, run over and over
+   ============================================================ */
+const TR = { on: false, iter: 0, hist: [], timer: null };
+
+function trainableLeaves() {
+  const keys = FUNCS[S.key].train || [];
+  return S.g.nodes.filter(n => n.kind === 'var' && keys.includes(n.key));
+}
+function oneUpdate() {
+  applyUpTo(totalSteps());                       // full forward + backward
+  const lr = +$('#trainLR').value / 100;
+  for (const leaf of trainableLeaves()) S.vars[leaf.key] -= lr * leaf.grad;
+  TR.iter++;
+  build(); applyUpTo(totalSteps());              // re-evaluate with the new parameters
+  S.lastStep = null;                             // no single gate is "current" while training
+  TR.hist.push(outVal());
+  if (TR.hist.length > 400) TR.hist = TR.hist.filter((_, i) => i % 2 === 0);
+  syncVarSliders();
+  $('#trIter').textContent = TR.iter;
+  $('#trLoss').textContent = fmt(outVal());
+  drawLoss(); updateTable(); explain(); draw();
+}
+function trainStart() {
+  stop();
+  TR.on = true; $('#train').innerHTML = '&#10073;&#10073; Pause';
+  clearInterval(TR.timer);
+  TR.timer = setInterval(oneUpdate, 90);
+}
+function trainStop() { TR.on = false; clearInterval(TR.timer); $('#train').innerHTML = '&#9654;&#9654; Train'; }
+function trainReset() {
+  trainStop();
+  S.vars = { ...FUNCS[S.key].vars };
+  TR.iter = 0; TR.hist = [];
+  $('#trIter').textContent = '0'; $('#trLoss').textContent = '–';
+  buildVarSliders(); build(); go(0); drawLoss();
+}
+function syncVarSliders() {
+  for (const [k, v] of Object.entries(S.vars)) {
+    const r = document.querySelector(`#vars input[data-k="${k}"]`);
+    if (r) { r.value = v; document.querySelector(`#vars [data-v="${k}"]`).textContent = (+v).toFixed(2); }
+  }
+}
+function drawLoss() {
+  const cv = $('#lossCanvas'); if (!cv) return;
+  const { c, w, h } = setup(cv);
+  c.fillStyle = css('--panel2'); c.fillRect(0, 0, w, h);
+  const H = TR.hist;
+  c.strokeStyle = css('--border'); c.lineWidth = 1;
+  c.beginPath(); c.moveTo(26, 6); c.lineTo(26, h - 16); c.lineTo(w - 6, h - 16); c.stroke();
+  c.fillStyle = css('--muted'); c.font = '10px ' + css('--mono');
+  if (H.length < 2) { c.fillText('press Train', 34, h / 2); return; }
+  const hi = Math.max(...H), lo = Math.min(0, ...H);
+  const X = i => 26 + i / (H.length - 1) * (w - 32);
+  const Y = v => h - 16 - (v - lo) / ((hi - lo) || 1) * (h - 26);
+  c.strokeStyle = css('--pos'); c.lineWidth = 1.8; c.beginPath();
+  H.forEach((v, i) => i ? c.lineTo(X(i), Y(v)) : c.moveTo(X(i), Y(v)));
+  c.stroke();
+  c.fillStyle = css('--muted');
+  c.fillText(hi.toFixed(2), 2, 12); c.fillText(lo.toFixed(2), 2, h - 18);
+  c.fillStyle = css('--pos'); c.fillText('loss', w - 34, 12);
 }
 
 let timer = null;
@@ -728,10 +993,14 @@ function play() {
     go(S.cursor + 1);
   }, +$('#speed').value);
 }
-function stop() { S.playing = false; clearInterval(timer); $('#play').innerHTML = '&#9654; Play'; }
+function stop() { S.playing = false; clearInterval(timer); $('#play').innerHTML = '&#9654;&#9654; Run'; draw(); }
 
 $('#play').onclick = () => S.playing ? stop() : play();
-$('#next').onclick = () => { stop(); go(S.cursor + 1); };
+$('#train').onclick = () => TR.on ? trainStop() : trainStart();
+$('#train1').onclick = () => { trainStop(); oneUpdate(); };
+$('#trainReset').onclick = trainReset;
+$('#trainLR').oninput = e => $('#trainLRv').textContent = (+e.target.value / 100).toFixed(2);
+$('#next').onclick = () => { stop(); trainStop(); go(S.cursor + 1); };
 $('#prev').onclick = () => { stop(); go(S.cursor - 1); };
 $('#reset').onclick = () => { stop(); go(0); };
 $('#toBack').onclick = () => { stop(); go(1 + S.fOrder.length); };
