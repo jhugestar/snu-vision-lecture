@@ -2,6 +2,26 @@
 <html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
+<script>
+/* Theme — one shared choice for every page on the site. Runs before the body
+   is parsed so a light visitor never sees a dark flash. */
+(function () {
+  var KEY = 'snu-vision-theme', t = null;
+  try { t = localStorage.getItem(KEY); } catch (e) {}
+  if (t !== 'light') t = 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+  window.THEME = {
+    get: function () { return document.documentElement.getAttribute('data-theme'); },
+    set: function (v) {
+      if (v === this.get()) return;
+      document.documentElement.setAttribute('data-theme', v);
+      try { localStorage.setItem(KEY, v); } catch (e) {}
+      dispatchEvent(new CustomEvent('themechange', { detail: v }));
+    },
+    toggle: function () { this.set(this.get() === 'dark' ? 'light' : 'dark'); }
+  };
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>HOG Dissected</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -213,7 +233,7 @@ table.spec td.v{font-family:var(--mono); font-size:12px; color:var(--amber); fon
     </div>
     <div style="display:flex; flex-direction:column; gap:12px; align-items:flex-start">
       <div class="formula">∇I → θ, |∇| → cell hist → block L2 → w·x + b</div>
-      <button class="theme-btn" id="themeBtn" type="button">Toggle theme</button>
+      <button class="theme-btn" id="themeBtn" type="button" title="Switch between the dark and the light theme"></button>
     </div>
   </div>
 </header>
@@ -535,9 +555,9 @@ table.spec td.v{font-family:var(--mono); font-size:12px; color:var(--amber); fon
         <figcaption><span class="step">03</span><span class="title">Detections</span><span class="sub" id="capDet">not run yet</span></figcaption>
         <div class="plate"><canvas id="cvScene"></canvas></div>
         <div class="legendrow">
-          <span><span class="swatch" style="background:#3ECBA2"></span>detection (score &gt; threshold)</span>
+          <span><span class="swatch" style="background:var(--hit)"></span>detection (score &gt; threshold)</span>
           <span><span class="swatch" style="background:#888"></span>candidate removed by NMS</span>
-          <span><span class="swatch" style="background:#E6B45C"></span>heatmap = window score</span>
+          <span><span class="swatch" style="background:var(--amber)"></span>heatmap = window score</span>
         </div>
         <div class="note">Around a single person <b>dozens of windows fire at once</b>. Non-Maximum Suppression cleans up those duplicates.</div>
       </figure>
@@ -1748,12 +1768,12 @@ $$('.tabs button').forEach(btn=>{
 });
 
 /* --- Theme --- */
-$('#themeBtn').addEventListener('click',()=>{
-  const cur=document.documentElement.getAttribute('data-theme');
-  const dark=cur? cur==='dark' : matchMedia('(prefers-color-scheme: dark)').matches;
-  document.documentElement.setAttribute('data-theme', dark?'light':'dark');
+$('#themeBtn').addEventListener('click',()=>THEME.toggle());
+addEventListener('themechange',()=>{
+  $('#themeBtn').textContent = THEME.get()==='light' ? '\u263e Dark' : '\u2600 Light';
   if(PIPE) renderDescriptorTab();
 });
+$('#themeBtn').textContent = THEME.get()==='light' ? '\u263e Dark' : '\u2600 Light';
 
 /* --- Input image --- */
 function loadSource(name){

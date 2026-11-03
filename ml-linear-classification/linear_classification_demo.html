@@ -2,6 +2,26 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<script>
+/* Theme — one shared choice for every page on the site. Runs before the body
+   is parsed so a light visitor never sees a dark flash. */
+(function () {
+  var KEY = 'snu-vision-theme', t = null;
+  try { t = localStorage.getItem(KEY); } catch (e) {}
+  if (t !== 'light') t = 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+  window.THEME = {
+    get: function () { return document.documentElement.getAttribute('data-theme'); },
+    set: function (v) {
+      if (v === this.get()) return;
+      document.documentElement.setAttribute('data-theme', v);
+      try { localStorage.setItem(KEY, v); } catch (e) {}
+      dispatchEvent(new CustomEvent('themechange', { detail: v }));
+    },
+    toggle: function () { this.set(this.get() === 'dark' ? 'light' : 'dark'); }
+  };
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Logistic Regression vs SVM Playground</title>
 <style>
@@ -21,9 +41,43 @@
   --loss: #2fbf8a;    /* loss curve */
   --danger: #e66767;
   --other: #c792ea;   /* the other model's fitted boundary (overlay) */
+  --veil: 255,255,255;          /* hairlines drawn over a panel */
+  --band: rgba(199,146,234,.45);  /* SVM margin band */
+  --ribbon: rgba(243,201,105,.45);
+  --face-line: rgba(10,14,22,.3); /* edge of a surface facet */
+  --ui-text: #0e1118;             /* text on a filled --ui button */
+  --ui-hover: #7fbcff;
+  --hover: #253044; --hover-line: #3a4660;
   --font: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   color-scheme: dark;
+  --seg-on: #2b3550;
+}
+/* The light theme redefines the same tokens; everything below reads them. */
+:root[data-theme="light"] {
+  --bg: #eef1f6;
+  --panel: #ffffff;
+  --panel2: #f4f6fa;
+  --border: #d4dae4;
+  --fg: #161b22;
+  --muted: #5d6675;
+  --faint: #c3cad6;
+  --c0: #1f6fc4;
+  --c1: #c2521a;
+  --accent: #a2740a;
+  --ui: #2563eb;
+  --loss: #0f8f66;
+  --danger: #c43b3b;
+  --other: #8b4fc0;
+  --veil: 30,38,52;
+  --band: rgba(139,79,192,.5);
+  --ribbon: rgba(162,116,10,.55);
+  --face-line: rgba(255,255,255,.45);
+  --ui-text: #ffffff;
+  --ui-hover: #1d4fd0;
+  --hover: #e8edf6; --hover-line: #b9c2d2;
+  color-scheme: light;
+  --seg-on: #dbe3f4;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -95,15 +149,15 @@ select, button, input[type=number] {
 }
 select { flex: 1; min-width: 0; }
 button { cursor: pointer; transition: background .12s, border-color .12s; }
-button:hover { background: #253044; border-color: #3a4660; }
+button:hover { background: var(--hover); border-color: var(--hover-line); }
 button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--ui); outline-offset: 1px; }
-button.primary { background: var(--ui); color: #0e1118; border-color: var(--ui); font-weight: 600; }
-button.primary:hover { background: #ffd97a; }
+button.primary { background: var(--ui); color: var(--ui-text); border-color: var(--ui); font-weight: 600; }
+button.primary:hover { background: var(--ui-hover); }
 button.wide { flex: 1; }
 .seg { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
 .seg label { flex: 1; text-align: center; padding: 6px 8px; cursor: pointer; background: var(--panel2); color: var(--muted); user-select: none; }
 .seg input { position: absolute; opacity: 0; width: 0; height: 0; }
-.seg input:checked + label { background: #2b3550; color: var(--fg); font-weight: 600; }
+.seg input:checked + label { background: var(--seg-on); color: var(--fg); font-weight: 600; }
 .seg input:focus-visible + label { outline: 2px solid var(--ui); outline-offset: -2px; }
 .seg label.cls0 b { color: var(--c0); } .seg label.cls1 b { color: var(--c1); }
 .slider { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; }
@@ -143,6 +197,16 @@ button.wide { flex: 1; }
 .note { background: var(--panel2); border-left: 3px solid var(--accent); padding: 7px 10px; border-radius: 4px; font-size: 12.5px; color: var(--fg); }
 .note.quiet { border-left-color: var(--faint); color: var(--muted); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+/* ---- dark / light switch ---------------------------------------------- */
+.theme-toggle {
+  position: fixed; right: 16px; bottom: 16px; z-index: 99;
+  font: inherit; font-size: 13px; line-height: 1; padding: 8px 14px;
+  border-radius: 999px; cursor: pointer;
+  background: var(--panel); color: var(--fg); border: 1px solid var(--border);
+  box-shadow: 0 2px 12px rgba(0,0,0,.28);
+}
+.theme-toggle:hover { border-color: var(--ui); color: var(--ui); }
+@media print { .theme-toggle { display: none; } }
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -477,6 +541,7 @@ function fitCanvas(c) {
   const ctx = c.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); return { ctx, W: r.width, H: r.height };
 }
 const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const veil = a => `rgba(${cssVar('--veil')},${a})`;   // hairline ink for the current theme
 
 // data <-> pixel (main canvas)
 let mainW = 1;
@@ -598,9 +663,9 @@ function drawMain() {
   ctx.imageSmoothingEnabled = true;
   ctx.drawImage(heat, 0, 0, W, W);
   // grid & axes
-  ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 1;
+  ctx.strokeStyle = veil(0.05); ctx.lineWidth = 1;
   for (let v = -1; v <= 1; v += 0.5) { ctx.beginPath(); ctx.moveTo(toPx(v), 0); ctx.lineTo(toPx(v), W); ctx.moveTo(0, toPy(v)); ctx.lineTo(W, toPy(v)); ctx.stroke(); }
-  ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+  ctx.strokeStyle = veil(0.14);
   ctx.beginPath(); ctx.moveTo(toPx(0), 0); ctx.lineTo(toPx(0), W); ctx.moveTo(0, toPy(0)); ctx.lineTo(W, toPy(0)); ctx.stroke();
   ctx.fillStyle = cssVar('--muted'); ctx.font = '11px ' + cssVar('--mono');
   ctx.fillText('x₁', W - 18, toPy(0) - 6); ctx.fillText('x₂', toPx(0) + 6, 14);
@@ -612,8 +677,8 @@ function drawMain() {
     ctx.stroke(); ctx.setLineDash([]);
   };
   if (S.pts.length) {
-    if (S.model === 'lr') { drawC(0.25, 'rgba(255,255,255,0.25)', 1, [4, 4]); drawC(0.75, 'rgba(255,255,255,0.25)', 1, [4, 4]); drawC(0.5, cssVar('--accent'), 2.2, []); }
-    else { drawC(-1, 'rgba(255,255,255,0.5)', 1.2, [6, 4]); drawC(1, 'rgba(255,255,255,0.5)', 1.2, [6, 4]); drawC(0, cssVar('--accent'), 2.2, []); }
+    if (S.model === 'lr') { drawC(0.25, veil(0.25), 1, [4, 4]); drawC(0.75, veil(0.25), 1, [4, 4]); drawC(0.5, cssVar('--accent'), 2.2, []); }
+    else { drawC(-1, veil(0.5), 1.2, [6, 4]); drawC(1, veil(0.5), 1.2, [6, 4]); drawC(0, cssVar('--accent'), 2.2, []); }
   }
   // overlay: the other model's fitted boundary (z = 0) in violet; its margins if it is the SVM, p = 0.25/0.75 (z = +-ln 3) if it is LR
   if (overlayOn()) {
@@ -624,7 +689,7 @@ function drawMain() {
       ctx.stroke(); ctx.setLineDash([]);
     };
     const band = otherModel() === 'svm' ? 1 : Math.log(3);
-    drawO(-band, 'rgba(199,146,234,0.45)', 1, [3, 5]); drawO(band, 'rgba(199,146,234,0.45)', 1, [3, 5]);
+    drawO(-band, cssVar('--band'), 1, [3, 5]); drawO(band, cssVar('--band'), 1, [3, 5]);
     drawO(0, cssVar('--other'), 2.4, [10, 5]);
     ctx.fillStyle = cssVar('--other'); ctx.font = '12px ' + cssVar('--font'); ctx.textAlign = 'right';
     ctx.fillText('violet: ' + (otherModel() === 'svm' ? 'SVM' : 'logistic regression') + ' fit (overlay)', W - 12, 46); ctx.textAlign = 'left';
@@ -668,9 +733,9 @@ function drawSigmoid() {
   const { ctx, W, H } = fitCanvas(sigC); ctx.clearRect(0, 0, W, H);
   const L = 38, R = 14, T = 16, B = 30, pw = W - L - R, ph = H - T - B, ZR = 8;
   const px = z => L + (z + ZR) / (2 * ZR) * pw, py = p => T + (1 - p) * ph;
-  ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 1;
+  ctx.strokeStyle = veil(0.07); ctx.lineWidth = 1;
   for (const p of [0, 0.25, 0.5, 0.75, 1]) { ctx.beginPath(); ctx.moveTo(L, py(p)); ctx.lineTo(W - R, py(p)); ctx.stroke(); }
-  ctx.setLineDash([4, 4]); ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+  ctx.setLineDash([4, 4]); ctx.strokeStyle = veil(0.25);
   ctx.beginPath(); ctx.moveTo(px(0), T); ctx.lineTo(px(0), T + ph); ctx.moveTo(L, py(0.5)); ctx.lineTo(W - R, py(0.5)); ctx.stroke(); ctx.setLineDash([]);
   ctx.fillStyle = cssVar('--muted'); ctx.font = '11px ' + cssVar('--mono');
   for (const p of [0, 0.5, 1]) ctx.fillText(p, 8, py(p) + 4);
@@ -703,13 +768,13 @@ function drawLoss() {
   ymax = Math.max(ymax * 1.08, 0.05);
   const nn = Math.max(n, oh ? oh.length : 0);
   const px = i => L + (nn > 1 ? i / (nn - 1) : 0.5) * pw, py = v => T + (1 - v / ymax) * ph;
-  ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 1;
+  ctx.strokeStyle = veil(0.07); ctx.lineWidth = 1;
   ctx.fillStyle = cssVar('--muted'); ctx.font = '11px ' + cssVar('--mono');
   for (let k = 0; k <= 4; k++) { const v = ymax * k / 4; ctx.beginPath(); ctx.moveTo(L, py(v)); ctx.lineTo(W - R, py(v)); ctx.stroke(); ctx.fillText(v.toFixed(2), 6, py(v) + 4); }
   ctx.fillText('0', L - 3, H - 10); ctx.fillText(String(nn), W - R - 6 * String(nn).length, H - 10); ctx.fillText('iteration', L + pw / 2 - 24, H - 10);
   // reference: the loss at w = 0 (ln 2 for cross-entropy, 1 for hinge)
   const ref = S.model === 'lr' ? Math.LN2 : 1, refTxt = S.model === 'lr' ? 'ln 2' : '1 (w = 0)';
-  if (ymax > ref) { ctx.setLineDash([3, 4]); ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.beginPath(); ctx.moveTo(L, py(ref)); ctx.lineTo(W - R, py(ref)); ctx.stroke(); ctx.setLineDash([]); ctx.fillText(refTxt, W - R - 7 * refTxt.length, py(ref) - 4); }
+  if (ymax > ref) { ctx.setLineDash([3, 4]); ctx.strokeStyle = veil(0.22); ctx.beginPath(); ctx.moveTo(L, py(ref)); ctx.lineTo(W - R, py(ref)); ctx.stroke(); ctx.setLineDash([]); ctx.fillText(refTxt, W - R - 7 * refTxt.length, py(ref) - 4); }
   if (oh && oh.length) {
     ctx.strokeStyle = cssVar('--other'); ctx.lineWidth = 1.6; ctx.setLineDash([6, 4]); ctx.beginPath();
     const st = Math.max(1, Math.floor(oh.length / pw / 2));
@@ -739,11 +804,11 @@ function drawMargin() {
   const px = m => L + (m + MR) / (2 * MR) * pw, py = v => T + (1 - Math.min(v, VMAX) / VMAX) * ph;
   const hinge = m => Math.max(0, 1 - m), logis = m => softplus(-m), zeroone = m => m < 0 ? 1 : 0;
   const mono = '11px ' + cssVar('--mono');
-  ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 1; ctx.fillStyle = cssVar('--muted'); ctx.font = mono;
+  ctx.strokeStyle = veil(0.07); ctx.lineWidth = 1; ctx.fillStyle = cssVar('--muted'); ctx.font = mono;
   for (const v of [0, 1, 2, 3]) { ctx.beginPath(); ctx.moveTo(L, py(v)); ctx.lineTo(W - R, py(v)); ctx.stroke(); ctx.fillText(v, 14, py(v) + 4); }
   for (const m of [-3, -2, -1, 0, 1, 2, 3]) ctx.fillText(m, px(m) - 4, H - 50);
   // reference verticals: decision boundary (m = 0) and the SVM margin (m = 1)
-  ctx.setLineDash([4, 4]); ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  ctx.setLineDash([4, 4]); ctx.strokeStyle = veil(0.3);
   ctx.beginPath(); ctx.moveTo(px(0), T); ctx.lineTo(px(0), T + ph); ctx.moveTo(px(1), T); ctx.lineTo(px(1), T + ph); ctx.stroke(); ctx.setLineDash([]);
   ctx.fillStyle = cssVar('--muted'); ctx.font = '10px ' + cssVar('--font');
   ctx.fillText('wrong side', px(0) - 58, T + 10); ctx.fillText('right side', px(0) + 5, T + 10); ctx.fillText('m = 1', px(1) + 4, T + 22);
@@ -859,13 +924,13 @@ function drawSurface() {
   const R = RANGE;
   // floor grid + back frame
   const lo = Z.lo, hi = Z.hi;
-  for (let v = -1; v <= 1; v += 0.5) { line(P(v, -R, lo), P(v, R, lo), 'rgba(255,255,255,0.06)', 1); line(P(-R, v, lo), P(R, v, lo), 'rgba(255,255,255,0.06)', 1); }
+  for (let v = -1; v <= 1; v += 0.5) { line(P(v, -R, lo), P(v, R, lo), veil(0.06), 1); line(P(-R, v, lo), P(R, v, lo), veil(0.06), 1); }
   const corners = [[-R, -R], [R, -R], [R, R], [-R, R]];
   const frames = S.model === 'lr' ? [hi] : [0, hi];
-  for (let i = 0; i < 4; i++) { const a = corners[i], b = corners[(i + 1) % 4]; line(P(a[0], a[1], lo), P(b[0], b[1], lo), 'rgba(255,255,255,0.18)', 1); for (const fz of frames) line(P(a[0], a[1], fz), P(b[0], b[1], fz), 'rgba(255,255,255,0.08)', 1, [3, 4]); }
+  for (let i = 0; i < 4; i++) { const a = corners[i], b = corners[(i + 1) % 4]; line(P(a[0], a[1], lo), P(b[0], b[1], lo), veil(0.18), 1); for (const fz of frames) line(P(a[0], a[1], fz), P(b[0], b[1], fz), veil(0.08), 1, [3, 4]); }
   // the vertical axis goes on the corner farthest from the camera so it does not cover the data
   let far = corners[0], fd = -1e9; for (const c of corners) { const d = P(c[0], c[1], lo)[2]; if (d > fd) { fd = d; far = c; } }
-  line(P(far[0], far[1], lo), P(far[0], far[1], hi), 'rgba(255,255,255,0.3)', 1);
+  line(P(far[0], far[1], lo), P(far[0], far[1], hi), veil(0.3), 1);
   ctx.fillStyle = cssVar('--muted'); ctx.font = mono;
   for (const t of Z.ticks) { const q = P(far[0], far[1], t); ctx.fillText(String(t), q[0] - 26, q[1] + 4); }
   { const q = P(far[0], far[1], hi + 0.08 * zspan); ctx.fillText(Z.label, q[0] - 28, q[1]); }
@@ -894,10 +959,10 @@ function drawSurface() {
   const shade = (v) => { const t = mixT(v); const r = COL.c0[0] + (COL.c1[0] - COL.c0[0]) * t, g = COL.c0[1] + (COL.c1[1] - COL.c0[1]) * t, b = COL.c0[2] + (COL.c1[2] - COL.c0[2]) * t; const k = 0.75 + 0.45 * mixA(v); return `rgba(${r * k | 0},${g * k | 0},${b * k | 0},0.9)`; };
   for (const it of items) {
     if (it.kind === 'quad') {
-      ctx.fillStyle = shade(it.p); ctx.strokeStyle = 'rgba(10,14,22,0.3)'; ctx.lineWidth = 0.5;
+      ctx.fillStyle = shade(it.p); ctx.strokeStyle = cssVar('--face-line'); ctx.lineWidth = 0.5;
       ctx.beginPath(); ctx.moveTo(it.q[0][0], it.q[0][1]); for (let k = 1; k < 4; k++) ctx.lineTo(it.q[k][0], it.q[k][1]); ctx.closePath(); ctx.fill(); ctx.stroke();
     } else {
-      line(it.a, it.b, 'rgba(255,255,255,0.45)', 1, [3, 3]);
+      line(it.a, it.b, veil(0.45), 1, [3, 3]);
       const col = it.c ? cssVar('--c1') : cssVar('--c0');
       if (it.sv) { ctx.beginPath(); ctx.arc(it.a[0], it.a[1], 8, 0, Math.PI * 2); ctx.strokeStyle = cssVar('--accent'); ctx.lineWidth = 1.2; ctx.stroke(); }
       ctx.beginPath(); ctx.arc(it.a[0], it.a[1], 4.5, 0, Math.PI * 2);
@@ -908,11 +973,11 @@ function drawSurface() {
   // decision curve (p = 0.5 or f = 0) drawn on the surface, plus its shadow on the floor; SVM also gets the f = +-1 margin curves
   if (S.pts.length) {
     const lvl = S.model === 'lr' ? 0.5 : 0, segs = contour(lvl);
-    ctx.strokeStyle = 'rgba(243,201,105,0.45)'; ctx.lineWidth = 1.2; ctx.beginPath();
+    ctx.strokeStyle = cssVar('--ribbon'); ctx.lineWidth = 1.2; ctx.beginPath();
     for (const [a, b] of segs) { const u = P(a[0], a[1], lo), v = P(b[0], b[1], lo); ctx.moveTo(u[0], u[1]); ctx.lineTo(v[0], v[1]); }
     ctx.stroke();
     for (const bz of Z.bands) {
-      ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1.2; ctx.setLineDash([5, 4]); ctx.beginPath();
+      ctx.strokeStyle = veil(0.6); ctx.lineWidth = 1.2; ctx.setLineDash([5, 4]); ctx.beginPath();
       for (const [a, b] of contour(bz)) { const u = P(a[0], a[1], bz), v = P(b[0], b[1], bz); ctx.moveTo(u[0], u[1]); ctx.lineTo(v[0], v[1]); }
       ctx.stroke(); ctx.setLineDash([]);
     }
@@ -1043,6 +1108,9 @@ S.pts = makeDataset($('dataset').value);
 syncLam();
 resetWeights(false);
 redraw();
+/* repaint the canvases when the theme changes */
+addEventListener('themechange', () => redraw());
+
 /* ---- plays by itself on arrival ----------------------------------------
    Most visitors never press a button, so the demo runs once on its own.
    The first click, tap or key press hands control back. */
@@ -1055,6 +1123,22 @@ redraw();
   setTimeout(() => { if (!taken) { if (!S.running) toggleRun(); } }, 900);
   setTimeout(() => { if (!taken) { if (S.running) toggleRun(); } }, 13900);
 })();
+})();
+</script>
+<script>
+/* The floating switch. Inside the site shell the parent page supplies one,
+   so a framed demo leaves it out. */
+(function () {
+  if (window.top !== window.self) return;
+  var b = document.createElement('button');
+  b.className = 'theme-toggle';
+  b.type = 'button';
+  b.title = 'Switch between the dark and the light theme';
+  var paint = function () { b.textContent = THEME.get() === 'light' ? '\u263e Dark' : '\u2600 Light'; };
+  b.addEventListener('click', function () { THEME.toggle(); });
+  addEventListener('themechange', paint);
+  paint();
+  document.body.appendChild(b);
 })();
 </script>
 </body>

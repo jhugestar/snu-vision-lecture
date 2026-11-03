@@ -2,6 +2,26 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
+<script>
+/* Theme — one shared choice for every page on the site. Runs before the body
+   is parsed so a light visitor never sees a dark flash. */
+(function () {
+  var KEY = 'snu-vision-theme', t = null;
+  try { t = localStorage.getItem(KEY); } catch (e) {}
+  if (t !== 'light') t = 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+  window.THEME = {
+    get: function () { return document.documentElement.getAttribute('data-theme'); },
+    set: function (v) {
+      if (v === this.get()) return;
+      document.documentElement.setAttribute('data-theme', v);
+      try { localStorage.setItem(KEY, v); } catch (e) {}
+      dispatchEvent(new CustomEvent('themechange', { detail: v }));
+    },
+    toggle: function () { this.set(this.get() === 'dark' ? 'light' : 'dark'); }
+  };
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Visual Hull Reconstruction — Interactive Visualizer</title>
 <style>
@@ -9,6 +29,17 @@
     --bg:#0e1118; --panel:#161b25; --panel2:#1d2331; --line:#2a3243;
     --txt:#e4e8f0; --muted:#8b95a8; --accent:#4da3ff; --accent2:#f0883e;
     --good:#3ddc97; --bad:#f0883e;
+    --scene:#0e1116;   /* the 3-D viewport behind the hull */
+    --on-accent:#0e1118;   /* text on a filled accent button */
+  }
+  /* The light theme redefines the same tokens; everything below reads them. */
+  :root[data-theme="light"]{
+    --bg:#eef1f6; --panel:#ffffff; --panel2:#f4f6fa; --line:#d4dae4;
+    --txt:#161b22; --muted:#5d6675; --accent:#2563eb; --accent2:#c2521a;
+    --good:#0f8f66; --bad:#c2521a;
+    --scene:#e7ebf2;
+    --on-accent:#ffffff;
+    color-scheme: light;
   }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);
@@ -28,16 +59,16 @@
   .slider{display:block;margin:9px 0}
   .slider .lab{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:2px}
   .btns{display:flex;gap:6px}
-  .btns button, select{background:#1d2331;color:var(--txt);border:1px solid var(--line);
+  .btns button, select{background:var(--panel2);color:var(--txt);border:1px solid var(--line);
     border-radius:7px;padding:7px 10px;font-size:12.5px;cursor:pointer;flex:1;transition:.12s}
   .btns button:hover{border-color:var(--accent)}
-  .btns button.active{background:var(--accent);color:#0e1118;border-color:var(--accent);font-weight:600}
+  .btns button.active{background:var(--accent);color:var(--on-accent);border-color:var(--accent);font-weight:600}
   select{width:100%}
   .chk{display:flex;align-items:center;gap:8px;font-size:12.5px;margin:8px 0;cursor:pointer;user-select:none}
   .chk input{accent-color:var(--accent);width:15px;height:15px}
   .metric{display:flex;justify-content:space-between;font-size:12.5px;margin:7px 0;font-variant-numeric:tabular-nums}
   .metric b{color:var(--accent);font-weight:600}
-  .bar{height:7px;border-radius:4px;background:#2a3243;overflow:hidden;margin-top:3px}
+  .bar{height:7px;border-radius:4px;background:var(--panel2);overflow:hidden;margin-top:3px}
   .bar > i{display:block;height:100%}
   .legend{font-size:11.5px;color:var(--muted);line-height:1.7;margin-top:4px}
   .dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
@@ -49,11 +80,21 @@
   /* ---- silhouette strip ---- */
   #shelf{position:absolute;right:12px;bottom:12px;display:flex;gap:8px;flex-wrap:wrap;max-width:60%;justify-content:flex-end}
   .cam{background:rgba(23,27,34,.92);border:1px solid var(--line);border-radius:8px;padding:6px;text-align:center}
-  .cam canvas{display:block;image-rendering:pixelated;border-radius:4px;background:#0e1118}
+  .cam canvas{display:block;image-rendering:pixelated;border-radius:4px;background:var(--scene)}
   .cam .t{font-size:10.5px;color:var(--muted);margin-top:4px}
   #busy{position:absolute;left:50%;top:12px;transform:translateX(-50%);font-size:11.5px;
     color:var(--accent);background:rgba(14,17,22,.7);padding:4px 10px;border-radius:6px;opacity:0;transition:.2s}
-  code{background:#1d2331;padding:1px 5px;border-radius:4px;font-size:11px;color:var(--accent)}
+  code{background:var(--panel2);padding:1px 5px;border-radius:4px;font-size:11px;color:var(--accent)}
+/* ---- dark / light switch ---------------------------------------------- */
+.theme-toggle {
+  position: fixed; right: 16px; bottom: 16px; z-index: 99;
+  font: inherit; font-size: 13px; line-height: 1; padding: 8px 14px;
+  border-radius: 999px; cursor: pointer;
+  background: var(--panel); color: var(--txt); border: 1px solid var(--line);
+  box-shadow: 0 2px 12px rgba(0,0,0,.28);
+}
+.theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+@media print { .theme-toggle { display: none; } }
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -121,8 +162,8 @@
       <label class="chk"><input type="checkbox" id="tPlane" checked> Silhouette on camera image planes</label>
       <label class="chk"><input type="checkbox" id="tSpin"> Auto-rotate</label>
       <div class="legend" style="margin-top:6px">
-        <span class="dot" style="background:#3ddc97"></span>Voxel matching the true shape<br>
-        <span class="dot" style="background:#f0883e"></span>Hull over-estimation (error) voxel
+        <span class="dot" style="background:var(--good)"></span>Voxel matching the true shape<br>
+        <span class="dot" style="background:var(--bad)"></span>Hull over-estimation (error) voxel
       </div>
     </div>
 
@@ -228,7 +269,8 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
 viewEl.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0e1116);
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+scene.background = new THREE.Color(cssVar('--scene'));
 
 const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
 camera.position.set(3.6, 2.6, 4.6);
@@ -636,6 +678,26 @@ runRecompute();
 loop();
 
 })();
+</script>
+<script>
+/* The floating switch. Inside the site shell the parent page supplies one,
+   so a framed demo leaves it out. */
+(function () {
+  if (window.top !== window.self) return;
+  var b = document.createElement('button');
+  b.className = 'theme-toggle';
+  b.type = 'button';
+  b.title = 'Switch between the dark and the light theme';
+  var paint = function () { b.textContent = THEME.get() === 'light' ? '\u263e Dark' : '\u2600 Light'; };
+  b.addEventListener('click', function () { THEME.toggle(); });
+  addEventListener('themechange', paint);
+  paint();
+  document.body.appendChild(b);
+})();
+</script>
+<script>
+/* repaint the canvases when the theme changes */
+addEventListener('themechange', function () { scene.background = new THREE.Color(cssVar('--scene')); requestRecompute(); });
 </script>
 </body>
 </html>

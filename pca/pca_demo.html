@@ -2,14 +2,106 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
+<script>
+/* Theme — one shared choice for every page on the site. Runs before the body
+   is parsed so a light visitor never sees a dark flash. */
+(function () {
+  var KEY = 'snu-vision-theme', t = null;
+  try { t = localStorage.getItem(KEY); } catch (e) {}
+  if (t !== 'light') t = 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+  window.THEME = {
+    get: function () { return document.documentElement.getAttribute('data-theme'); },
+    set: function (v) {
+      if (v === this.get()) return;
+      document.documentElement.setAttribute('data-theme', v);
+      try { localStorage.setItem(KEY, v); } catch (e) {}
+      dispatchEvent(new CustomEvent('themechange', { detail: v }));
+    },
+    toggle: function () { this.set(this.get() === 'dark' ? 'light' : 'dark'); }
+  };
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PCA Interactive Demo — Principal Component Analysis</title>
 <style>
+:root {
+  /* dark is the default; the light theme below redefines every token */
+  --bg: #0e1118;
+  --panel: #161b25;
+  --panel2: #1d2331;
+  --line: #2a3243;
+  --line-soft: #232935;
+  --faint: #3b4457;
+  --text: #e4e8f0;
+  --text-2: #b4bccb;
+  --muted: #8b95a8;
+  --muted-2: #6a7385;
+  --ui: #4da3ff;
+  --blue: #5566aa;
+  --blue-2: #6677bb;
+  --indigo: #44446a;
+  --indigo-2: #9999dd;
+  --blue-3: #7788aa;
+  --blue-4: #7788cc;
+  --blue-5: #aabbee;
+  --blue-6: #253060;
+  --blue-7: #4455aa;
+  --blue-8: #2d3870;
+  --blue-9: #1a3388;
+  --blue-10: #4466cc;
+  --blue-11: #77aaff;
+  --amber: #ffcc44;
+  --indigo-3: #33335a;
+  --red: #ff6666;
+  --green: #44ff88;
+  --red-2: #ff4444;
+  --pill: rgba(10,10,40,.85);
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  --bg: #eef1f6;
+  --panel: #ffffff;
+  --panel2: #f4f6fa;
+  --line: #d4dae4;
+  --line-soft: #e3e7ee;
+  --faint: #c3cad6;
+  --text: #161b22;
+  --text-2: #454c58;
+  --muted: #5d6675;
+  --muted-2: #78808f;
+  --ui: #2563eb;
+  --blue: #3a487d;
+  --blue-2: #354483;
+  --indigo: #464672;
+  --indigo-2: #29298e;
+  --blue-3: #445473;
+  --blue-4: #2e408a;
+  --blue-5: #183a9f;
+  --blue-6: #2f4089;
+  --blue-7: #313f87;
+  --blue-8: #313f87;
+  --blue-9: #1736a0;
+  --blue-10: #223f96;
+  --blue-11: #0045b8;
+  --amber: #b88600;
+  --indigo-3: #404078;
+  --red: #b80000;
+  --green: #00b843;
+  --red-2: #b80000;
+  --pill: rgba(255,255,255,.88);
+  color-scheme: light;
+}
+/* a filled button needs a light fill, not a darkened version of the dark one */
+:root[data-theme="light"] .btn-hi { background:#e3e9f7; border-color:#c7d3ea; color:#1f3570; }
+:root[data-theme="light"] .btn-hi:hover { background:#d6e0f4; }
+:root[data-theme="light"] .btn-active { background:var(--ui) !important; border-color:var(--ui) !important; color:#fff !important; }
+
 * { margin:0; padding:0; box-sizing:border-box; }
 body {
   font-family:"IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
-  background: #0e1118;
-  color: #e4e8f0;
+  background: var(--bg);
+  color: var(--text);
   height: 100vh;
   overflow: hidden;
   user-select: none; font-size:15px; line-height:1.55;}
@@ -25,8 +117,8 @@ body {
 }
 header {
   grid-area: hdr;
-  background: #161b25;
-  border-bottom: 1px solid #2a3243;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -34,87 +126,87 @@ header {
   gap: 2px;
 }
 .header-row1 { display: flex; align-items: baseline; gap: 14px; }
-header h1 { font-size:20px; color:#e4e8f0; font-weight:700; letter-spacing:.5px; }
-.header-subtitle { font-size:13px; color:#5566aa; }
-.header-author { font-size:12px; color:#6677bb; }
-.header-author a { color:#4da3ff; text-decoration:none; }
+header h1 { font-size:20px; color:var(--text); font-weight:700; letter-spacing:.5px; }
+.header-subtitle { font-size:13px; color:var(--blue); }
+.header-author { font-size:12px; color:var(--blue-2); }
+.header-author a { color:var(--ui); text-decoration:none; }
 .header-author a:hover { text-decoration:underline; }
 #view3d {
   grid-area: view3d;
   position: relative;
-  background: #0e1118;
+  background: var(--bg);
   overflow: hidden;
 }
 #canvas3d { display:block; width:100%; height:100%; }
 #view3d-info {
   position:absolute; top:9px; left:10px;
-  font-size:12px; color:#44446a; pointer-events:none;
+  font-size:12px; color:var(--indigo); pointer-events:none;
 }
 #step-label {
   position:absolute; bottom:12px; left:50%; transform:translateX(-50%);
-  background: rgba(10,10,40,0.85);
-  border:1px solid #3b4457;
+  background: var(--pill);
+  border:1px solid var(--faint);
   border-radius:20px;
   padding:5px 18px;
-  font-size:13px; color:#9999dd;
+  font-size:13px; color:var(--indigo-2);
   pointer-events:none;
 }
 #proj {
   grid-area: proj;
   display:grid;
   grid-template-columns: 1fr 1fr;
-  border-top: 1px solid #2a3243;
+  border-top: 1px solid var(--line);
 }
 #proj > div { position:relative; }
-#proj > div:first-child { border-right:1px solid #2a3243; }
+#proj > div:first-child { border-right:1px solid var(--line); }
 .proj-label {
   position:absolute; top:7px; left:8px;
-  font-size:12px; color:#7788aa; pointer-events:none; z-index:1;
+  font-size:12px; color:var(--blue-3); pointer-events:none; z-index:1;
 }
 #side {
   grid-area: side;
-  background: #161b25;
-  border-left: 1px solid #2a3243;
+  background: var(--panel);
+  border-left: 1px solid var(--line);
   overflow-y: auto;
   padding: 12px 14px 20px;
 }
 .sec-title {
   font-size:11px; text-transform:uppercase; letter-spacing:1.2px;
-  color:#7788cc; margin-bottom:9px; font-weight:700;
+  color:var(--blue-4); margin-bottom:9px; font-weight:700;
 }
 .row { display:flex; align-items:center; gap:8px; margin-bottom:7px; }
-.lbl { font-size:13px; color:#b4bccb; width:66px; flex-shrink:0; }
-input[type=range] { flex:1; accent-color:#4da3ff; height:14px; cursor:pointer; }
-.val { font-size:13px; color:#aabbee; width:36px; text-align:right; }
-.divider { border:none; border-top:1px solid #2a3243; margin:12px 0; }
+.lbl { font-size:13px; color:var(--text-2); width:66px; flex-shrink:0; }
+input[type=range] { flex:1; accent-color:var(--ui); height:14px; cursor:pointer; }
+.val { font-size:13px; color:var(--blue-5); width:36px; text-align:right; }
+.divider { border:none; border-top:1px solid var(--line); margin:12px 0; }
 .btn {
-  background:#2a3243; border:1px solid #3b4457; color:#8b95a8;
+  background:var(--line); border:1px solid var(--faint); color:var(--muted);
   padding:6px 14px; border-radius:4px; cursor:pointer; font-size:13px;
   transition:background .15s;
 }
-.btn:hover { background:#3b4457; }
-.btn-hi { background:#253060; border-color:#4455aa; color:#b4bccb; }
-.btn-hi:hover { background:#2d3870; }
-.btn-active { background:#1a3388 !important; border-color:#4466cc !important; color:#e4e8f0 !important; }
+.btn:hover { background:var(--faint); }
+.btn-hi { background:var(--blue-6); border-color:var(--blue-7); color:var(--text-2); }
+.btn-hi:hover { background:var(--blue-8); }
+.btn-active { background:var(--blue-9) !important; border-color:var(--blue-10) !important; color:var(--text) !important; }
 
 /* Eigenvalue bars */
 .ev-row { display:flex; align-items:center; gap:7px; margin-bottom:6px; }
 .dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
 .ev-lbl { font-size:13px; width:32px; }
-.bar-bg { flex:1; height:8px; background:#1d2331; border-radius:4px; overflow:hidden; }
+.bar-bg { flex:1; height:8px; background:var(--panel2); border-radius:4px; overflow:hidden; }
 .bar-fill { height:100%; border-radius:4px; transition:width .4s ease; }
-.ev-pct { font-size:13px; color:#b4bccb; width:42px; text-align:right; }
+.ev-pct { font-size:13px; color:var(--text-2); width:42px; text-align:right; }
 
 .info-box {
-  background:#0e1118; border:1px solid #2a3243; border-radius:5px;
-  padding:9px 11px; font-size:12px; color:#b4bccb; line-height:1.65;
+  background:var(--bg); border:1px solid var(--line); border-radius:5px;
+  padding:9px 11px; font-size:12px; color:var(--text-2); line-height:1.65;
 }
-.info-box strong { color:#e4e8f0; }
-.info-box code { color:#77aaff; font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
+.info-box strong { color:var(--text); }
+.info-box code { color:var(--blue-11); font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
 
 /* checkboxes */
-label { font-size:13px; color:#b4bccb; cursor:pointer; display:flex; align-items:center; gap:6px; margin-bottom:5px; }
-input[type=checkbox] { accent-color:#4da3ff; cursor:pointer; }
+label { font-size:13px; color:var(--text-2); cursor:pointer; display:flex; align-items:center; gap:6px; margin-bottom:5px; }
+input[type=checkbox] { accent-color:var(--ui); cursor:pointer; }
 
 .step-btns { display:flex; gap:5px; flex-wrap:wrap; }
 
@@ -123,11 +215,11 @@ input[type=checkbox] { accent-color:#4da3ff; cursor:pointer; }
   gap:2px; margin-top:5px;
 }
 .cov-cell {
-  background:#0e1118; border:1px solid #2a3243; border-radius:3px;
-  text-align:center; font-size:12px; padding:4px 2px; color:#8b95a8;
+  background:var(--bg); border:1px solid var(--line); border-radius:3px;
+  text-align:center; font-size:12px; padding:4px 2px; color:var(--muted);
   font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
-.cov-cell.diag { color:#ffcc44; }
+.cov-cell.diag { color:var(--amber); }
 
 /* ── Mobile ─────────────────────────────────── */
 @media (max-width: 768px) {
@@ -148,12 +240,26 @@ input[type=checkbox] { accent-color:#4da3ff; cursor:pointer; }
   }
   #side {
     border-left:none;
-    border-top:1px solid #2a3243;
+    border-top:1px solid var(--line);
     overflow-y:visible;
   }
   .step-btns button { font-size:12px; padding:5px 10px; }
 }
+/* ---- dark / light switch ---------------------------------------------- */
+.theme-toggle {
+  position: fixed; right: 16px; bottom: 16px; z-index: 99;
+  font: inherit; font-size: 13px; line-height: 1; padding: 8px 14px;
+  border-radius: 999px; cursor: pointer;
+  background: var(--panel); color: var(--text); border: 1px solid var(--line);
+  box-shadow: 0 2px 12px rgba(0,0,0,.28);
+}
+.theme-toggle:hover { border-color: var(--ui); color: var(--ui); }
+@media print { .theme-toggle { display: none; } }
 </style>
+<script>
+/* canvas colours, read back out of the theme */
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -247,15 +353,15 @@ input[type=checkbox] { accent-color:#4da3ff; cursor:pointer; }
   <div class="sec-title">Explained Variance (Eigenvalues)</div>
 
   <div class="ev-row">
-    <div class="dot" style="background:#ff4444;"></div>
-    <span class="ev-lbl" style="color:#ff6666;">PC1</span>
-    <div class="bar-bg"><div class="bar-fill" id="bar1" style="background:#ff4444; width:0%"></div></div>
+    <div class="dot" style="background:var(--red-2);"></div>
+    <span class="ev-lbl" style="color:var(--red);">PC1</span>
+    <div class="bar-bg"><div class="bar-fill" id="bar1" style="background:var(--red-2); width:0%"></div></div>
     <span class="ev-pct" id="pct1">—</span>
   </div>
   <div class="ev-row">
-    <div class="dot" style="background:#44ff88;"></div>
-    <span class="ev-lbl" style="color:#44ff88;">PC2</span>
-    <div class="bar-bg"><div class="bar-fill" id="bar2" style="background:#44ff88; width:0%"></div></div>
+    <div class="dot" style="background:var(--green);"></div>
+    <span class="ev-lbl" style="color:var(--green);">PC2</span>
+    <div class="bar-bg"><div class="bar-fill" id="bar2" style="background:var(--green); width:0%"></div></div>
     <span class="ev-pct" id="pct2">—</span>
   </div>
   <div class="ev-row">
@@ -406,7 +512,7 @@ const canvas3d = document.getElementById('canvas3d');
 const view3dEl = document.getElementById('view3d');
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0a0a20);
+scene.background = new THREE.Color(0x0a0a20);   // re-set by applySceneTheme()
 // fog removed — was hiding far points
 
 const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 200);
@@ -684,7 +790,7 @@ function draw2D() {
   const ctx=cv.getContext('2d');
   const W=cv.width, H=cv.height;
   ctx.clearRect(0,0,W,H);
-  ctx.fillStyle='#0e1118'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle=cssVar('--bg'); ctx.fillRect(0,0,W,H);
   if (!PCA||!COLORS) return;
 
   const s=PCA.scores2D;
@@ -695,12 +801,12 @@ function draw2D() {
   const cx=W/2, cy=H/2;
 
   // Grid lines (center axes)
-  ctx.strokeStyle='#2a3243'; ctx.lineWidth=1;
+  ctx.strokeStyle=cssVar('--line'); ctx.lineWidth=1;
   ctx.beginPath(); ctx.moveTo(cx,4); ctx.lineTo(cx,H-4);
   ctx.moveTo(4,cy); ctx.lineTo(W-4,cy); ctx.stroke();
 
   // Tick marks
-  ctx.strokeStyle='#33335a'; ctx.lineWidth=1;
+  ctx.strokeStyle=cssVar('--indigo-3'); ctx.lineWidth=1;
   for (let t=-6;t<=6;t+=1) {
     const px=cx+t*sc; const py=cy-t*sc;
     ctx.beginPath(); ctx.moveTo(px,cy-5); ctx.lineTo(px,cy+5); ctx.stroke();
@@ -716,13 +822,13 @@ function draw2D() {
   }
 
   // Axis labels
-  ctx.fillStyle='#ff6666'; ctx.font='bold 13px monospace';
+  ctx.fillStyle=cssVar('--red'); ctx.font='bold 13px monospace';
   ctx.fillText('PC1 →', W-52, cy-8);
-  ctx.fillStyle='#44ff88';
+  ctx.fillStyle=cssVar('--green');
   ctx.save(); ctx.translate(cx+8, 16); ctx.fillText('↑ PC2', 0, 0); ctx.restore();
 
   // Variance text — bright enough to read
-  ctx.fillStyle='#8b95a8'; ctx.font='12px sans-serif';
+  ctx.fillStyle=cssVar('--muted'); ctx.font='12px sans-serif';
   ctx.fillText(`PC1: ${(PCA.varRatio[0]*100).toFixed(1)}%  ·  PC2: ${(PCA.varRatio[1]*100).toFixed(1)}%  →  ${((PCA.varRatio[0]+PCA.varRatio[1])*100).toFixed(1)}% variance retained`, 8, H-8);
 }
 
@@ -734,7 +840,7 @@ function draw1D() {
   const ctx=cv.getContext('2d');
   const W=cv.width, H=cv.height;
   ctx.clearRect(0,0,W,H);
-  ctx.fillStyle='#0e1118'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle=cssVar('--bg'); ctx.fillRect(0,0,W,H);
   if (!PCA||!COLORS) return;
 
   const vals=PCA.scores1D.map(s=>s[0]);
@@ -743,18 +849,18 @@ function draw1D() {
   const cx=W/2, cy=H/2;
 
   // Center axis (vertical tick reference)
-  ctx.strokeStyle='#2a3243'; ctx.lineWidth=1;
+  ctx.strokeStyle=cssVar('--line'); ctx.lineWidth=1;
   ctx.beginPath(); ctx.moveTo(cx,4); ctx.lineTo(cx,H-4); ctx.stroke();
 
   // PC1 axis line
-  ctx.strokeStyle='#ff4444'; ctx.lineWidth=2.5;
+  ctx.strokeStyle=cssVar('--red-2'); ctx.lineWidth=2.5;
   ctx.beginPath(); ctx.moveTo(22,cy); ctx.lineTo(W-22,cy); ctx.stroke();
 
   // Arrow head
-  ctx.fillStyle='#ff4444';
+  ctx.fillStyle=cssVar('--red-2');
   ctx.beginPath(); ctx.moveTo(W-16,cy-6); ctx.lineTo(W-4,cy); ctx.lineTo(W-16,cy+6); ctx.fill();
 
-  ctx.fillStyle='#ff6666'; ctx.font='bold 13px monospace';
+  ctx.fillStyle=cssVar('--red'); ctx.font='bold 13px monospace';
   ctx.fillText('PC1', W-46, cy-10);
 
   // Jitter points (stable jitter array)
@@ -774,7 +880,7 @@ function draw1D() {
   // KDE on axis
   drawKDE(ctx,vals,sc,cx,cy,W,H);
 
-  ctx.fillStyle='#8b95a8'; ctx.font='12px sans-serif';
+  ctx.fillStyle=cssVar('--muted'); ctx.font='12px sans-serif';
   ctx.fillText(`PC1: ${(PCA.varRatio[0]*100).toFixed(1)}% variance retained — optimal 1D projection`, 8, H-8);
 }
 
@@ -1018,6 +1124,35 @@ window.addEventListener('resize', ()=>{ resize(); });
 resize();
 regenerate();
 
+/* The three.js scene keeps its own colours, so the theme has to be pushed in. */
+function applySceneTheme() {
+  const light = document.documentElement.getAttribute('data-theme') === 'light';
+  scene.background = new THREE.Color(light ? 0xe9edf5 : 0x0a0a20);
+  grid.material.vertexColors = !light;
+  grid.material.color.set(light ? 0xc6cddb : 0xffffff);
+  grid.material.needsUpdate = true;
+}
+applySceneTheme();
+
+/* repaint when the theme changes */
+addEventListener('themechange', () => { applySceneTheme(); draw2D(); draw1D(); });
+
+</script>
+<script>
+/* The floating switch. Inside the site shell the parent page supplies one,
+   so a framed demo leaves it out. */
+(function () {
+  if (window.top !== window.self) return;
+  var b = document.createElement('button');
+  b.className = 'theme-toggle';
+  b.type = 'button';
+  b.title = 'Switch between the dark and the light theme';
+  var paint = function () { b.textContent = THEME.get() === 'light' ? '\u263e Dark' : '\u2600 Light'; };
+  b.addEventListener('click', function () { THEME.toggle(); });
+  addEventListener('themechange', paint);
+  paint();
+  document.body.appendChild(b);
+})();
 </script>
 </body>
 </html>

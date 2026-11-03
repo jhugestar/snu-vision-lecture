@@ -2,6 +2,26 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<script>
+/* Theme — one shared choice for every page on the site. Runs before the body
+   is parsed so a light visitor never sees a dark flash. */
+(function () {
+  var KEY = 'snu-vision-theme', t = null;
+  try { t = localStorage.getItem(KEY); } catch (e) {}
+  if (t !== 'light') t = 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+  window.THEME = {
+    get: function () { return document.documentElement.getAttribute('data-theme'); },
+    set: function (v) {
+      if (v === this.get()) return;
+      document.documentElement.setAttribute('data-theme', v);
+      try { localStorage.setItem(KEY, v); } catch (e) {}
+      dispatchEvent(new CustomEvent('themechange', { detail: v }));
+    },
+    toggle: function () { this.set(this.get() === 'dark' ? 'light' : 'dark'); }
+  };
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pinhole Camera Model — Interactive Demo</title>
 <style>
@@ -9,6 +29,25 @@
     --bg:#0e1118; --panel:#161b25; --panel2:#1d2331; --accent:#4da3ff;
     --text:#e4e8f0; --muted:#8b95a8; --x:#ff6b6b; --y:#36d399; --z:#4da3ff;
     --cam:#ffd166;
+    --line:#2a3243; --hover:#3b4457;
+    --scene:#0e1118;        /* behind a canvas */
+    --veil:255,255,255;     /* hairlines drawn over the scene */
+    --ink:#ffffff;          /* a point sitting inside the sensor */
+    --ray:220,220,220;
+    --epi:#ff6b6b; --alt:#a78bfa;
+  }
+  /* The light theme redefines the same tokens; everything below reads them. */
+  :root[data-theme="light"]{
+    --bg:#eef1f6; --panel:#ffffff; --panel2:#f4f6fa; --accent:#2563eb;
+    --text:#161b22; --muted:#5d6675; --x:#c43b3b; --y:#0f8f66; --z:#2563eb;
+    --cam:#a2740a;
+    --line:#d4dae4; --hover:#e8edf6;
+    --scene:#f7f9fc;
+    --veil:30,38,52;
+    --ink:#161b22;
+    --ray:80,90,105;
+    --epi:#c43b3b; --alt:#6d3fb0;
+    color-scheme: light;
   }
   *{box-sizing:border-box;}
   body{margin:0;font-family:"IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
@@ -16,24 +55,24 @@
   h1{font-size:20px;margin:0 0 4px;}
   .sub{color:var(--muted);font-size:13px;margin-bottom:16px;}
   .layout{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;}
-  .canvas-wrap{background:var(--panel2);border:1px solid #2a3243;border-radius:10px;padding:10px;}
+  .canvas-wrap{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px;}
   .canvas-wrap .cap{font-size:12px;color:var(--muted);margin-bottom:6px;}
-  canvas{display:block;border-radius:6px;background:#0e1118;cursor:grab;}
+  canvas{display:block;border-radius:6px;background:var(--scene);cursor:grab;}
   canvas:active{cursor:grabbing;}
   .side{width:300px;display:flex;flex-direction:column;gap:14px;}
-  .card{background:var(--panel2);border:1px solid #2a3243;border-radius:10px;padding:14px;}
+  .card{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:14px;}
   .card h3{margin:0 0 10px;font-size:13px;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;
     display:flex;justify-content:space-between;align-items:center;}
   .ctl{margin-bottom:11px;}
   .ctl label{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px;}
   .ctl label b{color:var(--text);font-variant-numeric:tabular-nums;}
   input[type=range]{width:100%;accent-color:var(--accent);}
-  button{padding:8px 10px;border:1px solid #2a3243;border-radius:7px;cursor:pointer;
+  button{padding:8px 10px;border:1px solid var(--line);border-radius:7px;cursor:pointer;
     font-weight:600;font-size:12px;background:var(--panel);color:var(--text);}
-  button:hover{background:#3b4457;}
+  button:hover{background:var(--hover);}
   .chk{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;cursor:pointer;}
   .kmat{font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;font-size:12px;line-height:1.5;
-    background:#0e1118;border-radius:6px;padding:8px;display:inline-block;}
+    background:var(--scene);border-radius:6px;padding:8px;display:inline-block;}
   .kmat .v{color:var(--accent);}
   .stats{font-size:12px;line-height:1.8;}
   .stats .row{display:flex;justify-content:space-between;}
@@ -44,16 +83,32 @@
   .tabs{display:flex;gap:8px;margin-bottom:14px;}
   .tab{padding:9px 20px;border-radius:8px 8px 0 0;cursor:pointer;background:var(--panel);
     color:var(--muted);font-weight:600;border:1px solid transparent;border-bottom:none;user-select:none;}
-  .tab.active{background:var(--panel2);color:var(--accent);border-color:#2a3243;}
+  .tab.active{background:var(--panel2);color:var(--accent);border-color:var(--line);}
   .view{display:none;} .view.active{display:block;}
+/* ---- dark / light switch ---------------------------------------------- */
+.theme-toggle {
+  position: fixed; right: 16px; bottom: 16px; z-index: 99;
+  font: inherit; font-size: 13px; line-height: 1; padding: 8px 14px;
+  border-radius: 999px; cursor: pointer;
+  background: var(--panel); color: var(--text); border: 1px solid var(--line);
+  box-shadow: 0 2px 12px rgba(0,0,0,.28);
+}
+.theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+@media print { .theme-toggle { display: none; } }
 </style>
+<script>
+/* colours the canvases read back out of the theme */
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const veil = a => `rgba(${cssVar('--veil')},${a})`;
+const tint = (n, a) => { const v = parseInt(cssVar(n).slice(1), 16); return `rgba(${v >> 16 & 255},${v >> 8 & 255},${v & 255},${a})`; };
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
   <h1>Pinhole Camera Model — 3D → 2D Projection</h1>
-  <div class="sub" style="color:#8b95a8;margin-bottom:6px">Hanbyul Joo &nbsp;|&nbsp; Visual Computing Lab, Seoul National University &nbsp;|&nbsp; <a href="https://jhugestar.github.io/snu-vision-lecture/" target="_blank" style="color:var(--accent);text-decoration:none;">More Demos ↗</a></div>
+  <div class="sub" style="color:var(--muted);margin-bottom:6px">Hanbyul Joo &nbsp;|&nbsp; Visual Computing Lab, Seoul National University &nbsp;|&nbsp; <a href="https://jhugestar.github.io/snu-vision-lecture/" target="_blank" style="color:var(--accent);text-decoration:none;">More Demos ↗</a></div>
   <div class="sub">Projection &nbsp; <span class="kmat" style="padding:2px 6px">x = K [R | t] X</span> &nbsp; — change the parameters and watch how the image on the right changes. Drag the world view on the left to rotate.</div>
 
   <div class="tabs">
@@ -123,23 +178,23 @@
       </div>
       <div style="display:flex;flex-direction:column;gap:14px">
         <div class="canvas-wrap">
-          <div class="cap" style="color:#ffd166">Camera 1 — hover to draw the epipolar line in camera 2</div>
+          <div class="cap" style="color:var(--cam)">Camera 1 — hover to draw the epipolar line in camera 2</div>
           <canvas id="img1" width="320" height="320"></canvas>
         </div>
         <div class="canvas-wrap">
-          <div class="cap" style="color:#a78bfa">Camera 2 — hover to draw the epipolar line in camera 1</div>
+          <div class="cap" style="color:var(--alt)">Camera 2 — hover to draw the epipolar line in camera 1</div>
           <canvas id="img2" width="320" height="320"></canvas>
         </div>
       </div>
       <div class="side">
         <div class="card">
-          <h3 style="color:#ffd166">Camera 1</h3>
+          <h3 style="color:var(--cam)">Camera 1</h3>
           <div class="ctl"><label>Azimuth <b id="az1V">10°</b></label><input type="range" id="az1" min="-180" max="180" value="10"></div>
           <div class="ctl"><label>Elevation <b id="el1V">14°</b></label><input type="range" id="el1" min="-85" max="85" value="14"></div>
           <div class="ctl"><label>Distance <b id="d1V">6.0</b></label><input type="range" id="d1" min="30" max="120" value="60"></div>
         </div>
         <div class="card">
-          <h3 style="color:#a78bfa">Camera 2</h3>
+          <h3 style="color:var(--alt)">Camera 2</h3>
           <div class="ctl"><label>Azimuth <b id="az2V">55°</b></label><input type="range" id="az2" min="-180" max="180" value="55"></div>
           <div class="ctl"><label>Elevation <b id="el2V">22°</b></label><input type="range" id="el2" min="-85" max="85" value="22"></div>
           <div class="ctl"><label>Distance <b id="d2V">6.0</b></label><input type="range" id="d2" min="30" max="120" value="60"></div>
@@ -155,10 +210,10 @@
         </div>
         <div class="card legend">
           <h3>Legend / notes</h3>
-          <span class="dot" style="background:#ffd166"></span>Camera 1 &nbsp;
-          <span class="dot" style="background:#a78bfa"></span>Camera 2<br>
-          <span class="dot" style="background:#36d399"></span>Selected point · epipolar line · epipolar plane<br>
-          <span class="dot" style="background:#ff6b6b"></span>Epipole (image of the other camera's center)<br>
+          <span class="dot" style="background:var(--cam)"></span>Camera 1 &nbsp;
+          <span class="dot" style="background:var(--alt)"></span>Camera 2<br>
+          <span class="dot" style="background:var(--y)"></span>Selected point · epipolar line · epipolar plane<br>
+          <span class="dot" style="background:var(--x)"></span>Epipole (image of the other camera's center)<br>
           <div class="tip">Move the mouse over one image and the corresponding epipolar line appears in the other image. Hover over an actual 3D point and notice that its image in the other view always lies on the line (x₂ᵀ F x₁ = 0).</div>
         </div>
       </div>
@@ -265,7 +320,7 @@ function userCam(){
 function drawScene(ctx, cam, full){
   const P=X=>project(cam,X);
   // floor grid
-  ctx.lineWidth=1; ctx.strokeStyle='rgba(255,255,255,0.10)';
+  ctx.lineWidth=1; ctx.strokeStyle=veil(0.10);
   grid.forEach(seg=>{
     const a=P(seg[0]),b=P(seg[1]);
     if(a.behind||b.behind) return;
@@ -291,13 +346,13 @@ function drawScene(ctx, cam, full){
       ctx.closePath();
       ctx.fillStyle=`rgba(${f.col[0]},${f.col[1]},${f.col[2]},0.55)`;
       ctx.fill();
-      ctx.strokeStyle='rgba(255,255,255,0.65)';ctx.lineWidth=1.2;ctx.stroke();
+      ctx.strokeStyle=veil(0.65);ctx.lineWidth=1.2;ctx.stroke();
     });
   }else{
     // if some vertices are behind, draw only the visible edges
     cubeE.forEach(([a,b])=>{
       const pa=Pv[a],pb=Pv[b];if(pa.behind||pb.behind)return;
-      ctx.strokeStyle='rgba(220,220,220,0.6)';ctx.lineWidth=1.2;
+      ctx.strokeStyle=`rgba(${cssVar('--ray')},0.6)`;ctx.lineWidth=1.2;
       ctx.beginPath();ctx.moveTo(pa.u,pa.v);ctx.lineTo(pb.u,pb.v);ctx.stroke();
     });
   }
@@ -308,7 +363,7 @@ function drawScene(ctx, cam, full){
     const inside = full ? true : (p.u>=0&&p.u<=SENSOR&&p.v>=0&&p.v<=SENSOR);
     if(p.u>=0&&p.u<=SENSOR&&p.v>=0&&p.v<=SENSOR) visN++;
     ctx.beginPath();ctx.arc(p.u,p.v,3.5,0,7);
-    ctx.fillStyle= inside ? '#ffffff' : 'rgba(255,255,255,0.25)';
+    ctx.fillStyle= inside ? cssVar('--ink') : veil(0.25);
     ctx.fill();
   });
   return visN;
@@ -342,13 +397,13 @@ function drawWorld(){
       wx.beginPath();
       farP.forEach((p,k)=>k?wx.lineTo(p.u,p.v):wx.moveTo(p.u,p.v));
       wx.closePath();
-      wx.fillStyle='rgba(255,209,102,0.12)';wx.fill();
+      wx.fillStyle=tint('--cam',0.12);wx.fill();
       wx.strokeStyle=css('--cam');wx.lineWidth=1.8;wx.stroke();
     }
     // optical axis (central ray)
     const axC=add(u.eye, matTVec(u.R,[0,0,depth*1.15]));
     const axP=gp(axC);
-    if(!axP.behind){wx.setLineDash([4,4]);wx.strokeStyle='rgba(255,209,102,0.5)';
+    if(!axP.behind){wx.setLineDash([4,4]);wx.strokeStyle=tint('--cam',0.5);
       wx.beginPath();wx.moveTo(eyeP.u,eyeP.v);wx.lineTo(axP.u,axP.v);wx.stroke();wx.setLineDash([]);}
     // camera body
     wx.beginPath();wx.arc(eyeP.u,eyeP.v,6,0,7);wx.fillStyle=css('--cam');wx.fill();
@@ -360,7 +415,7 @@ function drawWorld(){
 function drawImage(){
   ix.clearRect(0,0,440,440);
   // sensor border
-  ix.strokeStyle='#2a3243';ix.lineWidth=1.5;ix.strokeRect(0.5,0.5,SENSOR-1,SENSOR-1);
+  ix.strokeStyle=cssVar('--line');ix.lineWidth=1.5;ix.strokeRect(0.5,0.5,SENSOR-1,SENSOR-1);
   const cam=userCam();
   const visN=drawScene(ix,cam,false);
   // principal point marker
@@ -487,7 +542,7 @@ function drawCamGizmo(ctx,gp,cam,color,label,S,depth){
   const i2=document.getElementById('img2'),ix2=i2.getContext('2d');
   let gAz=42,gEl=24,gDist=14, hover=null;
   const PT3=[...cubeV,...pts];
-  const COL1='#ffd166', COL2='#a78bfa', SEL='#36d399', EPI='#ff6b6b';
+  const COL1=cssVar('--cam'), COL2=cssVar('--alt'), SEL=cssVar('--y'), EPI=cssVar('--epi');
   const e=id=>document.getElementById(id);
 
   const intr=()=>{const f=+e('f2').value;return {fx:f,fy:f,cx:half,cy:half,s:0};};
@@ -501,7 +556,7 @@ function drawCamGizmo(ctx,gp,cam,color,label,S,depth){
 
   function drawImg(ctx,cam){
     ctx.clearRect(0,0,S,S);
-    ctx.strokeStyle='#2a3243';ctx.lineWidth=1.5;ctx.strokeRect(0.5,0.5,S-1,S-1);
+    ctx.strokeStyle=cssVar('--line');ctx.lineWidth=1.5;ctx.strokeRect(0.5,0.5,S-1,S-1);
     drawScene(ctx,cam,false);
     ctx.strokeStyle=css('--accent');ctx.lineWidth=1;
     ctx.beginPath();ctx.moveTo(cam.cx-7,cam.cy);ctx.lineTo(cam.cx+7,cam.cy);
@@ -521,8 +576,8 @@ function drawCamGizmo(ctx,gp,cam,color,label,S,depth){
     const e1=epipoleIn(c1,c2), e2=epipoleIn(c2,c1);
     if(e('allepi').checked){
       PT3.forEach(X=>{
-        const pa=project(c1,X); if(!pa.behind) drawLineL(ix2,matVec(F12,[pa.u,pa.v,1]),S,'rgba(167,139,250,0.22)',1);
-        const pb=project(c2,X); if(!pb.behind) drawLineL(ix1,matVec(F21,[pb.u,pb.v,1]),S,'rgba(255,209,102,0.22)',1);
+        const pa=project(c1,X); if(!pa.behind) drawLineL(ix2,matVec(F12,[pa.u,pa.v,1]),S,tint('--alt',0.22),1);
+        const pb=project(c2,X); if(!pb.behind) drawLineL(ix1,matVec(F21,[pb.u,pb.v,1]),S,tint('--cam',0.22),1);
       });
     }
     let matchedX=null;
@@ -545,15 +600,15 @@ function drawCamGizmo(ctx,gp,cam,color,label,S,depth){
     const g=god(), gp=X=>project(g,X);
     drawScene(wx2,g,true);
     const a=gp(c1.eye),b=gp(c2.eye);
-    if(!a.behind&&!b.behind){wx2.setLineDash([5,4]);wx2.strokeStyle='rgba(255,255,255,0.6)';wx2.lineWidth=1.5;
+    if(!a.behind&&!b.behind){wx2.setLineDash([5,4]);wx2.strokeStyle=veil(0.6);wx2.lineWidth=1.5;
       wx2.beginPath();wx2.moveTo(a.u,a.v);wx2.lineTo(b.u,b.v);wx2.stroke();wx2.setLineDash([]);
-      wx2.fillStyle='rgba(255,255,255,0.5)';wx2.font='10px sans-serif';
+      wx2.fillStyle=veil(0.5);wx2.font='10px sans-serif';
       wx2.fillText('baseline',(a.u+b.u)/2+4,(a.v+b.v)/2);}
     if(matchedX){const pa=gp(c1.eye),pb=gp(c2.eye),pc=gp(matchedX);
       if(!pa.behind&&!pb.behind&&!pc.behind){
         wx2.save();wx2.globalAlpha=0.18;wx2.fillStyle=SEL;
         wx2.beginPath();wx2.moveTo(pa.u,pa.v);wx2.lineTo(pb.u,pb.v);wx2.lineTo(pc.u,pc.v);wx2.closePath();wx2.fill();wx2.restore();
-        wx2.strokeStyle='rgba(54,211,153,0.75)';wx2.lineWidth=1.3;
+        wx2.strokeStyle=tint('--y',0.75);wx2.lineWidth=1.3;
         wx2.beginPath();wx2.moveTo(pa.u,pa.v);wx2.lineTo(pc.u,pc.v);wx2.moveTo(pb.u,pb.v);wx2.lineTo(pc.u,pc.v);wx2.stroke();
         wx2.fillStyle=SEL;wx2.beginPath();wx2.arc(pc.u,pc.v,4,0,7);wx2.fill();}}
     drawCamGizmo(wx2,gp,c1,COL1,'cam 1',S,2.2);
@@ -595,6 +650,26 @@ document.querySelectorAll('.tab').forEach(t=>{
   };
 });
 window.__render2 && window.__render2();
+</script>
+<script>
+/* The floating switch. Inside the site shell the parent page supplies one,
+   so a framed demo leaves it out. */
+(function () {
+  if (window.top !== window.self) return;
+  var b = document.createElement('button');
+  b.className = 'theme-toggle';
+  b.type = 'button';
+  b.title = 'Switch between the dark and the light theme';
+  var paint = function () { b.textContent = THEME.get() === 'light' ? '\u263e Dark' : '\u2600 Light'; };
+  b.addEventListener('click', function () { THEME.toggle(); });
+  addEventListener('themechange', paint);
+  paint();
+  document.body.appendChild(b);
+})();
+</script>
+<script>
+/* repaint the canvases when the theme changes */
+addEventListener('themechange', function () { render(); });
 </script>
 </body>
 </html>

@@ -2,6 +2,26 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<script>
+/* Theme — one shared choice for every page on the site. Runs before the body
+   is parsed so a light visitor never sees a dark flash. */
+(function () {
+  var KEY = 'snu-vision-theme', t = null;
+  try { t = localStorage.getItem(KEY); } catch (e) {}
+  if (t !== 'light') t = 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+  window.THEME = {
+    get: function () { return document.documentElement.getAttribute('data-theme'); },
+    set: function (v) {
+      if (v === this.get()) return;
+      document.documentElement.setAttribute('data-theme', v);
+      try { localStorage.setItem(KEY, v); } catch (e) {}
+      dispatchEvent(new CustomEvent('themechange', { detail: v }));
+    },
+    toggle: function () { this.set(this.get() === 'dark' ? 'light' : 'dark'); }
+  };
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Backpropagation — Step by Step</title>
 <style>
@@ -19,9 +39,41 @@
   --pos: #3ddc97;
   --neg: #e86a2c;
   --ui: #4da3ff;
+  --node: #141926;        /* a gate the pass has not reached yet */
+  --node-live: #1b2334;   /* a gate that has been evaluated */
+  --card: rgba(13,16,23,.96);   /* the chain-rule card floating over the graph */
+  --card-soft: rgba(14,17,24,.82);
+  --card-shadow: rgba(0,0,0,.6);
+  --ui-text: #0e1118;     /* text on a filled --ui button */
+  --ui-hover: #7fbcff;
+  --hover: #253044; --hover-line: #3a4660;
   --font: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   color-scheme: dark;
+}
+/* The light theme redefines the same tokens; everything below reads them. */
+:root[data-theme="light"] {
+  --bg: #eef1f6;
+  --panel: #ffffff;
+  --panel2: #f4f6fa;
+  --border: #d4dae4;
+  --fg: #161b22;
+  --muted: #5d6675;
+  --faint: #c3cad6;
+  --fwd: #2563eb;
+  --bwd: #a2740a;
+  --pos: #0f8f66;
+  --neg: #c2521a;
+  --ui: #2563eb;
+  --node: #f1f4f9;
+  --node-live: #e5ebf6;
+  --card: rgba(255,255,255,.97);
+  --card-soft: rgba(248,250,253,.9);
+  --card-shadow: rgba(18,22,30,.22);
+  --ui-text: #ffffff;
+  --ui-hover: #1d4fd0;
+  --hover: #e8edf6; --hover-line: #b9c2d2;
+  color-scheme: light;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -77,11 +129,11 @@ table.g tr.wait td { color: var(--faint); }
 select, button { font: inherit; color: var(--fg); background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; }
 select { flex: 1; min-width: 0; }
 button { cursor: pointer; transition: background .12s, border-color .12s; }
-button:hover { background: #253044; border-color: #3a4660; }
+button:hover { background: var(--hover); border-color: var(--hover-line); }
 button:disabled { opacity: .4; cursor: default; }
 button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--ui); outline-offset: 1px; }
-button.primary { background: var(--ui); color: #0e1118; border-color: var(--ui); font-weight: 600; }
-button.primary:hover { background: #7fbcff; }
+button.primary { background: var(--ui); color: var(--ui-text); border-color: var(--ui); font-weight: 600; }
+button.primary:hover { background: var(--ui-hover); }
 button.wide { flex: 1; }
 .expr { font-family: var(--mono); font-size: 16px; color: var(--fg); background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 9px 11px; overflow-wrap: anywhere; }
 .slider { display: grid; grid-template-columns: 34px 1fr 58px; gap: 8px; align-items: center; }
@@ -92,6 +144,16 @@ button.wide { flex: 1; }
 .chk { display: flex; gap: 8px; align-items: center; font-size: 14px; cursor: pointer; color: var(--muted); }
 .chk input { accent-color: var(--ui); margin: 0; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+/* ---- dark / light switch ---------------------------------------------- */
+.theme-toggle {
+  position: fixed; right: 16px; bottom: 16px; z-index: 99;
+  font: inherit; font-size: 13px; line-height: 1; padding: 8px 14px;
+  border-radius: 999px; cursor: pointer;
+  background: var(--panel); color: var(--fg); border: 1px solid var(--border);
+  box-shadow: 0 2px 12px rgba(0,0,0,.28);
+}
+.theme-toggle:hover { border-color: var(--ui); color: var(--ui); }
+@media print { .theme-toggle { display: none; } }
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -571,7 +633,7 @@ function draw() {
     c.save();
     if (active) { c.shadowColor = S.lastStep.phase === 'b' ? css('--bwd') : css('--fwd'); c.shadowBlur = 22; }
     roundRect(c, x - NW / 2, y - NH / 2, NW, NH, 9);
-    c.fillStyle = isLeaf ? css('--panel2') : revealed ? '#1b2334' : '#141926';
+    c.fillStyle = isLeaf ? css('--panel2') : revealed ? css('--node-live') : css('--node');
     c.fill();
     c.lineWidth = active ? 2 : 1.2;
     c.strokeStyle = active ? (S.lastStep.phase === 'b' ? css('--bwd') : css('--fwd'))
@@ -702,9 +764,9 @@ function formulaCard(c, w, h, n, x, y, phase) {
   let [cx, cy] = best;
   cy = Math.min(Math.max(8, cy), h - ch - 8);
   c.save();
-  c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 18;
+  c.shadowColor = css('--card-shadow'); c.shadowBlur = 18;
   roundRect(c, cx, cy, cw, ch, 9);
-  c.fillStyle = 'rgba(13,16,23,.96)'; c.fill();
+  c.fillStyle = css('--card'); c.fill();
   c.restore();
   c.strokeStyle = phase === 'b' ? css('--bwd') : css('--fwd'); c.lineWidth = 1.4; c.stroke();
   lines.forEach((l, i) => drawSegs(c, cx + pad, cy + pad + 6 + i * lh, l, F));
@@ -715,7 +777,7 @@ function chip(c, x, y, text, color, size) {
   c.font = size + 'px ' + css('--mono');
   const w = c.measureText(text).width + 12, h = size + 9;
   roundRect(c, x, y - h / 2, w, h, 5);
-  c.fillStyle = 'rgba(14,17,24,.82)'; c.fill();
+  c.fillStyle = css('--card-soft'); c.fill();
   c.strokeStyle = color; c.globalAlpha = .35; c.lineWidth = 1; c.stroke(); c.globalAlpha = 1;
   c.fillStyle = color; c.textAlign = 'left'; c.fillText(text, x + 6, y + size * .36);
 }
@@ -1031,11 +1093,30 @@ buildControls();
 refresh(true);
 tick();
 
+/* repaint the graph when the theme changes */
+addEventListener('themechange', () => draw());
+
 /* Land on the page and the pass is already running — most visitors will not press
    Step on their own. Any click or key stops it, and reduced-motion opts out. */
 if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
   setTimeout(() => { if (S.cursor === 0 && !S.playing && !TR.on) play(); }, 900);
 }
+</script>
+<script>
+/* The floating switch. Inside the site shell the parent page supplies one,
+   so a framed demo leaves it out. */
+(function () {
+  if (window.top !== window.self) return;
+  var b = document.createElement('button');
+  b.className = 'theme-toggle';
+  b.type = 'button';
+  b.title = 'Switch between the dark and the light theme';
+  var paint = function () { b.textContent = THEME.get() === 'light' ? '\u263e Dark' : '\u2600 Light'; };
+  b.addEventListener('click', function () { THEME.toggle(); });
+  addEventListener('themechange', paint);
+  paint();
+  document.body.appendChild(b);
+})();
 </script>
 </body>
 </html>

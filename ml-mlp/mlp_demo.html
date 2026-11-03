@@ -2,6 +2,26 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<script>
+/* Theme — one shared choice for every page on the site. Runs before the body
+   is parsed so a light visitor never sees a dark flash. */
+(function () {
+  var KEY = 'snu-vision-theme', t = null;
+  try { t = localStorage.getItem(KEY); } catch (e) {}
+  if (t !== 'light') t = 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+  window.THEME = {
+    get: function () { return document.documentElement.getAttribute('data-theme'); },
+    set: function (v) {
+      if (v === this.get()) return;
+      document.documentElement.setAttribute('data-theme', v);
+      try { localStorage.setItem(KEY, v); } catch (e) {}
+      dispatchEvent(new CustomEvent('themechange', { detail: v }));
+    },
+    toggle: function () { this.set(this.get() === 'dark' ? 'light' : 'dark'); }
+  };
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Multi-Layer Perceptron Playground</title>
 <style>
@@ -21,9 +41,39 @@
   --loss: #2fbf8a;
   --danger: #e66767;
   --other: #c792ea;
+  --u1: #f0a8c0; --u2: #7fd1ff; --u3: #ffd27f;   /* per-unit decision lines */
+  --u4: #9ae6b4; --u5: #f4a3a3; --u6: #b8a1ff;
+  --ui-text: #0e1118;   /* text on a filled --ui button */
+  --ui-hover: #7fbcff;
+  --hover: #253044; --hover-line: #3a4660;
   --font: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   color-scheme: dark;
+  --seg-on: #2b3550;
+}
+/* The light theme redefines the same tokens; everything below reads them. */
+:root[data-theme="light"] {
+  --bg: #eef1f6;
+  --panel: #ffffff;
+  --panel2: #f4f6fa;
+  --border: #d4dae4;
+  --fg: #161b22;
+  --muted: #5d6675;
+  --faint: #c3cad6;
+  --c0: #1f6fc4;
+  --c1: #c2521a;
+  --accent: #a2740a;
+  --ui: #2563eb;
+  --loss: #0f8f66;
+  --danger: #c43b3b;
+  --other: #8b4fc0;
+  --u1: #c2456f; --u2: #1f6fc4; --u3: #a2740a;
+  --u4: #0f8f66; --u5: #c43b3b; --u6: #6d3fb0;
+  --ui-text: #ffffff;
+  --ui-hover: #1d4fd0;
+  --hover: #e8edf6; --hover-line: #b9c2d2;
+  color-scheme: light;
+  --seg-on: #dbe3f4;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -79,15 +129,15 @@ select, button, input[type=number] {
 }
 select { flex: 1; min-width: 0; }
 button { cursor: pointer; transition: background .12s, border-color .12s; }
-button:hover { background: #253044; border-color: #3a4660; }
+button:hover { background: var(--hover); border-color: var(--hover-line); }
 button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--ui); outline-offset: 1px; }
-button.primary { background: var(--ui); color: #0e1118; border-color: var(--ui); font-weight: 600; }
-button.primary:hover { background: #7fbcff; }
+button.primary { background: var(--ui); color: var(--ui-text); border-color: var(--ui); font-weight: 600; }
+button.primary:hover { background: var(--ui-hover); }
 button.wide { flex: 1; }
 .seg { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
 .seg label { flex: 1; text-align: center; padding: 6px 8px; cursor: pointer; background: var(--panel2); color: var(--muted); user-select: none; font-size: 13px; }
 .seg input { position: absolute; opacity: 0; width: 0; height: 0; }
-.seg input:checked + label { background: #2b3550; color: var(--fg); font-weight: 600; }
+.seg input:checked + label { background: var(--seg-on); color: var(--fg); font-weight: 600; }
 .seg input:focus-visible + label { outline: 2px solid var(--ui); outline-offset: -2px; }
 .seg label.cls0 b { color: var(--c0); } .seg label.cls1 b { color: var(--c1); }
 .slider { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; }
@@ -128,6 +178,16 @@ button.wide { flex: 1; }
 .eqline { font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
 .eqline b { color: var(--fg); font-weight: 500; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+/* ---- dark / light switch ---------------------------------------------- */
+.theme-toggle {
+  position: fixed; right: 16px; bottom: 16px; z-index: 99;
+  font: inherit; font-size: 13px; line-height: 1; padding: 8px 14px;
+  border-radius: 999px; cursor: pointer;
+  background: var(--panel); color: var(--fg); border: 1px solid var(--border);
+  box-shadow: 0 2px 12px rgba(0,0,0,.28);
+}
+.theme-toggle:hover { border-color: var(--ui); color: var(--ui); }
+@media print { .theme-toggle { display: none; } }
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -508,7 +568,8 @@ function heat(c, w, h, G, valueAt, toColor) {
   c.imageSmoothingEnabled = true;
   c.drawImage(off, 0, 0, w, h);
 }
-const C0RGB = [59, 141, 232], C1RGB = [232, 106, 44];
+const rgbOf = n => { const v = parseInt(css(n).slice(1), 16); return [v >> 16 & 255, v >> 8 & 255, v & 255]; };
+let C0RGB = rgbOf('--c0'), C1RGB = rgbOf('--c1');
 function probColor(p) {                       // 0 -> blue, 1 -> orange, 0.5 -> transparent
   const t = (p - .5) * 2;
   const rgb = t >= 0 ? C1RGB : C0RGB;
@@ -541,7 +602,7 @@ function drawMain() {
 
   // first-layer unit lines: where that unit's pre-activation crosses zero
   if ($('#showUnits').checked && S.depth > 0) {
-    const pal = [css('--loss'), css('--other'), '#f0a8c0', '#7fd1ff', '#ffd27f', '#9ae6b4', '#f4a3a3', '#b8a1ff'];
+    const pal = [css('--loss'), css('--other'), css('--u1'), css('--u2'), css('--u3'), css('--u4'), css('--u5'), css('--u6')];
     c.setLineDash([5, 4]); c.lineWidth = 1.4;
     for (let j = 0; j < net.W[0].length; j++) {
       const [a1, a2] = net.W[0][j], b0 = net.b[0][j];
@@ -828,7 +889,7 @@ function drawLoss() {
   const X = i => pad + i / (n - 1) * (w - pad - 8);
   const YL = v => h - 18 - v / lmax * (h - 28);
   const YA = v => h - 18 - v * (h - 28);
-  c.strokeStyle = mix('#2fbf8a', .35); c.lineWidth = 1.5; c.setLineDash([4, 4]);
+  c.strokeStyle = mix(css('--loss'), .35); c.lineWidth = 1.5; c.setLineDash([4, 4]);
   c.beginPath(); c.moveTo(pad, YA(1)); c.lineTo(w - 8, YA(1)); c.stroke(); c.setLineDash([]);
   c.strokeStyle = css('--other'); c.lineWidth = 1.6; c.beginPath();
   S.hist.forEach((d, i) => i ? c.lineTo(X(i), YA(d.acc)) : c.moveTo(X(i), YA(d.acc))); c.stroke();
@@ -861,7 +922,7 @@ function drawNet() {
       for (let i = 0; i < net.W[l][j].length; i++) {
         const v = net.W[l][j][i], t = Math.abs(v) / wmax;
         const [x1, y1] = posOf(l, i), [x2, y2] = posOf(l + 1, j);
-        c.strokeStyle = mix(v >= 0 ? '#e86a2c' : '#3b8de8', .15 + .75 * t);
+        c.strokeStyle = mix(v >= 0 ? css('--c1') : css('--c0'), .15 + .75 * t);
         c.lineWidth = .4 + 3.2 * t;
         c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke();
       }
@@ -1053,6 +1114,9 @@ syncFromDOM();
 rebuild(false);
 loop();
 
+/* repaint the canvases when the theme changes */
+addEventListener('themechange', () => { C0RGB = rgbOf('--c0'); C1RGB = rgbOf('--c1'); drawAll(); });
+
 /* ---- plays by itself on arrival ----------------------------------------
    Most visitors never press a button, so the demo runs once on its own.
    The first click, tap or key press hands control back. */
@@ -1064,6 +1128,22 @@ loop();
   addEventListener('keydown', give, { once: true });
   setTimeout(() => { if (!taken) { setRunning(true); } }, 900);
   setTimeout(() => { if (!taken) { if (S.running) setRunning(false); } }, 15900);
+})();
+</script>
+<script>
+/* The floating switch. Inside the site shell the parent page supplies one,
+   so a framed demo leaves it out. */
+(function () {
+  if (window.top !== window.self) return;
+  var b = document.createElement('button');
+  b.className = 'theme-toggle';
+  b.type = 'button';
+  b.title = 'Switch between the dark and the light theme';
+  var paint = function () { b.textContent = THEME.get() === 'light' ? '\u263e Dark' : '\u2600 Light'; };
+  b.addEventListener('click', function () { THEME.toggle(); });
+  addEventListener('themechange', paint);
+  paint();
+  document.body.appendChild(b);
 })();
 </script>
 </body>

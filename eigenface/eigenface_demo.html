@@ -2,16 +2,103 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<script>
+/* Theme — one shared choice for every page on the site. Runs before the body
+   is parsed so a light visitor never sees a dark flash. */
+(function () {
+  var KEY = 'snu-vision-theme', t = null;
+  try { t = localStorage.getItem(KEY); } catch (e) {}
+  if (t !== 'light') t = 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+  window.THEME = {
+    get: function () { return document.documentElement.getAttribute('data-theme'); },
+    set: function (v) {
+      if (v === this.get()) return;
+      document.documentElement.setAttribute('data-theme', v);
+      try { localStorage.setItem(KEY, v); } catch (e) {}
+      dispatchEvent(new CustomEvent('themechange', { detail: v }));
+    },
+    toggle: function () { this.set(this.get() === 'dark' ? 'light' : 'dark'); }
+  };
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Eigenface Demo</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <style>
+:root {
+  /* dark is the default; the light theme below redefines every token */
+  --bg: #0e1118;
+  --panel: #161b25;
+  --panel2: #1d2331;
+  --line: #2a3243;
+  --line-soft: #232935;
+  --faint: #3b4457;
+  --text: #e4e8f0;
+  --text-2: #b4bccb;
+  --muted: #8b95a8;
+  --muted-2: #6a7385;
+  --ui: #4da3ff;
+  --red: #cc9999;
+  --blue: #6688ff;
+  --blue-2: #6677bb;
+  --amber: #ffcc44;
+  --blue-3: #4466aa;
+  --blue-4: #6688cc;
+  --orange: #ffaa33;
+  --blue-5: #3366ff;
+  --red-2: #ff4444;
+  --blue-6: #ccddf0;
+  --blue-7: #aabbff;
+  --blue-8: #1a3388;
+  --blue-9: #4466cc;
+  --blue-10: #ccdeff;
+  --blue-11: #2244aa;
+  --grey: #282828;
+  --teal: #00ffaa;
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  --bg: #eef1f6;
+  --panel: #ffffff;
+  --panel2: #f4f6fa;
+  --line: #d4dae4;
+  --line-soft: #e3e7ee;
+  --faint: #c3cad6;
+  --text: #161b22;
+  --text-2: #454c58;
+  --muted: #5d6675;
+  --muted-2: #78808f;
+  --ui: #2563eb;
+  --red: #7d3a3a;
+  --blue: #0029b8;
+  --blue-2: #354483;
+  --amber: #b88600;
+  --blue-3: #314d87;
+  --blue-4: #294b8e;
+  --orange: #b86b00;
+  --blue-5: #002eb8;
+  --red-2: #b80000;
+  --blue-6: #255993;
+  --blue-7: #0025b8;
+  --blue-8: #1736a0;
+  --blue-9: #223f96;
+  --blue-10: #0041b8;
+  --blue-11: #183a9f;
+  --grey: #e6e6e6;
+  --teal: #00b87a;
+  color-scheme: light;
+}
+/* the detect button: pale fill, dark ink */
+:root[data-theme="light"] #detect-ok { background:#e3e9fb; color:#1a3ca8; }
+:root[data-theme="light"] #detect-ok:hover { background:#d4ddf7; }
+
 * { margin:0; padding:0; box-sizing:border-box; }
 body {
   font-family:"IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
-  background: #0e1118;
-  color: #e4e8f0;
+  background: var(--bg);
+  color: var(--text);
   height: 100vh;
   overflow: hidden;
   user-select: none; font-size:15px; line-height:1.55;}
@@ -19,24 +106,24 @@ body {
 /* ── Loading Screen ─────────────────────────────── */
 #loading {
   position: fixed; inset: 0;
-  background: #0e1118;
+  background: var(--bg);
   display: flex; align-items: center; justify-content: center;
   z-index: 100;
 }
 .loading-box {
-  background: #161b25; border: 1px solid #2a3243;
+  background: var(--panel); border: 1px solid var(--line);
   border-radius: 10px; padding: 32px 40px;
   max-width: 520px; text-align: center;
 }
-.loading-title { font-size: 26px; color: #e4e8f0; font-weight: 700; margin-bottom: 12px; }
-#load-msg { color: #8b95a8; font-size: 16px; }
-#load-error { text-align: left; font-size: 15px; color: #cc9999; line-height: 1.8; }
+.loading-title { font-size: 26px; color: var(--text); font-weight: 700; margin-bottom: 12px; }
+#load-msg { color: var(--muted); font-size: 16px; }
+#load-error { text-align: left; font-size: 15px; color: var(--red); line-height: 1.8; }
 #load-error code {
-  background: #2a3243; color: #b4bccb;
+  background: var(--line); color: var(--text-2);
   padding: 1px 6px; border-radius: 3px; font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 #load-error ol { margin: 8px 0 8px 20px; }
-#load-error a { color: #6688ff; }
+#load-error a { color: var(--blue); }
 
 /* ── App Layout ─────────────────────────────────── */
 #app {
@@ -45,16 +132,16 @@ body {
   height: 100vh;
 }
 header {
-  background: #161b25;
-  border-bottom: 1px solid #2a3243;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
   display: flex; flex-direction: column; justify-content: center;
   padding: 0 16px; gap: 2px;
 }
 .header-row1 { display: flex; align-items: baseline; gap: 12px; }
-header h1  { font-size: 22px; color: #e4e8f0; font-weight: 700; }
-.subtitle  { font-size: 14px; color: #6a7385; }
-.author    { font-size: 12px; color: #6677bb; }
-.author a  { color: #4da3ff; text-decoration: none; }
+header h1  { font-size: 22px; color: var(--text); font-weight: 700; }
+.subtitle  { font-size: 14px; color: var(--muted-2); }
+.author    { font-size: 12px; color: var(--blue-2); }
+.author a  { color: var(--ui); text-decoration: none; }
 .author a:hover { text-decoration: underline; }
 
 #main-layout {
@@ -65,19 +152,19 @@ header h1  { font-size: 22px; color: #e4e8f0; font-weight: 700; }
 
 /* ── Left Sidebar ───────────────────────────────── */
 #left-panel {
-  background: #0e1118;
-  border-right: 1px solid #2a3243;
+  background: var(--bg);
+  border-right: 1px solid var(--line);
   padding: 12px 12px 16px;
   overflow-y: auto;
   display: flex; flex-direction: column; gap: 10px;
 }
 .panel-title {
   font-size: 12px; text-transform: uppercase; letter-spacing: 1.2px;
-  color: #6677bb; font-weight: 700;
+  color: var(--blue-2); font-weight: 700;
   display: flex; align-items: center; gap: 8px;
 }
 .badge {
-  font-size: 11px; color: #ffcc44; background: #1d2331;
+  font-size: 11px; color: var(--amber); background: var(--panel2);
   padding: 1px 7px; border-radius: 10px; text-transform: none; letter-spacing: 0;
 }
 
@@ -99,18 +186,18 @@ header h1  { font-size: 22px; color: #e4e8f0; font-weight: 700; }
   transition: border-color .15s;
   overflow: hidden; position: relative;
 }
-.ef-item:hover  { border-color: #4466aa; }
-.ef-item.active { border-color: #ffcc44; }
+.ef-item:hover  { border-color: var(--blue-3); }
+.ef-item.active { border-color: var(--amber); }
 .ef-item canvas { width: 100%; display: block; image-rendering: auto; }
 .ef-item .ef-lbl {
   position: absolute; bottom: 0; left: 0; right: 0;
-  background: rgba(0,0,0,.55); color: #b4bccb;
+  background: rgba(0,0,0,.55); color: var(--text-2);
   font-size: 11px; text-align: center; padding: 1px 0;
 }
 
 /* Variance formula */
 .var-explain {
-  background: #0e1118; border: 1px solid #1d2331;
+  background: var(--bg); border: 1px solid var(--panel2);
   border-radius: 5px; padding: 7px 8px;
   display: flex; flex-direction: column; gap: 5px;
 }
@@ -118,10 +205,10 @@ header h1  { font-size: 22px; color: #e4e8f0; font-weight: 700; }
   display: flex; flex-direction: column; gap: 2px;
 }
 .var-label {
-  font-size: 11px; color: #4466aa; text-transform: uppercase;
+  font-size: 11px; color: var(--blue-3); text-transform: uppercase;
   letter-spacing: 0.8px;
 }
-.var-math { color: #b4bccb; }
+.var-math { color: var(--text-2); }
 .var-math .katex { font-size: 0.88em; }
 
 /* Variance chart */
@@ -141,47 +228,47 @@ header h1  { font-size: 22px; color: #e4e8f0; font-weight: 700; }
   display: flex; gap: 5px; overflow-x: auto; padding-bottom: 4px; flex-shrink: 0;
 }
 #sample-strip::-webkit-scrollbar { height: 4px; }
-#sample-strip::-webkit-scrollbar-thumb { background: #2a3243; border-radius: 2px; }
+#sample-strip::-webkit-scrollbar-thumb { background: var(--line); border-radius: 2px; }
 .sample-thumb {
   cursor: pointer; border-radius: 3px; flex-shrink: 0;
   border: 2px solid transparent; transition: border-color .15s; overflow: hidden;
 }
-.sample-thumb:hover  { border-color: #4466aa; }
-.sample-thumb.active { border-color: #ffcc44; }
+.sample-thumb:hover  { border-color: var(--blue-3); }
+.sample-thumb.active { border-color: var(--amber); }
 .sample-thumb canvas { width: 52px; height: 52px; display: block; image-rendering: auto; }
-.thumb-lbl { font-size: 11px; color: #6a7385; text-align: center; margin-top: 1px; }
+.thumb-lbl { font-size: 11px; color: var(--muted-2); text-align: center; margin-top: 1px; }
 
 .upload-btn {
-  cursor: pointer; background: #2a3243; border: 1px solid #3b4457; color: #8b95a8;
+  cursor: pointer; background: var(--line); border: 1px solid var(--faint); color: var(--muted);
   padding: 4px 12px; border-radius: 4px; font-size: 13px; margin-left: auto;
   display: inline-block;
   transition: background .15s;
 }
-.upload-btn:hover { background: #3b4457; }
+.upload-btn:hover { background: var(--faint); }
 
 /* Main face row */
 #face-row {
   display: flex; gap: 14px; flex-shrink: 0; align-items: center;
 }
 .face-panel { display: flex; flex-direction: column; align-items: center; gap: 5px; }
-.face-lbl    { font-size: 14px; color: #8b95a8; font-weight: 600; }
+.face-lbl    { font-size: 14px; color: var(--muted); font-weight: 600; }
 .face-canvas { image-rendering: auto; border-radius: 5px; display: block; }
-.face-info   { font-size: 12px; color: #6a7385; text-align: center; }
+.face-info   { font-size: 12px; color: var(--muted-2); text-align: center; }
 
 /* Formula */
 #formula {
-  font-size: 12px; color: #6688cc; font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-  background: #0e1118; border: 1px solid #2a3243;
+  font-size: 12px; color: var(--blue-4); font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--bg); border: 1px solid var(--line);
   border-radius: 5px; padding: 6px 10px; flex-shrink: 0;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
 /* Formula box */
 #formula-box {
-  background: #0e1118; border: 1px solid #2a3243;
+  background: var(--bg); border: 1px solid var(--line);
   border-radius: 5px; padding: 7px 14px;
   flex-shrink: 0; overflow-x: auto;
-  color: #4da3ff;
+  color: var(--ui);
 }
 #formula-box .katex { font-size: 1.05em; }
 
@@ -189,10 +276,10 @@ header h1  { font-size: 22px; color: #e4e8f0; font-weight: 700; }
 #slider-row {
   display: flex; align-items: center; gap: 10px; flex-shrink: 0;
 }
-#slider-row label { font-size: 14px; color: #8b95a8; white-space: nowrap; }
-#k-slider { flex: 1; accent-color: #4da3ff; cursor: pointer; }
-.k-num  { font-size: 17px; color: #ffcc44; font-weight: 700; width: 28px; text-align: center; }
-.k-info { font-size: 14px; color: #8b95a8; }
+#slider-row label { font-size: 14px; color: var(--muted); white-space: nowrap; }
+#k-slider { flex: 1; accent-color: var(--ui); cursor: pointer; }
+.k-num  { font-size: 17px; color: var(--amber); font-weight: 700; width: 28px; text-align: center; }
+.k-info { font-size: 14px; color: var(--muted); }
 
 /* Progressive strip */
 #progress-strip {
@@ -200,81 +287,81 @@ header h1  { font-size: 22px; color: #e4e8f0; font-weight: 700; }
 }
 .prog-item { display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .prog-item canvas { image-rendering: auto; border-radius: 3px; display: block; }
-.prog-lbl { font-size: 12px; color: #6a7385; text-align: center; }
-.prog-var { font-size: 11px; color: #ffaa33; text-align: center; }
+.prog-lbl { font-size: 12px; color: var(--muted-2); text-align: center; }
+.prog-var { font-size: 11px; color: var(--orange); text-align: center; }
 
 /* Coefficient bars */
 #coeff-section {
   flex: 1; overflow-y: auto; min-height: 0;
 }
 #coeff-section::-webkit-scrollbar { width: 4px; }
-#coeff-section::-webkit-scrollbar-thumb { background: #2a3243; border-radius: 2px; }
+#coeff-section::-webkit-scrollbar-thumb { background: var(--line); border-radius: 2px; }
 .coeff-row {
   display: flex; align-items: center; gap: 8px;
   margin-bottom: 4px; cursor: pointer; border-radius: 3px;
   padding: 2px 4px; transition: background .12s;
 }
-.coeff-row:hover  { background: #1d2331; }
-.coeff-row.active { background: #2a3243; }
-.coeff-lbl   { font-size: 13px; color: #8b95a8; width: 36px; flex-shrink: 0; text-align: right; }
+.coeff-row:hover  { background: var(--panel2); }
+.coeff-row.active { background: var(--line); }
+.coeff-lbl   { font-size: 13px; color: var(--muted); width: 36px; flex-shrink: 0; text-align: right; }
 .coeff-track {
-  flex: 1; height: 16px; background: #1d2331; border-radius: 3px;
+  flex: 1; height: 16px; background: var(--panel2); border-radius: 3px;
   position: relative; overflow: hidden;
 }
 .coeff-bar-pos, .coeff-bar-neg {
   position: absolute; top: 0; height: 100%; border-radius: 2px; transition: width .2s;
 }
-.coeff-bar-pos { left: 50%; background: #3366ff; }
-.coeff-bar-neg { right: 50%; background: #ff4444; transform-origin: right; }
+.coeff-bar-pos { left: 50%; background: var(--blue-5); }
+.coeff-bar-neg { right: 50%; background: var(--red-2); transform-origin: right; }
 .coeff-center-line {
   position: absolute; left: 50%; top: 0; bottom: 0;
-  width: 1px; background: #2a3243;
+  width: 1px; background: var(--line);
 }
-.coeff-val    { font-size: 13px; color: #8b95a8; width: 52px; text-align: right; font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; flex-shrink: 0; }
+.coeff-val    { font-size: 13px; color: var(--muted); width: 52px; text-align: right; font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; flex-shrink: 0; }
 .coeff-ef     { width: 24px; height: 24px; border-radius: 2px; flex-shrink: 0; image-rendering: auto; }
 
 /* Detail popup */
 #detail-panel {
   position: fixed; right: 16px; bottom: 16px;
-  background: #161b25; border: 1px solid #2a3243; border-radius: 8px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
   padding: 12px; display: none; z-index: 50; min-width: 260px;
   box-shadow: 0 8px 24px rgba(0,0,0,.5);
 }
-#detail-panel .dp-title { font-size: 15px; color: #4da3ff; font-weight: 700; margin-bottom: 8px; }
+#detail-panel .dp-title { font-size: 15px; color: var(--ui); font-weight: 700; margin-bottom: 8px; }
 #detail-panel .dp-row   { display: flex; gap: 10px; align-items: flex-start; }
-#detail-panel .dp-info  { font-size: 13px; color: #8b95a8; line-height: 1.8; }
-#detail-panel .dp-info strong { color: #ccddf0; }
+#detail-panel .dp-info  { font-size: 13px; color: var(--muted); line-height: 1.8; }
+#detail-panel .dp-info strong { color: var(--blue-6); }
 #detail-close {
   position: absolute; top: 6px; right: 10px;
-  cursor: pointer; color: #6a7385; font-size: 16px;
+  cursor: pointer; color: var(--muted-2); font-size: 16px;
 }
-#detail-close:hover { color: #aabbff; }
+#detail-close:hover { color: var(--blue-7); }
 
 /* ── Detection Preview ──────────────────────────── */
 #detect-preview {
   position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%);
-  background: #161b25; border: 1px solid #2a3243; border-radius: 10px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
   padding: 16px; z-index: 200; display: none;
   box-shadow: 0 12px 36px rgba(0,0,0,.7); min-width: 320px;
 }
 #detect-preview .dp2-title {
-  font-size: 14px; color: #4da3ff; font-weight: 700; margin-bottom: 10px;
+  font-size: 14px; color: var(--ui); font-weight: 700; margin-bottom: 10px;
 }
 #detect-preview .dp2-row { display: flex; gap: 14px; align-items: flex-start; }
 #detect-preview .dp2-col { display: flex; flex-direction: column; align-items: center; gap: 5px; }
-#detect-preview .dp2-lbl { font-size: 12px; color: #8b95a8; }
+#detect-preview .dp2-lbl { font-size: 12px; color: var(--muted); }
 #detect-status {
-  font-size: 12px; color: #b4bccb; margin-top: 10px; line-height: 1.6;
+  font-size: 12px; color: var(--text-2); margin-top: 10px; line-height: 1.6;
 }
 #detect-ok {
-  margin-top: 10px; background: #1a3388; border: 1px solid #4466cc;
-  color: #ccdeff; padding: 5px 18px; border-radius: 4px;
+  margin-top: 10px; background: var(--blue-8); border: 1px solid var(--blue-9);
+  color: var(--blue-10); padding: 5px 18px; border-radius: 4px;
   cursor: pointer; font-size: 13px; display: block; width: 100%;
 }
-#detect-ok:hover { background: #2244aa; }
+#detect-ok:hover { background: var(--blue-11); }
 .det-spinner {
-  width: 20px; height: 20px; border: 2px solid #2a3243;
-  border-top-color: #4da3ff; border-radius: 50%;
+  width: 20px; height: 20px; border: 2px solid var(--line);
+  border-top-color: var(--ui); border-radius: 50%;
   animation: spin .7s linear infinite; display: inline-block;
   vertical-align: middle; margin-right: 6px;
 }
@@ -287,7 +374,7 @@ header h1  { font-size: 22px; color: #e4e8f0; font-weight: 700; }
   #main-layout { grid-template-columns: 1fr; }
   #left-panel {
     border-right: none;
-    border-bottom: 1px solid #2a3243;
+    border-bottom: 1px solid var(--line);
     max-height: 320px;
     overflow-y: auto;
   }
@@ -297,7 +384,21 @@ header h1  { font-size: 22px; color: #e4e8f0; font-weight: 700; }
   #face-row { flex-wrap: wrap; justify-content: center; }
   #progress-strip { flex-wrap: wrap; }
 }
+/* ---- dark / light switch ---------------------------------------------- */
+.theme-toggle {
+  position: fixed; right: 16px; bottom: 16px; z-index: 99;
+  font: inherit; font-size: 13px; line-height: 1; padding: 8px 14px;
+  border-radius: 999px; cursor: pointer;
+  background: var(--panel); color: var(--text); border: 1px solid var(--line);
+  box-shadow: 0 2px 12px rgba(0,0,0,.28);
+}
+.theme-toggle:hover { border-color: var(--ui); color: var(--ui); }
+@media print { .theme-toggle { display: none; } }
 </style>
+<script>
+/* canvas colours, read back out of the theme */
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -308,7 +409,7 @@ header h1  { font-size: 22px; color: #e4e8f0; font-weight: 700; }
 <div id="loading">
   <div class="loading-box">
     <div class="loading-title">Eigenface Demo</div>
-    <div id="load-msg" style="margin-bottom:10px;">Loading <code style="font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;color:#b4bccb">eigenfaces_data.json</code>…</div>
+    <div id="load-msg" style="margin-bottom:10px;">Loading <code style="font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;color:var(--text-2)">eigenfaces_data.json</code>…</div>
     <div id="load-error" style="display:none;">
       <strong style="color:#ff8888;">Could not load eigenfaces_data.json</strong>
       <ol style="margin-top:8px;">
@@ -317,9 +418,9 @@ header h1  { font-size: 22px; color: #e4e8f0; font-weight: 700; }
         <li>Serve files: <code>python -m http.server 8080</code></li>
         <li>Open: <a href="http://localhost:8080/eigenface_demo.html">http://localhost:8080/eigenface_demo.html</a></li>
       </ol>
-      <div style="margin-top:10px; color:#8b95a8;">
+      <div style="margin-top:10px; color:var(--muted);">
         Or load the JSON directly:
-        <input type="file" id="json-picker" accept=".json" style="display:block;margin-top:6px;color:#b4bccb;">
+        <input type="file" id="json-picker" accept=".json" style="display:block;margin-top:6px;color:var(--text-2);">
       </div>
     </div>
   </div>
@@ -357,9 +458,9 @@ header h1  { font-size: 22px; color: #e4e8f0; font-weight: 700; }
 
       <div class="panel-title" style="margin-top:4px;">Explained Variance</div>
       <canvas id="variance-canvas" width="256" height="88"></canvas>
-      <div style="font-size:12px;color:#6a7385;">
+      <div style="font-size:12px;color:var(--muted-2);">
         <span style="color:#4488ff;">■</span> per component &nbsp;
-        <span style="color:#ffcc44;">—</span> cumulative
+        <span style="color:var(--amber);">—</span> cumulative
       </div>
 
       <!-- Variance formula explanation -->
@@ -451,7 +552,7 @@ header h1  { font-size: 22px; color: #e4e8f0; font-weight: 700; }
 
       <!-- Coefficient bars -->
       <div class="panel-title" style="margin-top:4px;">
-        Eigenface Coefficients &nbsp;<span style="color:#6a7385;font-size:12px;text-transform:none;letter-spacing:0;">click row to inspect</span>
+        Eigenface Coefficients &nbsp;<span style="color:var(--muted-2);font-size:12px;text-transform:none;letter-spacing:0;">click row to inspect</span>
       </div>
       <div id="coeff-section">
         <div id="coeff-chart"></div>
@@ -486,11 +587,11 @@ header h1  { font-size: 22px; color: #e4e8f0; font-weight: 700; }
   <div class="dp-title" id="dp-title">PC1</div>
   <div class="dp-row">
     <div>
-      <div style="font-size:12px;color:#6a7385;margin-bottom:3px;">Eigenface</div>
+      <div style="font-size:12px;color:var(--muted-2);margin-bottom:3px;">Eigenface</div>
       <canvas id="dp-ef-canvas" width="64" height="64" style="width:96px;height:96px;border-radius:4px;image-rendering:auto;"></canvas>
     </div>
     <div>
-      <div style="font-size:12px;color:#6a7385;margin-bottom:3px;">Contribution (c·ef)</div>
+      <div style="font-size:12px;color:var(--muted-2);margin-bottom:3px;">Contribution (c·ef)</div>
       <canvas id="dp-contrib-canvas" width="64" height="64" style="width:96px;height:96px;border-radius:4px;image-rendering:auto;"></canvas>
     </div>
     <div class="dp-info" id="dp-info"></div>
@@ -685,11 +786,11 @@ function buildVarianceChart() {
   const pad = 8;
   const bw  = (W - pad) / n;
 
-  ctx.fillStyle = '#0e1118';
+  ctx.fillStyle = cssVar('--bg');
   ctx.fillRect(0, 0, W, H);
 
   const maxEv = ev[0];
-  ctx.fillStyle = '#3366ff';
+  ctx.fillStyle = cssVar('--blue-5');
   for (let i = 0; i < n; i++) {
     const bh = (ev[i] / maxEv) * (H - pad*2 - 12);
     ctx.fillRect(i*bw + pad/2 + 1, H - bh - pad - 12, bw - 2, bh);
@@ -698,7 +799,7 @@ function buildVarianceChart() {
   // Cumulative line
   const total = ev.slice(0, n).reduce((a, b) => a+b, 0);
   ctx.beginPath();
-  ctx.strokeStyle = '#ffcc44';
+  ctx.strokeStyle = cssVar('--amber');
   ctx.lineWidth = 1.5;
   let cum = 0;
   for (let i = 0; i < n; i++) {
@@ -710,11 +811,11 @@ function buildVarianceChart() {
   ctx.stroke();
 
   // Axis labels
-  ctx.fillStyle = '#6a7385';
+  ctx.fillStyle = cssVar('--muted-2');
   ctx.font = '11px sans-serif';
   ctx.fillText('1', pad/2 + 1, H - 2);
   ctx.fillText(`${n}`, (n-1)*bw + pad/2, H - 2);
-  ctx.fillStyle = '#ffcc44';
+  ctx.fillStyle = cssVar('--amber');
   ctx.fillText(`${(total*100).toFixed(0)}% total`, W - 58, 12);
 }
 
@@ -876,10 +977,10 @@ function updateCoeffBars() {
     const vl  = document.getElementById(`cval-${i}`);
     if (c >= 0) {
       bp.style.width = pct;  bn.style.width = '0';
-      bp.style.background = '#3366ff';
+      bp.style.background = cssVar('--blue-5');
     } else {
       bn.style.width = pct;  bp.style.width = '0';
-      bn.style.background = '#ff4444';
+      bn.style.background = cssVar('--red-2');
     }
     if (vl) vl.textContent = c.toFixed(2);
   }
@@ -971,7 +1072,7 @@ function alignFaceToEyes(img, eyeL, eyeR) {
   out.width = out.height = 64;
   const ctx = out.getContext('2d');
   // Dark fill for any out-of-image border (Olivetti has a dark background)
-  ctx.fillStyle = '#282828';
+  ctx.fillStyle = cssVar('--grey');
   ctx.fillRect(0, 0, 64, 64);
   ctx.save();
   ctx.translate(32, 32);       // pivot at output centre
@@ -1027,17 +1128,17 @@ async function uploadFace(file) {
         // Draw face box + eye markers on preview
         const sx = dw / img.width, sy = dh / img.height;
         const box = result.detection.box;
-        origCtx.strokeStyle = '#ffcc44';
+        origCtx.strokeStyle = cssVar('--amber');
         origCtx.lineWidth = 2;
         origCtx.strokeRect(box.x*sx, box.y*sy, box.width*sx, box.height*sy);
-        origCtx.fillStyle = '#00ffaa';
+        origCtx.fillStyle = cssVar('--teal');
         [[eyeL, 4], [eyeR, 4]].forEach(([e, r]) => {
           origCtx.beginPath();
           origCtx.arc(e.x*sx, e.y*sy, r, 0, Math.PI*2);
           origCtx.fill();
         });
         // Draw line between eyes
-        origCtx.strokeStyle = '#00ffaa';
+        origCtx.strokeStyle = cssVar('--teal');
         origCtx.lineWidth = 1.5;
         origCtx.beginPath();
         origCtx.moveTo(eyeL.x*sx, eyeL.y*sy);
@@ -1185,6 +1286,26 @@ document.getElementById('json-picker').addEventListener('change', async e => {
 });
 
 loadData();
+</script>
+<script>
+/* The floating switch. Inside the site shell the parent page supplies one,
+   so a framed demo leaves it out. */
+(function () {
+  if (window.top !== window.self) return;
+  var b = document.createElement('button');
+  b.className = 'theme-toggle';
+  b.type = 'button';
+  b.title = 'Switch between the dark and the light theme';
+  var paint = function () { b.textContent = THEME.get() === 'light' ? '\u263e Dark' : '\u2600 Light'; };
+  b.addEventListener('click', function () { THEME.toggle(); });
+  addEventListener('themechange', paint);
+  paint();
+  document.body.appendChild(b);
+})();
+</script>
+<script>
+/* repaint the canvases when the theme changes */
+addEventListener('themechange', function () { if (typeof currentCoeffs !== "undefined" && currentCoeffs) updateRecon(); });
 </script>
 </body>
 </html>

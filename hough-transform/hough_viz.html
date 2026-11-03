@@ -2,45 +2,136 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
+<script>
+/* Theme — one shared choice for every page on the site. Runs before the body
+   is parsed so a light visitor never sees a dark flash. */
+(function () {
+  var KEY = 'snu-vision-theme', t = null;
+  try { t = localStorage.getItem(KEY); } catch (e) {}
+  if (t !== 'light') t = 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+  window.THEME = {
+    get: function () { return document.documentElement.getAttribute('data-theme'); },
+    set: function (v) {
+      if (v === this.get()) return;
+      document.documentElement.setAttribute('data-theme', v);
+      try { localStorage.setItem(KEY, v); } catch (e) {}
+      dispatchEvent(new CustomEvent('themechange', { detail: v }));
+    },
+    toggle: function () { this.set(this.get() === 'dark' ? 'light' : 'dark'); }
+  };
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Hough Transform Interactive Visualization</title>
 <style>
+:root {
+  /* dark is the default; the light theme below redefines every token */
+  --bg: #0e1118;
+  --panel: #161b25;
+  --panel2: #1d2331;
+  --line: #2a3243;
+  --line-soft: #232935;
+  --faint: #3b4457;
+  --text: #e4e8f0;
+  --text-2: #b4bccb;
+  --muted: #8b95a8;
+  --muted-2: #6a7385;
+  --ui: #4da3ff;
+  --blue: #8cc3ff;
+  --teal: #065f46;
+  --teal-2: #6ee7b7;
+  --teal-3: #059669;
+  --blue-2: #1e3a6a;
+  --amber: #fbbf24;
+  --blue-3: #cbd5e1;
+  --red: #f87171;
+  --orange: #fb923c;
+  --amber-2: #facc15;
+  --green: #4ade80;
+  --teal-4: #34d399;
+  --cyan: #22d3ee;
+  --blue-4: #60a5fa;
+  --violet: #a78bfa;
+  --pink: #f472b6;
+  --purple: #e879f9;
+  --indigo: #1a1a3a;
+  --indigo-2: #2a2a5a;
+  --blue-5: #334155;
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  --bg: #eef1f6;
+  --panel: #ffffff;
+  --panel2: #f4f6fa;
+  --line: #d4dae4;
+  --line-soft: #e3e7ee;
+  --faint: #c3cad6;
+  --text: #161b22;
+  --text-2: #454c58;
+  --muted: #5d6675;
+  --muted-2: #78808f;
+  --ui: #2563eb;
+  --blue: #0058b8;
+  --teal: #dbf0ea;
+  --teal-2: #14a46b;
+  --teal-3: #00b87f;
+  --blue-2: #234d94;
+  --amber: #b88400;
+  --blue-3: #415977;
+  --red: #b70000;
+  --orange: #b85300;
+  --amber-2: #b89300;
+  --green: #16a249;
+  --teal-4: #1b9d6d;
+  --cyan: #059bb2;
+  --blue-4: #0052b8;
+  --violet: #2e00b8;
+  --pink: #b20560;
+  --purple: #9f00b8;
+  --indigo: #dcdcef;
+  --indigo-2: #373781;
+  --blue-5: #435775;
+  color-scheme: light;
+}
+:root[data-theme="light"] .btn-green { color:#0b6b4a; }
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
   font-family:"IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
-  background: #0e1118;
-  color: #e4e8f0;
+  background: var(--bg);
+  color: var(--text);
   min-height: 100vh; font-size:15px; line-height:1.55;}
 header {
-  background: linear-gradient(135deg, #1d2331, #161b25);
+  background: linear-gradient(135deg, var(--panel2), var(--panel));
   padding: 18px 24px;
   text-align: center;
-  border-bottom: 2px solid #2a3243;
+  border-bottom: 2px solid var(--line);
 }
-header h1 { font-size: 1.7em; color: #e4e8f0; letter-spacing: 1px; }
-header p  { color: #8b95a8; font-size: 0.92em; margin-top: 4px; }
+header h1 { font-size: 1.7em; color: var(--text); letter-spacing: 1px; }
+header p  { color: var(--muted); font-size: 0.92em; margin-top: 4px; }
 
 .tabs {
   display: flex;
   justify-content: center;
   gap: 12px;
   padding: 16px;
-  background: #161b25;
-  border-bottom: 1px solid #2a3243;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
 }
 .tab-btn {
   padding: 9px 32px;
-  border: 2px solid #3b4457;
+  border: 2px solid var(--faint);
   background: transparent;
-  color: #8b95a8;
+  color: var(--muted);
   cursor: pointer;
   border-radius: 30px;
   font-size: 0.95em;
   font-weight: 600;
   transition: all 0.25s;
 }
-.tab-btn.active { background: #4da3ff; border-color: #4da3ff; color: #0e1118; }
-.tab-btn:hover:not(.active) { border-color: #4da3ff; color: #8cc3ff; }
+.tab-btn.active { background: var(--ui); border-color: var(--ui); color: var(--bg); }
+.tab-btn:hover:not(.active) { border-color: var(--ui); color: var(--blue); }
 
 .section { display: none; }
 .section.visible { display: block; }
@@ -54,8 +145,8 @@ header p  { color: #8b95a8; font-size: 0.92em; margin-top: 4px; }
   flex-wrap: wrap;
 }
 .canvas-panel {
-  background: #161b25;
-  border: 1px solid #2a3243;
+  background: var(--panel);
+  border: 1px solid var(--line);
   border-radius: 12px;
   padding: 14px;
   box-shadow: 0 4px 24px #00000066;
@@ -64,14 +155,14 @@ header p  { color: #8b95a8; font-size: 0.92em; margin-top: 4px; }
   text-align: center;
   font-size: 0.95em;
   font-weight: 700;
-  color: #4da3ff;
+  color: var(--ui);
   margin-bottom: 8px;
   letter-spacing: 0.5px;
 }
 .canvas-sub {
   text-align: center;
   font-size: 0.76em;
-  color: #6a7385;
+  color: var(--muted-2);
   margin-top: 6px;
 }
 canvas { display: block; border-radius: 6px; }
@@ -83,7 +174,7 @@ canvas { display: block; border-radius: 6px; }
   padding: 0 8px;
   padding-top: 60px;
   font-size: 2em;
-  color: #4da3ff;
+  color: var(--ui);
   font-weight: bold;
 }
 
@@ -103,9 +194,9 @@ canvas { display: block; border-radius: 6px; }
   font-weight: 600;
   transition: all 0.2s;
 }
-.btn-primary   { background: #4da3ff; color: #0e1118; }
-.btn-secondary { background: #2a3243; color: #b4bccb; border: 1px solid #3b4457; }
-.btn-green     { background: #065f46; color: #6ee7b7; border: 1px solid #059669; }
+.btn-primary   { background: var(--ui); color: var(--bg); }
+.btn-secondary { background: var(--line); color: var(--text-2); border: 1px solid var(--faint); }
+.btn-green     { background: var(--teal); color: var(--teal-2); border: 1px solid var(--teal-3); }
 .btn:hover { transform: scale(1.05); filter: brightness(1.15); }
 
 .badge-row {
@@ -128,16 +219,16 @@ canvas { display: block; border-radius: 6px; }
 .preset-panel {
   max-width: 900px;
   margin: 2px auto 6px;
-  background: #1d2331;
-  border: 1px solid #1e3a6a;
-  border-left: 4px solid #fbbf24;
+  background: var(--panel2);
+  border: 1px solid var(--blue-2);
+  border-left: 4px solid var(--amber);
   border-radius: 10px;
   padding: 12px 20px;
 }
 .preset-panel-title {
   font-size: 0.82em;
   font-weight: 700;
-  color: #fbbf24;
+  color: var(--amber);
   margin-bottom: 10px;
   letter-spacing: 0.3px;
 }
@@ -153,19 +244,19 @@ canvas { display: block; border-radius: 6px; }
 }
 .preset-label {
   font-size: 0.8em;
-  color: #8b95a8;
+  color: var(--muted);
   min-width: 80px;
   font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 .preset-row input[type=range] {
   flex: 1;
-  accent-color: #fbbf24;
+  accent-color: var(--amber);
   min-width: 100px;
 }
 .preset-val {
   font-size: 0.82em;
   font-weight: 700;
-  color: #fbbf24;
+  color: var(--amber);
   font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   min-width: 55px;
   text-align: right;
@@ -173,7 +264,7 @@ canvas { display: block; border-radius: 6px; }
 .preset-hint {
   margin-top: 8px;
   font-size: 0.78em;
-  color: #6a7385;
+  color: var(--muted-2);
 }
 
 .slider-row {
@@ -183,34 +274,48 @@ canvas { display: block; border-radius: 6px; }
   justify-content: center;
   padding: 6px 20px;
   font-size: 0.9em;
-  color: #8b95a8;
+  color: var(--muted);
 }
-input[type=range] { accent-color: #4da3ff; }
+input[type=range] { accent-color: var(--ui); }
 
 .info-box {
   max-width: 900px;
   margin: 4px auto 20px;
-  background: #161b25;
-  border: 1px solid #2a3243;
-  border-left: 4px solid #4da3ff;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--ui);
   border-radius: 10px;
   padding: 16px 20px;
   font-size: 0.9em;
   line-height: 1.75;
-  color: #cbd5e1;
+  color: var(--blue-3);
 }
-.info-box h3 { color: #8cc3ff; margin-bottom: 8px; font-size: 1em; }
-.info-box .math { color: #fbbf24; font-weight: bold; font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
-.info-box .hl { color: #f87171; font-weight: bold; }
+.info-box h3 { color: var(--blue); margin-bottom: 8px; font-size: 1em; }
+.info-box .math { color: var(--amber); font-weight: bold; font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
+.info-box .hl { color: var(--red); font-weight: bold; }
 .status-msg {
   text-align: center;
   font-size: 0.84em;
-  color: #6a7385;
+  color: var(--muted-2);
   padding: 2px 16px;
   min-height: 20px;
 }
-.status-msg.ok { color: #6ee7b7; font-weight: bold; }
+.status-msg.ok { color: var(--teal-2); font-weight: bold; }
+/* ---- dark / light switch ---------------------------------------------- */
+.theme-toggle {
+  position: fixed; right: 16px; bottom: 16px; z-index: 99;
+  font: inherit; font-size: 13px; line-height: 1; padding: 8px 14px;
+  border-radius: 999px; cursor: pointer;
+  background: var(--panel); color: var(--text); border: 1px solid var(--line);
+  box-shadow: 0 2px 12px rgba(0,0,0,.28);
+}
+.theme-toggle:hover { border-color: var(--ui); color: var(--ui); }
+@media print { .theme-toggle { display: none; } }
 </style>
+<script>
+/* canvas colours, read back out of the theme */
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -220,7 +325,7 @@ input[type=range] { accent-color: #4da3ff; }
 <header>
   <h1>Hough Transform Interactive Visualization</h1>
   <p>Computer Vision Lecture — Intuitive Understanding of Line &amp; Circle Detection</p>
-  <p style="margin-top:6px;font-size:0.82em;color:#8b95a8">Hanbyul Joo &nbsp;|&nbsp; Visual Computing Lab, Seoul National University &nbsp;|&nbsp; <a href="https://jhugestar.github.io/snu-vision-lecture/" target="_blank" style="color:#4da3ff;text-decoration:none;">More Demos ↗</a></p>
+  <p style="margin-top:6px;font-size:0.82em;color:var(--muted)">Hanbyul Joo &nbsp;|&nbsp; Visual Computing Lab, Seoul National University &nbsp;|&nbsp; <a href="https://jhugestar.github.io/snu-vision-lecture/" target="_blank" style="color:var(--ui);text-decoration:none;">More Demos ↗</a></p>
 </header>
 
 <nav class="tabs">
@@ -308,9 +413,9 @@ input[type=range] { accent-color: #4da3ff; }
   </div>
 
   <div class="slider-row">
-    <label>Radius <span style="color:#fbbf24;font-family:"IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif</span>:</label>
+    <label>Radius <span style="color:var(--amber);font-family:"IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif</span>:</label>
     <input type="range" id="rSlider" min="20" max="160" value="90" style="width:180px" oninput="circleHT.setRadius(this.value)">
-    <span id="rVal" style="color:#fbbf24;font-weight:bold;font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;">90</span> px
+    <span id="rVal" style="color:var(--amber);font-weight:bold;font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;">90</span> px
   </div>
 
   <!-- Circle Preset Panel -->
@@ -367,8 +472,8 @@ const THETA_STEPS = 360;
 const RHO_STEPS   = 400;
 
 const PALETTE = [
-  '#f87171','#fb923c','#facc15','#4ade80','#34d399',
-  '#22d3ee','#60a5fa','#a78bfa','#f472b6','#e879f9'
+  cssVar('--red'),cssVar('--orange'),cssVar('--amber-2'),cssVar('--green'),cssVar('--teal-4'),
+  cssVar('--cyan'),cssVar('--blue-4'),cssVar('--violet'),cssVar('--pink'),cssVar('--purple')
 ];
 
 function hotmap(t) {
@@ -381,7 +486,7 @@ function hotmap(t) {
 }
 
 function drawGrid(ctx, steps=8) {
-  ctx.strokeStyle = '#1a1a3a'; ctx.lineWidth = 0.5;
+  ctx.strokeStyle = cssVar('--indigo'); ctx.lineWidth = 0.5;
   for (let i=0;i<=steps;i++) {
     const x=i/steps*W, y=i/steps*H;
     ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke();
@@ -427,7 +532,7 @@ function drawHandle(ctx, x, y, color, shape='circle', size=9) {
   ctx.shadowBlur = 10;
   if (shape === 'diamond') {
     ctx.fillStyle = color;
-    ctx.strokeStyle = '#e4e8f0';
+    ctx.strokeStyle = cssVar('--text');
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(x, y-size); ctx.lineTo(x+size, y);
@@ -435,7 +540,7 @@ function drawHandle(ctx, x, y, color, shape='circle', size=9) {
     ctx.closePath(); ctx.fill(); ctx.stroke();
   } else {
     ctx.fillStyle = color;
-    ctx.strokeStyle = '#e4e8f0';
+    ctx.strokeStyle = cssVar('--text');
     ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(x, y, size, 0, Math.PI*2);
     ctx.fill(); ctx.stroke();
@@ -631,11 +736,11 @@ class LineHTViz {
 
   drawImageSpace() {
     const ctx = this.iCtx;
-    ctx.fillStyle='#0e1118'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle=cssVar('--bg'); ctx.fillRect(0,0,W,H);
     drawGrid(ctx);
 
     // Center crosshair
-    ctx.strokeStyle='#2a3243'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+    ctx.strokeStyle=cssVar('--line'); ctx.lineWidth=1; ctx.setLineDash([4,4]);
     ctx.beginPath(); ctx.moveTo(W/2,0); ctx.lineTo(W/2,H); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(0,H/2); ctx.lineTo(W,H/2); ctx.stroke();
     ctx.setLineDash([]);
@@ -661,7 +766,7 @@ class LineHTViz {
     }
 
     // Detected lines (each in a different palette color)
-    const LINE_COLORS=['#facc15','#34d399','#f87171','#60a5fa','#fb923c','#a78bfa','#f472b6','#4ade80'];
+    const LINE_COLORS=[cssVar('--amber-2'),cssVar('--teal-4'),cssVar('--red'),cssVar('--blue-4'),cssVar('--orange'),cssVar('--violet'),cssVar('--pink'),cssVar('--green')];
     for (let di=0;di<this.detected.length;di++) {
       const d=this.detected[di];
       const pts = lineEndpoints(d.theta, d.rho, W, H);
@@ -677,7 +782,7 @@ class LineHTViz {
     const manyPts = this.points.length > 10;
     for (let i=0;i<this.points.length;i++) {
       const {x,y}=this.points[i]; const col=PALETTE[i%PALETTE.length];
-      ctx.fillStyle=col; ctx.strokeStyle='#e4e8f0'; ctx.lineWidth=1.5;
+      ctx.fillStyle=col; ctx.strokeStyle=cssVar('--text'); ctx.lineWidth=1.5;
       ctx.beginPath(); ctx.arc(x,y,manyPts?4:7,0,Math.PI*2); ctx.fill(); ctx.stroke();
       if(!manyPts){ ctx.fillStyle=col; ctx.font='bold 10px monospace'; ctx.fillText(`P${i+1}`,x+9,y-7); }
     }
@@ -691,8 +796,8 @@ class LineHTViz {
 
       const h1Size = this.imgHover==='p1' ? 11 : 9;
       const h2Size = this.imgHover==='p2' ? 11 : 9;
-      drawHandle(ctx, this.handles.p1.x, this.handles.p1.y, '#fbbf24', 'circle', h1Size);
-      drawHandle(ctx, this.handles.p2.x, this.handles.p2.y, '#fbbf24', 'circle', h2Size);
+      drawHandle(ctx, this.handles.p1.x, this.handles.p1.y, cssVar('--amber'), 'circle', h1Size);
+      drawHandle(ctx, this.handles.p2.x, this.handles.p2.y, cssVar('--amber'), 'circle', h2Size);
 
       // Param readout
       const deg = Math.round(this.presetTheta*180/Math.PI);
@@ -704,11 +809,11 @@ class LineHTViz {
 
   drawHoughSpace() {
     const ctx = this.hCtx;
-    ctx.fillStyle='#0e1118'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle=cssVar('--bg'); ctx.fillRect(0,0,W,H);
     drawGrid(ctx);
 
     // Zero-rho dashed line
-    ctx.strokeStyle='#2a2a5a'; ctx.lineWidth=1; ctx.setLineDash([5,4]);
+    ctx.strokeStyle=cssVar('--indigo-2'); ctx.lineWidth=1; ctx.setLineDash([5,4]);
     ctx.beginPath(); ctx.moveTo(0,H/2); ctx.lineTo(W,H/2); ctx.stroke();
     ctx.setLineDash([]);
 
@@ -745,7 +850,7 @@ class LineHTViz {
     }
 
     // Detected peaks (same color mapping as image-space lines)
-    const LINE_COLORS_HT=['#facc15','#34d399','#f87171','#60a5fa','#fb923c','#a78bfa','#f472b6','#4ade80'];
+    const LINE_COLORS_HT=[cssVar('--amber-2'),cssVar('--teal-4'),cssVar('--red'),cssVar('--blue-4'),cssVar('--orange'),cssVar('--violet'),cssVar('--pink'),cssVar('--green')];
     for(let di=0;di<this.detected.length;di++){
       const d=this.detected[di];
       const col=LINE_COLORS_HT[di%LINE_COLORS_HT.length];
@@ -773,7 +878,7 @@ class LineHTViz {
     }
 
     // Axis labels
-    ctx.fillStyle='#334155'; ctx.font='10px monospace';
+    ctx.fillStyle=cssVar('--blue-5'); ctx.font='10px monospace';
     ctx.fillText('θ=0°',4,H-5); ctx.fillText('θ=90°',W/2-16,H-5); ctx.fillText('θ=180°',W-52,H-5);
     ctx.fillText('ρ=+',4,13); ctx.fillText('ρ=0',4,H/2-4); ctx.fillText('ρ=−',4,H-18);
   }
@@ -1067,7 +1172,7 @@ class CircleHTViz {
 
   drawImageSpace() {
     const ctx=this.iCtx;
-    ctx.fillStyle='#0e1118'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle=cssVar('--bg'); ctx.fillRect(0,0,W,H);
     drawGrid(ctx);
 
     // Preset mode: show target circle outline
@@ -1095,17 +1200,17 @@ class CircleHTViz {
       ctx.fillStyle=gr; ctx.beginPath(); ctx.arc(d.a,d.b,this.radius+10,0,Math.PI*2); ctx.fill();
       ctx.strokeStyle='rgba(250,204,21,0.9)'; ctx.lineWidth=2.5; ctx.setLineDash([10,4]);
       ctx.beginPath(); ctx.arc(d.a,d.b,this.radius,0,Math.PI*2); ctx.stroke(); ctx.setLineDash([]);
-      ctx.strokeStyle='#facc15'; ctx.lineWidth=2;
+      ctx.strokeStyle=cssVar('--amber-2'); ctx.lineWidth=2;
       ctx.beginPath(); ctx.moveTo(d.a-12,d.b); ctx.lineTo(d.a+12,d.b);
                        ctx.moveTo(d.a,d.b-12); ctx.lineTo(d.a,d.b+12); ctx.stroke();
-      ctx.fillStyle='#facc15'; ctx.font='bold 11px monospace';
+      ctx.fillStyle=cssVar('--amber-2'); ctx.font='bold 11px monospace';
       ctx.fillText(`(${Math.round(d.a)},${Math.round(d.b)})`,d.a+14,d.b-6);
     }
 
     // Points
     for(let i=0;i<this.points.length;i++){
       const {x,y}=this.points[i]; const col=PALETTE[i%PALETTE.length];
-      ctx.fillStyle=col; ctx.strokeStyle='#e4e8f0'; ctx.lineWidth=1.5;
+      ctx.fillStyle=col; ctx.strokeStyle=cssVar('--text'); ctx.lineWidth=1.5;
       ctx.beginPath(); ctx.arc(x,y,7,0,Math.PI*2); ctx.fill(); ctx.stroke();
       ctx.fillStyle=col; ctx.font='bold 10px monospace';
       ctx.fillText(`P${i+1}`,x+9,y-7);
@@ -1120,8 +1225,8 @@ class CircleHTViz {
 
       const cSize=this.imgHover==='center'?12:10;
       const eSize=this.imgHover==='edge'?12:10;
-      drawHandle(ctx,this.centerHandle.x,this.centerHandle.y,'#fbbf24','diamond',cSize);
-      drawHandle(ctx,this.edgeHandle.x,this.edgeHandle.y,'#60a5fa','circle',eSize);
+      drawHandle(ctx,this.centerHandle.x,this.centerHandle.y,cssVar('--amber'),'diamond',cSize);
+      drawHandle(ctx,this.edgeHandle.x,this.edgeHandle.y,cssVar('--blue-4'),'circle',eSize);
 
       // Param readout
       ctx.fillStyle='rgba(251,191,36,0.85)'; ctx.font='bold 11px monospace';
@@ -1131,7 +1236,7 @@ class CircleHTViz {
 
   drawHoughSpace() {
     const ctx=this.hCtx;
-    ctx.fillStyle='#0e1118'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle=cssVar('--bg'); ctx.fillRect(0,0,W,H);
     drawGrid(ctx);
 
     if(this.points.length>0){
@@ -1157,7 +1262,7 @@ class CircleHTViz {
       const gr=ctx.createRadialGradient(d.a,d.b,0,d.a,d.b,18);
       gr.addColorStop(0,'rgba(250,204,21,0.7)'); gr.addColorStop(1,'rgba(250,204,21,0)');
       ctx.fillStyle=gr; ctx.beginPath(); ctx.arc(d.a,d.b,18,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle='white'; ctx.strokeStyle='#facc15'; ctx.lineWidth=2.5;
+      ctx.fillStyle='white'; ctx.strokeStyle=cssVar('--amber-2'); ctx.lineWidth=2.5;
       ctx.beginPath(); ctx.arc(d.a,d.b,7,0,Math.PI*2); ctx.fill(); ctx.stroke();
     }
 
@@ -1171,7 +1276,7 @@ class CircleHTViz {
       ctx.fillText(`a=${Math.round(a)}, b=${Math.round(b)}`,Math.min(a+6,W-90),Math.max(b-6,14));
     }
 
-    ctx.fillStyle='#334155'; ctx.font='10px monospace';
+    ctx.fillStyle=cssVar('--blue-5'); ctx.font='10px monospace';
     ctx.fillText('a (center-x) →',W/2-42,H-4);
     ctx.save(); ctx.translate(13,H/2); ctx.rotate(-Math.PI/2);
     ctx.fillText('b (center-y)',-28,0); ctx.restore();
@@ -1278,6 +1383,26 @@ const circleHT = new CircleHTViz();
   setTimeout(() => { if (!taken) { lineHT.preset(); } }, 900);
   setTimeout(() => { if (!taken) { lineHT.detect(); } }, 2200);
 })();
+</script>
+<script>
+/* The floating switch. Inside the site shell the parent page supplies one,
+   so a framed demo leaves it out. */
+(function () {
+  if (window.top !== window.self) return;
+  var b = document.createElement('button');
+  b.className = 'theme-toggle';
+  b.type = 'button';
+  b.title = 'Switch between the dark and the light theme';
+  var paint = function () { b.textContent = THEME.get() === 'light' ? '\u263e Dark' : '\u2600 Light'; };
+  b.addEventListener('click', function () { THEME.toggle(); });
+  addEventListener('themechange', paint);
+  paint();
+  document.body.appendChild(b);
+})();
+</script>
+<script>
+/* repaint the canvases when the theme changes */
+addEventListener('themechange', function () { lineHT.render(); circleHT.render(); });
 </script>
 </body>
 </html>

@@ -2,6 +2,26 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<script>
+/* Theme — one shared choice for every page on the site. Runs before the body
+   is parsed so a light visitor never sees a dark flash. */
+(function () {
+  var KEY = 'snu-vision-theme', t = null;
+  try { t = localStorage.getItem(KEY); } catch (e) {}
+  if (t !== 'light') t = 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+  window.THEME = {
+    get: function () { return document.documentElement.getAttribute('data-theme'); },
+    set: function (v) {
+      if (v === this.get()) return;
+      document.documentElement.setAttribute('data-theme', v);
+      try { localStorage.setItem(KEY, v); } catch (e) {}
+      dispatchEvent(new CustomEvent('themechange', { detail: v }));
+    },
+    toggle: function () { this.set(this.get() === 'dark' ? 'light' : 'dark'); }
+  };
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>LeNet — a Convolutional Network, End to End</title>
 <style>
@@ -21,14 +41,42 @@
   --loss: #2fbf8a;
   --danger: #e66767;
   --other: #c792ea;
+  --ui-text: #0e1118;   /* text on a filled --ui button */
+  --ui-hover: #7fbcff;
+  --hover: #253044;     /* plain button, hover */
+  --hover-line: #3a4660;
+  --on-fill: #0e1118;   /* numbers printed on a saturated heat cell */
   --font: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   color-scheme: dark;
 }
+/* The light theme redefines the same tokens; everything below reads them. */
+:root[data-theme="light"] {
+  --bg: #eef1f6;
+  --panel: #ffffff;
+  --panel2: #f4f6fa;
+  --border: #d4dae4;
+  --fg: #161b22;
+  --muted: #5d6675;
+  --faint: #c3cad6;
+  --c0: #1f6fc4;
+  --c1: #c2521a;
+  --accent: #a2740a;
+  --ui: #2563eb;
+  --loss: #0f8f66;
+  --danger: #c43b3b;
+  --other: #8b4fc0;
+  --ui-text: #ffffff;
+  --ui-hover: #1d4fd0;
+  --hover: #e8edf6;
+  --hover-line: #b9c2d2;
+  --on-fill: #ffffff;
+  color-scheme: light;
+}
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { margin: 0; }
-body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 15px; line-height: 1.5; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 16px; line-height: 1.5; }
 .wrap { max-width: 1680px; margin: 0 auto; padding: 14px 18px 28px; display: grid; gap: 14px;
   grid-template-columns: minmax(0, 350px) minmax(0, 1fr) 330px;
   grid-template-areas: "hdr hdr hdr" "arch arch arch" "left mid ctrl"; align-items: start; }
@@ -36,30 +84,30 @@ body { background: var(--bg); color: var(--fg); font-family: var(--font); font-s
 @media (max-width: 1000px) { .wrap { grid-template-columns: 1fr; grid-template-areas: "hdr" "arch" "left" "ctrl" "mid"; } }
 
 header { grid-area: hdr; display: flex; align-items: baseline; gap: 14px 22px; flex-wrap: wrap; }
-header h1 { font-size: 24px; margin: 0; letter-spacing: .2px; }
+header h1 { font-size: 27px; margin: 0; letter-spacing: .2px; }
 header .sub { color: var(--muted); }
-header .author { margin-left: auto; font-size: 12.5px; color: var(--muted); }
+header .author { margin-left: auto; font-size: 13.5px; color: var(--muted); }
 header .author a { color: var(--ui); text-decoration: none; }
 header .author a:hover { text-decoration: underline; }
-.kbd { font-family: var(--mono); font-size: 12px; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; color: var(--muted); }
+.kbd { font-family: var(--mono); font-size: 13px; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; color: var(--muted); }
 
 .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; min-width: 0; }
 .arch { grid-area: arch; position: relative; }
 #archCanvas { width: 100%; height: 300px; display: block; border-radius: 8px; cursor: pointer; }
-.archhint { position: absolute; right: 16px; top: 10px; font-size: 12.5px; color: var(--muted); pointer-events: none; }
+.archhint { position: absolute; right: 16px; top: 10px; font-size: 13.5px; color: var(--muted); pointer-events: none; }
 .left { grid-area: left; display: grid; gap: 14px; align-content: start; }
 .mid { grid-area: mid; display: grid; gap: 14px; min-width: 0; align-content: start; }
 .controls { grid-area: ctrl; padding: 14px; display: grid; gap: 14px; align-content: start; }
 
 .ptitle { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 10px 14px 0; }
-.ptitle h2 { font-size: 15px; margin: 0; font-weight: 600; }
-.ptitle span { font-size: 12.5px; color: var(--muted); font-family: var(--mono); text-align: right; }
+.ptitle h2 { font-size: 16.5px; margin: 0; font-weight: 600; }
+.ptitle span { font-size: 13.5px; color: var(--muted); font-family: var(--mono); text-align: right; }
 .pad { padding: 10px 14px 14px; }
-.hint { font-size: 13px; color: var(--muted); }
+.hint { font-size: 14px; color: var(--muted); }
 .hint b { color: var(--fg); font-weight: 500; }
 
 #inputCanvas { width: 100%; aspect-ratio: 1; display: block; border-radius: 6px; cursor: crosshair; }
-.calc { font-family: var(--mono); font-size: 13px; line-height: 1.7; }
+.calc { font-family: var(--mono); font-size: 14.5px; line-height: 1.7; }
 .calc .k { color: var(--muted); } .calc .px { color: var(--fg); } .calc .w { color: var(--ui); }
 .calc .res { color: var(--loss); } .calc .relu { color: var(--accent); }
 .samples { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -67,46 +115,56 @@ header .author a:hover { text-decoration: underline; }
 .samples canvas.sel { border-color: var(--accent); }
 
 .bars { display: grid; gap: 4px; }
-.bar { display: grid; grid-template-columns: 18px 1fr 50px; gap: 8px; align-items: center; font-size: 13px; }
+.bar { display: grid; grid-template-columns: 18px 1fr 50px; gap: 8px; align-items: center; font-size: 14px; }
 .bar .name { color: var(--muted); font-family: var(--mono); text-align: right; }
 .bar .track { height: 11px; background: var(--panel2); border-radius: 6px; overflow: hidden; }
 .bar .fill { height: 100%; background: var(--ui); border-radius: 6px; transition: width .1s ease; }
-.bar .val { font-family: var(--mono); font-size: 12px; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bar .val { font-family: var(--mono); font-size: 13px; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
 .bar.truth .name { color: var(--accent); font-weight: 600; }
 #lossCanvas { width: 100%; height: 118px; display: block; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; }
 
 .maps { display: flex; gap: 10px; flex-wrap: wrap; }
 .unit { background: var(--panel2); border: 1px solid var(--border); border-radius: 7px; padding: 6px; display: grid; gap: 5px; justify-items: center; }
 .unit.active { border-color: var(--accent); }
-.unit .cap { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.unit .cap { font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
 .unit canvas { display: block; border-radius: 3px; image-rendering: pixelated; }
 .kern { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.arrow { color: var(--muted); font-size: 17px; }
+.arrow { color: var(--muted); font-size: 19px; }
 
 .sec { display: grid; gap: 7px; }
-.sec > .lbl { font-size: 12px; text-transform: uppercase; letter-spacing: .9px; color: var(--muted); font-weight: 600; }
+.sec > .lbl { font-size: 13px; text-transform: uppercase; letter-spacing: .9px; color: var(--muted); font-weight: 600; }
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 select, button { font: inherit; color: var(--fg); background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; }
 select { flex: 1; min-width: 0; }
 button { cursor: pointer; transition: background .12s, border-color .12s; }
-button:hover { background: #253044; border-color: #3a4660; }
+button:hover { background: var(--hover); border-color: var(--hover-line); }
 button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--ui); outline-offset: 1px; }
-button.primary { background: var(--ui); color: #0e1118; border-color: var(--ui); font-weight: 600; }
-button.primary:hover { background: #7fbcff; }
+button.primary { background: var(--ui); color: var(--ui-text); border-color: var(--ui); font-weight: 600; }
+button.primary:hover { background: var(--ui-hover); }
 button.wide { flex: 1; }
 .slider { display: grid; grid-template-columns: 1fr 58px; gap: 4px 10px; align-items: center; }
-.slider .name { font-size: 13px; color: var(--muted); }
-.slider .val { font-family: var(--mono); font-size: 13px; color: var(--fg); text-align: right; font-variant-numeric: tabular-nums; }
+.slider .name { font-size: 14px; color: var(--muted); }
+.slider .val { font-family: var(--mono); font-size: 14px; color: var(--fg); text-align: right; font-variant-numeric: tabular-nums; }
 .slider input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--ui); margin: 0; }
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .stat { background: var(--panel2); border-radius: 6px; padding: 7px 9px; }
-.stat .k { font-size: 10.5px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
-.stat .v { font-family: var(--mono); font-size: 15px; font-variant-numeric: tabular-nums; }
-.chk { display: flex; gap: 8px; align-items: center; font-size: 14px; cursor: pointer; color: var(--muted); }
+.stat .k { font-size: 11.5px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
+.stat .v { font-family: var(--mono); font-size: 17px; font-variant-numeric: tabular-nums; }
+.chk { display: flex; gap: 8px; align-items: center; font-size: 15px; cursor: pointer; color: var(--muted); }
 .chk input { accent-color: var(--ui); margin: 0; }
-.note { background: var(--panel2); border-left: 3px solid var(--accent); padding: 8px 11px; border-radius: 4px; font-size: 13px; color: var(--fg); }
+.note { background: var(--panel2); border-left: 3px solid var(--accent); padding: 8px 11px; border-radius: 4px; font-size: 14.5px; color: var(--fg); }
 .note b { color: var(--accent); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+/* ---- dark / light switch ---------------------------------------------- */
+.theme-toggle {
+  position: fixed; right: 16px; bottom: 16px; z-index: 99;
+  font: inherit; font-size: 13px; line-height: 1; padding: 8px 14px;
+  border-radius: 999px; cursor: pointer;
+  background: var(--panel); color: var(--fg); border: 1px solid var(--border);
+  box-shadow: 0 2px 12px rgba(0,0,0,.28);
+}
+.theme-toggle:hover { border-color: var(--ui); color: var(--ui); }
+@media print { .theme-toggle { display: none; } }
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -171,9 +229,10 @@ button.wide { flex: 1; }
 
     <div class="sec">
       <div class="lbl">Architecture</div>
-      <div class="hint" id="archLine" style="font-family:var(--mono); font-size:12px"></div>
+      <div class="hint" id="archLine" style="font-family:var(--mono); font-size:13px"></div>
       <label class="chk"><input type="checkbox" id="relu" checked> ReLU after every layer</label>
-      <label class="chk"><input type="checkbox" id="showBox" checked> mark the strongest C3 response</label>
+      <label class="chk"><input type="checkbox" id="showBox" checked> mark where C3 fires hardest</label>
+      <div class="hint">C3 has only 4&times;4 positions left. The box is the one whose 16 filters add up to the most activity &mdash; the patch of the digit this layer reacts to most.</div>
     </div>
 
     <div class="sec">
@@ -525,6 +584,7 @@ const recompute = () => S.fw = forward(S.train.X[S.sample]);
    5. Canvas helpers
    ============================================================ */
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const isLight = () => document.documentElement.getAttribute('data-theme') === 'light';
 function setup(canvas, w, h) {
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   if (w) { canvas.style.width = w + 'px'; canvas.style.height = h + 'px'; }
@@ -543,7 +603,8 @@ function cellColor(v, max, signed) {
     return `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${.1 + .9 * t})`;
   }
   const t = Math.max(0, Math.min(1, v / (max || 1)));
-  const g = Math.round(20 + 215 * t);
+  /* ink is bright on the dark page and dark on the light one */
+  const g = isLight() ? Math.round(252 - 212 * t) : Math.round(20 + 215 * t);
   return `rgb(${g},${g + 3},${g})`;
 }
 /* paint a matrix into a context at (X, Y) with size W x H */
@@ -562,11 +623,11 @@ function paint(c, m, X, Y, W, H, opts = {}) {
     for (let y = 1; y < rows; y++) { c.beginPath(); c.moveTo(X, Y + y * ch); c.lineTo(X + W, Y + y * ch); c.stroke(); }
   }
   if (opts.numbers && cw > 19) {
-    c.font = '10px ' + css('--mono'); c.textAlign = 'center';
+    c.font = '11.5px ' + css('--mono'); c.textAlign = 'center';
     for (let y = 0; y < rows; y++)
       for (let x = 0; x < cols; x++) {
         const v = +m[y][x] || 0;
-        c.fillStyle = Math.abs(v) / max > .55 ? '#0e1118' : css('--muted');
+        c.fillStyle = Math.abs(v) / max > .55 ? css('--on-fill') : css('--muted');
         c.fillText(v.toFixed(1), X + (x + .5) * cw, Y + (y + .62) * ch);
       }
     c.textAlign = 'left';
@@ -616,7 +677,7 @@ function drawArch() {
       c.strokeStyle = sel ? css('--accent') : css('--border'); c.lineWidth = sel ? 2 : 1;
       c.strokeRect(x - 1, y - 1, bw + 2, bh + 2);
       if (L.kind === 'out') {                       // label the winning digit
-        c.fillStyle = css('--loss'); c.font = '600 13px ' + css('--mono'); c.textAlign = 'left';
+        c.fillStyle = css('--loss'); c.font = '600 14px ' + css('--mono'); c.textAlign = 'left';
         c.fillText(String(best), x + bw + 6, y + (best + .5) * bh / n + 5);
       }
       box = { x: x - 7, y: y - 7, w: bw + 14, h: bh + 14 };
@@ -640,15 +701,15 @@ function drawArch() {
     archHit.push({ id: L.id, ...box });
 
     c.textAlign = 'center';
-    c.font = '600 13px ' + css('--font');
+    c.font = '600 14.5px ' + css('--font');
     c.fillStyle = sel ? css('--accent') : css('--fg');
     c.fillText(L.name, cx, h - 32);
-    c.font = '11.5px ' + css('--mono'); c.fillStyle = css('--muted');
+    c.font = '13px ' + css('--mono'); c.fillStyle = css('--muted');
     const g = GEO[L.id];
     c.fillText(g ? `${g.f} @ ${g.size}×${g.size}` : `${L.n} units`, cx, h - 16);
     if (i > 0) {
       const ax = cx - gap / 2, ay = midY - h * .28;
-      c.fillStyle = css('--muted'); c.font = '11px ' + css('--mono');
+      c.fillStyle = css('--muted'); c.font = '12.5px ' + css('--mono');
       c.fillText(L.op, ax, ay - 8);
       c.strokeStyle = css('--faint'); c.lineWidth = 1.4;
       c.beginPath(); c.moveTo(ax - 14, ay + 4); c.lineTo(ax + 14, ay + 4); c.stroke();
@@ -684,11 +745,14 @@ function drawInput() {
     if (fill) { c.fillStyle = fill; c.fillRect(b.x * g.cw, b.y * g.ch, b.size * g.cw, b.size * g.ch); }
     c.strokeStyle = color; c.lineWidth = 2.5;
     c.strokeRect(b.x * g.cw, b.y * g.ch, b.size * g.cw, b.size * g.ch);
-    c.fillStyle = color; c.font = '11px ' + css('--mono'); c.fillText(label, 5, 14);
+    c.fillStyle = color; c.font = '12.5px ' + css('--mono'); c.fillText(label, 5, 14);
   };
   if (S.scan) mark({ x: S.scan.x, y: S.scan.y, size: LAYERS[1].k }, css('--accent'), 'kernel window · 5×5', 'rgba(243,201,105,.16)');
   else if (S.pick) { const b = rfOf(S.pick.id, S.pick.y, S.pick.x); mark(b, css('--accent'), `receptive field · ${b.size}×${b.size} px`, 'rgba(243,201,105,.16)'); }
-  else if ($('#showBox').checked && S.epochN > 0) mark(strongestC3(), css('--loss'), 'strongest C3 response');
+  else if ($('#showBox').checked && S.epochN > 0) {
+    const b = strongestC3();
+    mark(b, css('--loss'), `C3 fires hardest here \u00b7 ${b.size}\u00d7${b.size} px`);
+  }
   $('#inTitle').textContent = `20 × 20 · label ${S.train.y[S.sample]}`;
 }
 function buildSamples() {
@@ -699,7 +763,8 @@ function buildSamples() {
     const c = cv.getContext('2d'), im = c.createImageData(SIZE, SIZE), px = S.train.X[i][0];
     for (let y = 0; y < SIZE; y++)
       for (let x = 0; x < SIZE; x++) {
-        const g = Math.round(20 + 215 * Math.max(0, Math.min(1, px[y][x] * .5 + .5))), k = (y * SIZE + x) * 4;
+        const t = Math.max(0, Math.min(1, px[y][x] * .5 + .5));
+        const g = isLight() ? Math.round(252 - 212 * t) : Math.round(20 + 215 * t), k = (y * SIZE + x) * 4;
         im.data[k] = g; im.data[k + 1] = g + 3; im.data[k + 2] = g; im.data[k + 3] = 255;
       }
     c.putImageData(im, 0, 0);
@@ -732,7 +797,7 @@ function drawLoss() {
   c.fillStyle = css('--panel2'); c.fillRect(0, 0, w, h);
   c.strokeStyle = css('--border'); c.lineWidth = 1;
   c.beginPath(); c.moveTo(28, 8); c.lineTo(28, h - 16); c.lineTo(w - 8, h - 16); c.stroke();
-  c.fillStyle = css('--muted'); c.font = '10.5px ' + css('--mono');
+  c.fillStyle = css('--muted'); c.font = '12px ' + css('--mono');
   if (S.hist.length < 2) { c.fillText('press Train', 36, h / 2); return; }
   const hi = Math.max(...S.hist.map(d => d.loss));
   const X = i => 28 + i / (S.hist.length - 1) * (w - 36);
@@ -789,14 +854,14 @@ function drawStage() {
       const row = document.createElement('div');
       row.className = 'kern';
       row.innerHTML = `<div class="unit kunit"><div class="slices" style="display:flex;gap:3px"></div>
-          <div class="cap">kernel ${f + 1}${inC > 1 ? ` · ${slices}/${inC} slices` : ''}</div></div>
+          <div class="cap">kernel ${f + 1}${f === 0 ? ` · ${L.k}×${L.k}` : ''}${inC > 1 ? ` · ${slices}/${inC} slices` : ''}</div></div>
         <span class="arrow">&rarr;</span>
-        <div class="unit"><canvas class="map"></canvas><div class="cap">map ${f + 1}</div></div>`;
+        <div class="unit"><canvas class="map"></canvas><div class="cap">map ${f + 1}${f === 0 ? ` · ${g.size}×${g.size}` : ''}</div></div>`;
       host.append(row);
       const slot = row.querySelector('.slices');
       for (let c = 0; c < slices; c++) {
         const kcv = document.createElement('canvas'); slot.append(kcv);
-        drawGrid(kcv, net.K[ci][f][c], { px: inC > 1 ? 11 : 22, signed: true, max: kmax, grid: true, numbers: inC === 1 });
+        drawGrid(kcv, net.K[ci][f][c], { px: inC > 1 ? 12 : 27, signed: true, max: kmax, grid: true, numbers: inC === 1 });
       }
       if (S.scan && ci === 0 && S.scan.f === f) row.querySelector('.kunit').classList.add('active');
       const mcv = row.querySelector('.map');
@@ -822,7 +887,7 @@ function drawStage() {
     const wrap = document.createElement('div'); wrap.className = 'maps'; host.append(wrap);
     for (let f = 0; f < Math.min(maps.length, 8); f++) {
       const u = document.createElement('div'); u.className = 'unit';
-      u.innerHTML = `<canvas></canvas><div class="cap">map ${f + 1}</div>`;
+      u.innerHTML = `<canvas></canvas><div class="cap">map ${f + 1}${f === 0 ? ` · ${maps[0].length}×${maps[0].length}` : ''}</div>`;
       wrap.append(u);
       const cv = u.querySelector('canvas');
       drawGrid(cv, maps[f], { px: Math.max(12, Math.round(110 / maps[0].length)), max: mmax,
@@ -978,6 +1043,26 @@ rebuild(true);
   setTimeout(() => { if (!taken) startTrain(); }, 900);
   setTimeout(() => { if (!taken && S.training) stopTrain(); }, 30000);
 })();
+</script>
+<script>
+/* The floating switch. Inside the site shell the parent page supplies one,
+   so a framed demo leaves it out. */
+(function () {
+  if (window.top !== window.self) return;
+  var b = document.createElement('button');
+  b.className = 'theme-toggle';
+  b.type = 'button';
+  b.title = 'Switch between the dark and the light theme';
+  var paint = function () { b.textContent = THEME.get() === 'light' ? '\u263e Dark' : '\u2600 Light'; };
+  b.addEventListener('click', function () { THEME.toggle(); });
+  addEventListener('themechange', paint);
+  paint();
+  document.body.appendChild(b);
+})();
+</script>
+<script>
+/* repaint the canvases when the theme changes */
+addEventListener('themechange', function () { buildSamples(); drawAll(); });
 </script>
 </body>
 </html>

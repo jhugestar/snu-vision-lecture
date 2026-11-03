@@ -2,6 +2,26 @@
 <html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8">
+<script>
+/* Theme — one shared choice for every page on the site. Runs before the body
+   is parsed so a light visitor never sees a dark flash. */
+(function () {
+  var KEY = 'snu-vision-theme', t = null;
+  try { t = localStorage.getItem(KEY); } catch (e) {}
+  if (t !== 'light') t = 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+  window.THEME = {
+    get: function () { return document.documentElement.getAttribute('data-theme'); },
+    set: function (v) {
+      if (v === this.get()) return;
+      document.documentElement.setAttribute('data-theme', v);
+      try { localStorage.setItem(KEY, v); } catch (e) {}
+      dispatchEvent(new CustomEvent('themechange', { detail: v }));
+    },
+    toggle: function () { this.set(this.get() === 'dark' ? 'light' : 'dark'); }
+  };
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PASCAL VOC — mAP Deep Dive</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,600;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
@@ -153,6 +173,16 @@ tr.row-active td:first-child { border-left: 2px solid var(--accent); }
 .summary-card .sc-formula { background: var(--bg3); border-radius: 7px; padding: 7px 11px; font-family: var(--mono); font-size:21px; color: var(--accent2); }
 /* Class bars */
 .class-bars { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+/* ---- dark / light switch ---------------------------------------------- */
+.theme-toggle {
+  position: fixed; right: 16px; bottom: 16px; z-index: 99;
+  font: inherit; font-size: 13px; line-height: 1; padding: 8px 14px;
+  border-radius: 999px; cursor: pointer;
+  background: var(--bg2); color: var(--text); border: 1px solid var(--border2);
+  box-shadow: 0 2px 12px rgba(0,0,0,.28);
+}
+.theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+@media print { .theme-toggle { display: none; } }
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -287,24 +317,24 @@ tr.row-active td:first-child { border-left: 2px solid var(--accent); }
         <!-- TP chips -->
         <div style="background:rgba(22,163,74,0.05);border:1px solid rgba(22,163,74,0.2);border-radius:9px;padding:8px 10px;">
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
-            <span style="font-family:var(--mono);font-size:20px;font-weight:500;padding:1px 7px;border-radius:8px;background:rgba(22,163,74,0.12);color:#16a34a;">TP</span>
-            <span id="conf-tp-count" style="font-size:20px;color:#16a34a;"></span>
+            <span style="font-family:var(--mono);font-size:20px;font-weight:500;padding:1px 7px;border-radius:8px;background:rgba(22,163,74,0.12);color:var(--green);">TP</span>
+            <span id="conf-tp-count" style="font-size:20px;color:var(--green);"></span>
           </div>
           <div id="conf-tp-chips" style="display:flex;flex-wrap:wrap;gap:3px;min-height:18px;"></div>
         </div>
         <!-- FP chips -->
         <div style="background:rgba(220,38,38,0.05);border:1px solid rgba(220,38,38,0.2);border-radius:9px;padding:8px 10px;">
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
-            <span style="font-family:var(--mono);font-size:20px;font-weight:500;padding:1px 7px;border-radius:8px;background:rgba(220,38,38,0.10);color:#dc2626;">FP</span>
-            <span id="conf-fp-count" style="font-size:20px;color:#dc2626;"></span>
+            <span style="font-family:var(--mono);font-size:20px;font-weight:500;padding:1px 7px;border-radius:8px;background:rgba(220,38,38,0.10);color:var(--red);">FP</span>
+            <span id="conf-fp-count" style="font-size:20px;color:var(--red);"></span>
           </div>
           <div id="conf-fp-chips" style="display:flex;flex-wrap:wrap;gap:3px;min-height:18px;"></div>
         </div>
         <!-- FN chips -->
         <div style="background:rgba(217,119,6,0.05);border:1px solid rgba(217,119,6,0.2);border-radius:9px;padding:8px 10px;">
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
-            <span style="font-family:var(--mono);font-size:20px;font-weight:500;padding:1px 7px;border-radius:8px;background:rgba(217,119,6,0.10);color:#d97706;">FN</span>
-            <span id="conf-fn-count" style="font-size:20px;color:#d97706;"></span>
+            <span style="font-family:var(--mono);font-size:20px;font-weight:500;padding:1px 7px;border-radius:8px;background:rgba(217,119,6,0.10);color:var(--amber);">FN</span>
+            <span id="conf-fn-count" style="font-size:20px;color:var(--amber);"></span>
           </div>
           <div id="conf-fn-chips" style="display:flex;flex-wrap:wrap;gap:3px;min-height:18px;"></div>
         </div>
@@ -390,27 +420,27 @@ tr.row-active td:first-child { border-left: 2px solid var(--accent); }
         <!-- TP column -->
         <div style="background:rgba(22,163,74,0.05);border:1px solid rgba(22,163,74,0.2);border-radius:10px;padding:10px 12px;">
           <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px;">
-            <span style="font-family:var(--mono);font-size:20px;font-weight:500;padding:2px 8px;border-radius:10px;background:rgba(22,163,74,0.12);color:#16a34a;">TP</span>
+            <span style="font-family:var(--mono);font-size:20px;font-weight:500;padding:2px 8px;border-radius:10px;background:rgba(22,163,74,0.12);color:var(--green);">TP</span>
             <span style="font-size:20px;color:var(--text2);">IoU ≥ thr &amp; conf ≥ thr</span>
-            <span id="card-tp-count" style="font-family:var(--mono);font-size:20px;color:#16a34a;margin-left:auto;font-weight:500;"></span>
+            <span id="card-tp-count" style="font-family:var(--mono);font-size:20px;color:var(--green);margin-left:auto;font-weight:500;"></span>
           </div>
           <div id="card-tp-items" style="display:flex;flex-wrap:wrap;gap:4px;min-height:22px;"></div>
         </div>
         <!-- FP column -->
         <div style="background:rgba(220,38,38,0.05);border:1px solid rgba(220,38,38,0.2);border-radius:10px;padding:10px 12px;">
           <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px;">
-            <span style="font-family:var(--mono);font-size:20px;font-weight:500;padding:2px 8px;border-radius:10px;background:rgba(220,38,38,0.10);color:#dc2626;">FP</span>
+            <span style="font-family:var(--mono);font-size:20px;font-weight:500;padding:2px 8px;border-radius:10px;background:rgba(220,38,38,0.10);color:var(--red);">FP</span>
             <span style="font-size:20px;color:var(--text2);">conf ≥ thr but IoU &lt; thr</span>
-            <span id="card-fp-count" style="font-family:var(--mono);font-size:20px;color:#dc2626;margin-left:auto;font-weight:500;"></span>
+            <span id="card-fp-count" style="font-family:var(--mono);font-size:20px;color:var(--red);margin-left:auto;font-weight:500;"></span>
           </div>
           <div id="card-fp-items" style="display:flex;flex-wrap:wrap;gap:4px;min-height:22px;"></div>
         </div>
         <!-- FN column -->
         <div style="background:rgba(217,119,6,0.05);border:1px solid rgba(217,119,6,0.2);border-radius:10px;padding:10px 12px;">
           <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px;">
-            <span style="font-family:var(--mono);font-size:20px;font-weight:500;padding:2px 8px;border-radius:10px;background:rgba(217,119,6,0.10);color:#d97706;">FN</span>
+            <span style="font-family:var(--mono);font-size:20px;font-weight:500;padding:2px 8px;border-radius:10px;background:rgba(217,119,6,0.10);color:var(--amber);">FN</span>
             <span style="font-size:20px;color:var(--text2);">GT not matched by any detection</span>
-            <span id="card-fn-count" style="font-family:var(--mono);font-size:20px;color:#d97706;margin-left:auto;font-weight:500;"></span>
+            <span id="card-fn-count" style="font-family:var(--mono);font-size:20px;color:var(--amber);margin-left:auto;font-weight:500;"></span>
           </div>
           <div id="card-fn-items" style="display:flex;flex-wrap:wrap;gap:4px;min-height:22px;"></div>
         </div>
@@ -577,12 +607,12 @@ tr.row-active td:first-child { border-left: 2px solid var(--accent); }
     <div class="card" style="gap:10px;align-items:center;">
       <div style="font-family:var(--mono);font-size:20px;letter-spacing:.1em;color:var(--red);text-transform:uppercase;">Case 1 — IoU Miss</div>
       <svg viewBox="0 0 220 165" width="100%" style="max-height:165px;flex-shrink:0;">
-        <rect x="10" y="30" width="110" height="100" rx="4" fill="rgba(37,99,235,0.07)" stroke="#2563eb" stroke-width="2"/>
-        <text x="14" y="46" font-size="20" fill="#2563eb" font-family="DM Mono,monospace">GT</text>
-        <rect x="100" y="60" width="110" height="90" rx="4" fill="rgba(217,119,6,0.07)" stroke="#d97706" stroke-width="2" stroke-dasharray="6,3"/>
-        <text x="104" y="76" font-size="20" fill="#d97706" font-family="DM Mono,monospace">Pred</text>
+        <rect x="10" y="30" width="110" height="100" rx="4" fill="rgba(37,99,235,0.07)" stroke="var(--accent)" stroke-width="2"/>
+        <text x="14" y="46" font-size="20" fill="var(--accent)" font-family="DM Mono,monospace">GT</text>
+        <rect x="100" y="60" width="110" height="90" rx="4" fill="rgba(217,119,6,0.07)" stroke="var(--amber)" stroke-width="2" stroke-dasharray="6,3"/>
+        <text x="104" y="76" font-size="20" fill="var(--amber)" font-family="DM Mono,monospace">Pred</text>
         <rect x="100" y="60" width="20" height="70" fill="rgba(220,38,38,0.12)"/>
-        <text x="110" y="158" font-size="20" fill="#dc2626" font-family="DM Mono,monospace" text-anchor="middle">IoU ≈ 0.08  →  FP</text>
+        <text x="110" y="158" font-size="20" fill="var(--red)" font-family="DM Mono,monospace" text-anchor="middle">IoU ≈ 0.08  →  FP</text>
       </svg>
       <div style="font-size:21px;color:var(--text2);line-height:1.6;text-align:center;">Box was predicted but barely overlaps GT. The location is simply wrong.</div>
       <div style="font-family:var(--mono);font-size:20px;background:var(--bg3);padding:5px 11px;border-radius:6px;color:var(--red);">IoU &lt; threshold → FP</div>
@@ -591,13 +621,13 @@ tr.row-active td:first-child { border-left: 2px solid var(--accent); }
     <div class="card" style="gap:10px;align-items:center;">
       <div style="font-family:var(--mono);font-size:20px;letter-spacing:.1em;color:var(--amber);text-transform:uppercase;">Case 2 — Duplicate Detection</div>
       <svg viewBox="0 0 220 165" width="100%" style="max-height:165px;flex-shrink:0;">
-        <rect x="30" y="25" width="120" height="110" rx="4" fill="rgba(37,99,235,0.07)" stroke="#2563eb" stroke-width="2"/>
-        <text x="34" y="41" font-size="20" fill="#2563eb" font-family="DM Mono,monospace">GT</text>
-        <rect x="28" y="23" width="118" height="108" rx="4" fill="none" stroke="#16a34a" stroke-width="2"/>
-        <text x="34" y="118" font-size="20" fill="#16a34a" font-family="DM Mono,monospace">Pred1 conf=0.97 ✓TP</text>
-        <rect x="38" y="33" width="108" height="98" rx="4" fill="rgba(217,119,6,0.06)" stroke="#d97706" stroke-width="2" stroke-dasharray="5,3"/>
-        <text x="44" y="48" font-size="20" fill="#d97706" font-family="DM Mono,monospace">Pred2 conf=0.81</text>
-        <text x="110" y="158" font-size="20" fill="#dc2626" font-family="DM Mono,monospace" text-anchor="middle">Same GT → 2nd is FP</text>
+        <rect x="30" y="25" width="120" height="110" rx="4" fill="rgba(37,99,235,0.07)" stroke="var(--accent)" stroke-width="2"/>
+        <text x="34" y="41" font-size="20" fill="var(--accent)" font-family="DM Mono,monospace">GT</text>
+        <rect x="28" y="23" width="118" height="108" rx="4" fill="none" stroke="var(--green)" stroke-width="2"/>
+        <text x="34" y="118" font-size="20" fill="var(--green)" font-family="DM Mono,monospace">Pred1 conf=0.97 ✓TP</text>
+        <rect x="38" y="33" width="108" height="98" rx="4" fill="rgba(217,119,6,0.06)" stroke="var(--amber)" stroke-width="2" stroke-dasharray="5,3"/>
+        <text x="44" y="48" font-size="20" fill="var(--amber)" font-family="DM Mono,monospace">Pred2 conf=0.81</text>
+        <text x="110" y="158" font-size="20" fill="var(--red)" font-family="DM Mono,monospace" text-anchor="middle">Same GT → 2nd is FP</text>
       </svg>
       <div style="font-size:21px;color:var(--text2);line-height:1.6;text-align:center;">IoU is fine, but another prediction already claimed this GT. NMS prevents this.</div>
       <div style="font-family:var(--mono);font-size:20px;background:var(--bg3);padding:5px 11px;border-radius:6px;color:var(--amber);">1st match → TP, rest → FP</div>
@@ -607,11 +637,11 @@ tr.row-active td:first-child { border-left: 2px solid var(--accent); }
       <div style="font-family:var(--mono);font-size:20px;letter-spacing:.1em;color:var(--coral);text-transform:uppercase;">Case 3 — Hallucination</div>
       <svg viewBox="0 0 220 165" width="100%" style="max-height:165px;flex-shrink:0;">
         <rect x="10" y="10" width="200" height="140" rx="6" fill="var(--wash)" stroke="var(--border)" stroke-width="1"/>
-        <rect x="18" y="18" width="58" height="50" rx="3" fill="rgba(37,99,235,0.07)" stroke="#2563eb" stroke-width="1.5"/>
-        <text x="22" y="32" font-size="20" fill="#2563eb" font-family="DM Mono,monospace">GT (person)</text>
-        <rect x="118" y="68" width="84" height="68" rx="4" fill="rgba(220,38,38,0.07)" stroke="#dc2626" stroke-width="2" stroke-dasharray="5,3"/>
-        <text x="124" y="84" font-size="20" fill="#dc2626" font-family="DM Mono,monospace">Pred conf=0.72</text>
-        <text x="160" y="158" font-size="20" fill="#dc2626" font-family="DM Mono,monospace" text-anchor="middle">Empty region → FP</text>
+        <rect x="18" y="18" width="58" height="50" rx="3" fill="rgba(37,99,235,0.07)" stroke="var(--accent)" stroke-width="1.5"/>
+        <text x="22" y="32" font-size="20" fill="var(--accent)" font-family="DM Mono,monospace">GT (person)</text>
+        <rect x="118" y="68" width="84" height="68" rx="4" fill="rgba(220,38,38,0.07)" stroke="var(--red)" stroke-width="2" stroke-dasharray="5,3"/>
+        <text x="124" y="84" font-size="20" fill="var(--red)" font-family="DM Mono,monospace">Pred conf=0.72</text>
+        <text x="160" y="158" font-size="20" fill="var(--red)" font-family="DM Mono,monospace" text-anchor="middle">Empty region → FP</text>
         <text x="160" y="124" font-size="20" fill="rgba(220,38,38,0.3)" text-anchor="middle">✕</text>
       </svg>
       <div style="font-size:21px;color:var(--text2);line-height:1.6;text-align:center;">A box drawn in empty background with no GT nearby. A model hallucination.</div>
@@ -1316,6 +1346,26 @@ function buildPerfChart(){
   var legendEl=document.getElementById('perf-legend');
   if(legendEl)legendEl.innerHTML=eras.map(function(e){return '<div style="display:flex;align-items:center;gap:5px;"><div style="width:12px;height:12px;border-radius:3px;background:'+ERA_COLORS[e]+';"></div><span style="font-family:var(--mono);font-size:20px;color:var(--text2);">'+e+'</span></div>';}).join('');
 }
+</script>
+<script>
+/* The floating switch. Inside the site shell the parent page supplies one,
+   so a framed demo leaves it out. */
+(function () {
+  if (window.top !== window.self) return;
+  var b = document.createElement('button');
+  b.className = 'theme-toggle';
+  b.type = 'button';
+  b.title = 'Switch between the dark and the light theme';
+  var paint = function () { b.textContent = THEME.get() === 'light' ? '\u263e Dark' : '\u2600 Light'; };
+  b.addEventListener('click', function () { THEME.toggle(); });
+  addEventListener('themechange', paint);
+  paint();
+  document.body.appendChild(b);
+})();
+</script>
+<script>
+/* repaint the canvases when the theme changes */
+addEventListener('themechange', function () { setSlide(cur); });
 </script>
 </body>
 </html>

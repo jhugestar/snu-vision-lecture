@@ -2,46 +2,156 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
+<script>
+/* Theme — one shared choice for every page on the site. Runs before the body
+   is parsed so a light visitor never sees a dark flash. */
+(function () {
+  var KEY = 'snu-vision-theme', t = null;
+  try { t = localStorage.getItem(KEY); } catch (e) {}
+  if (t !== 'light') t = 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+  window.THEME = {
+    get: function () { return document.documentElement.getAttribute('data-theme'); },
+    set: function (v) {
+      if (v === this.get()) return;
+      document.documentElement.setAttribute('data-theme', v);
+      try { localStorage.setItem(KEY, v); } catch (e) {}
+      dispatchEvent(new CustomEvent('themechange', { detail: v }));
+    },
+    toggle: function () { this.set(this.get() === 'dark' ? 'light' : 'dark'); }
+  };
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Real Image Hough Line Transform — SNU</title>
 <style>
+:root {
+  /* dark is the default; the light theme below redefines every token */
+  --bg: #0e1118;
+  --panel: #161b25;
+  --panel2: #1d2331;
+  --line: #2a3243;
+  --line-soft: #232935;
+  --faint: #3b4457;
+  --text: #e4e8f0;
+  --text-2: #b4bccb;
+  --muted: #8b95a8;
+  --muted-2: #6a7385;
+  --ui: #4da3ff;
+  --amber: #fbbf24;
+  --teal: #065f46;
+  --teal-2: #6ee7b7;
+  --teal-3: #059669;
+  --blue: #60a5fa;
+  --blue-2: #1d4ed8;
+  --green: #4ade80;
+  --orange: #92400e;
+  --red: #f87171;
+  --red-2: #991b1b;
+  --blue-3: #cbd5e1;
+  --blue-4: #8cc3ff;
+  --cyan: #06b6d4;
+  --cyan-2: #22d3ee;
+  --violet: #a78bfa;
+  --orange-2: #fb923c;
+  --amber-2: #facc15;
+  --pink: #f472b6;
+  --purple: #e879f9;
+  --teal-4: #34d399;
+  --blue-5: #818cf8;
+  --orange-3: #f97316;
+  --lime: #84cc16;
+  --pink-2: #ec4899;
+  --teal-5: #10b981;
+  --blue-6: #3b82f6;
+  --purple-2: #d946ef;
+  --red-3: #ef4444;
+  --blue-7: #334155;
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  --bg: #eef1f6;
+  --panel: #ffffff;
+  --panel2: #f4f6fa;
+  --line: #d4dae4;
+  --line-soft: #e3e7ee;
+  --faint: #c3cad6;
+  --text: #161b22;
+  --text-2: #454c58;
+  --muted: #5d6675;
+  --muted-2: #78808f;
+  --ui: #2563eb;
+  --amber: #b88400;
+  --teal: #dbf0ea;
+  --teal-2: #14a46b;
+  --teal-3: #00b87f;
+  --blue: #0052b8;
+  --blue-2: #0f37a9;
+  --green: #16a249;
+  --orange: #af4808;
+  --red: #b70000;
+  --red-2: #a21515;
+  --blue-3: #415977;
+  --blue-4: #0058b8;
+  --cyan: #009db8;
+  --cyan-2: #059bb2;
+  --violet: #2e00b8;
+  --orange-2: #b85300;
+  --amber-2: #b89300;
+  --pink: #b20560;
+  --purple: #9f00b8;
+  --teal-4: #1b9d6d;
+  --blue-5: #0112b6;
+  --orange-3: #b84b00;
+  --lime: #6dad0a;
+  --pink-2: #ae0a5b;
+  --teal-5: #07b178;
+  --blue-6: #0046b8;
+  --purple-2: #9b07b1;
+  --red-3: #b10707;
+  --blue-7: #435775;
+  color-scheme: light;
+}
+:root[data-theme="light"] .btn-green { color:#0b6b4a; }
+:root[data-theme="light"] .tag { color:#4b5363; }
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family:"IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif; background: #0e1118; color: #e4e8f0; min-height: 100vh; font-size:15px; line-height:1.55;}
-header { background: linear-gradient(135deg, #1d2331, #161b25); padding: 16px 24px; text-align: center; border-bottom: 2px solid #2a3243; }
-header h1 { font-size: 1.55em; color: #e4e8f0; }
-header p  { color: #8b95a8; font-size: 0.86em; margin-top: 3px; }
+body { font-family:"IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size:15px; line-height:1.55;}
+header { background: linear-gradient(135deg, var(--panel2), var(--panel)); padding: 16px 24px; text-align: center; border-bottom: 2px solid var(--line); }
+header h1 { font-size: 1.55em; color: var(--text); }
+header p  { color: var(--muted); font-size: 0.86em; margin-top: 3px; }
 
 .controls-bar {
-  background: #161b25; border-bottom: 1px solid #2a3243;
+  background: var(--panel); border-bottom: 1px solid var(--line);
   padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 12px;
   align-items: center; justify-content: center;
 }
 .ctrl-group { display: flex; align-items: center; gap: 6px; font-size: 0.83em; }
-.ctrl-group label { color: #8b95a8; font-weight: 600; white-space: nowrap; }
-.ctrl-group input[type=range] { width: 110px; accent-color: #4da3ff; }
-.ctrl-val { color: #fbbf24; font-weight: bold; font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; min-width: 36px; }
-.sep { width: 1px; height: 24px; background: #2a3243; margin: 0 4px; }
+.ctrl-group label { color: var(--muted); font-weight: 600; white-space: nowrap; }
+.ctrl-group input[type=range] { width: 110px; accent-color: var(--ui); }
+.ctrl-val { color: var(--amber); font-weight: bold; font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; min-width: 36px; }
+.sep { width: 1px; height: 24px; background: var(--line); margin: 0 4px; }
 
 .btn {
   padding: 6px 16px; border: none; border-radius: 16px;
   cursor: pointer; font-size: 0.83em; font-weight: 600; transition: all 0.2s; white-space: nowrap;
 }
-.btn-primary   { background: #4da3ff; color: #0e1118; }
-.btn-secondary { background: #2a3243; color: #b4bccb; border: 1px solid #3b4457; }
-.btn-green     { background: #065f46; color: #6ee7b7; border: 1px solid #059669; }
-.btn-file      { background: #2a3243; color: #60a5fa; border: 1px solid #1d4ed8; }
+.btn-primary   { background: var(--ui); color: var(--bg); }
+.btn-secondary { background: var(--line); color: var(--text-2); border: 1px solid var(--faint); }
+.btn-green     { background: var(--teal); color: var(--teal-2); border: 1px solid var(--teal-3); }
+.btn-file      { background: var(--line); color: var(--blue); border: 1px solid var(--blue-2); }
 .btn:hover     { filter: brightness(1.2); transform: scale(1.04); }
 input[type=file] { display: none; }
 
 .status-bar {
   max-width: 1200px; margin: 8px auto 4px;
-  background: #1d2331; border: 1px solid #2a3243; border-radius: 8px;
-  padding: 7px 16px; font-size: 0.82em; color: #6a7385; text-align: center;
+  background: var(--panel2); border: 1px solid var(--line); border-radius: 8px;
+  padding: 7px 16px; font-size: 0.82em; color: var(--muted-2); text-align: center;
 }
-.status-bar.ok   { color: #4ade80; border-color: #065f46; }
-.status-bar.info { color: #60a5fa; border-color: #1d4ed8; }
-.status-bar.warn { color: #fbbf24; border-color: #92400e; }
-.status-bar.err  { color: #f87171; border-color: #991b1b; }
+.status-bar.ok   { color: var(--green); border-color: var(--teal); }
+.status-bar.info { color: var(--blue); border-color: var(--blue-2); }
+.status-bar.warn { color: var(--amber); border-color: var(--orange); }
+.status-bar.err  { color: var(--red); border-color: var(--red-2); }
 
 .main-grid {
   display: grid;
@@ -52,24 +162,24 @@ input[type=file] { display: none; }
 @media (max-width: 860px) { .main-grid { grid-template-columns: 1fr; } }
 
 .canvas-panel {
-  background: #161b25; border: 1px solid #2a3243; border-radius: 10px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
   padding: 10px; box-shadow: 0 4px 16px #00000055;
 }
 .panel-title {
-  font-size: 0.88em; font-weight: 700; color: #4da3ff; margin-bottom: 6px;
+  font-size: 0.88em; font-weight: 700; color: var(--ui); margin-bottom: 6px;
   display: flex; align-items: center; gap: 6px;
 }
 .tag {
-  font-size: 0.7em; background: #2a3243; color: #6a7385;
+  font-size: 0.7em; background: var(--line); color: var(--muted-2);
   padding: 1px 7px; border-radius: 10px; font-weight: 400;
 }
-.canvas-wrap { position: relative; background: #0e1118; border-radius: 5px; overflow: hidden; }
+.canvas-wrap { position: relative; background: var(--bg); border-radius: 5px; overflow: hidden; }
 canvas { display: block; width: 100%; border-radius: 5px; }
-.panel-sub { font-size: 0.72em; color: #6a7385; margin-top: 4px; text-align: center; }
+.panel-sub { font-size: 0.72em; color: var(--muted-2); margin-top: 4px; text-align: center; }
 
 .hs-legend {
   display: flex; gap: 10px; justify-content: center;
-  margin-top: 4px; font-size: 0.73em; color: #6a7385; flex-wrap: wrap;
+  margin-top: 4px; font-size: 0.73em; color: var(--muted-2); flex-wrap: wrap;
 }
 .hs-leg { display: flex; align-items: center; gap: 4px; }
 .hs-dot { width: 9px; height: 9px; border-radius: 50%; }
@@ -79,24 +189,38 @@ canvas { display: block; width: 100%; border-radius: 5px; }
   max-width: 1200px; margin: 0 auto; flex-wrap: wrap;
 }
 .info-box {
-  flex: 1; min-width: 260px; background: #161b25;
-  border: 1px solid #2a3243; border-left: 4px solid #4da3ff;
-  border-radius: 10px; padding: 14px 16px; font-size: 0.86em; line-height: 1.8; color: #cbd5e1;
+  flex: 1; min-width: 260px; background: var(--panel);
+  border: 1px solid var(--line); border-left: 4px solid var(--ui);
+  border-radius: 10px; padding: 14px 16px; font-size: 0.86em; line-height: 1.8; color: var(--blue-3);
 }
-.info-box h3 { color: #8cc3ff; margin-bottom: 7px; font-size: 0.95em; }
-.math { color: #fbbf24; font-weight: bold; font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
-.hl   { color: #f87171; font-weight: bold; }
-.hl2  { color: #4ade80; font-weight: bold; }
+.info-box h3 { color: var(--blue-4); margin-bottom: 7px; font-size: 0.95em; }
+.math { color: var(--amber); font-weight: bold; font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
+.hl   { color: var(--red); font-weight: bold; }
+.hl2  { color: var(--green); font-weight: bold; }
 
 .stats-box {
-  flex: 0 0 220px; background: #161b25; border: 1px solid #2a3243;
-  border-left: 4px solid #06b6d4; border-radius: 10px;
-  padding: 14px 16px; font-size: 0.84em; font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; color: #8b95a8; line-height: 2;
+  flex: 0 0 220px; background: var(--panel); border: 1px solid var(--line);
+  border-left: 4px solid var(--cyan); border-radius: 10px;
+  padding: 14px 16px; font-size: 0.84em; font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); line-height: 2;
 }
-.stats-box h3 { color: #22d3ee; margin-bottom: 5px; font-size: 0.92em; font-family:"IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif; }
+.stats-box h3 { color: var(--cyan-2); margin-bottom: 5px; font-size: 0.92em; font-family:"IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif; }
 .sl { display: flex; justify-content: space-between; }
-.sv { color: #fbbf24; font-weight: bold; }
+.sv { color: var(--amber); font-weight: bold; }
+/* ---- dark / light switch ---------------------------------------------- */
+.theme-toggle {
+  position: fixed; right: 16px; bottom: 16px; z-index: 99;
+  font: inherit; font-size: 13px; line-height: 1; padding: 8px 14px;
+  border-radius: 999px; cursor: pointer;
+  background: var(--panel); color: var(--text); border: 1px solid var(--line);
+  box-shadow: 0 2px 12px rgba(0,0,0,.28);
+}
+.theme-toggle:hover { border-color: var(--ui); color: var(--ui); }
+@media print { .theme-toggle { display: none; } }
 </style>
+<script>
+/* canvas colours, read back out of the theme */
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -106,7 +230,7 @@ canvas { display: block; width: 100%; border-radius: 5px; }
 <header>
   <h1>Hough Line Transform on a Real Image</h1>
   <p>Image → Edge Detection → Hough Transform → Line Detection | Click edge pixels to visualize sinusoids</p>
-  <p style="margin-top:6px;font-size:0.82em;color:#8b95a8">Hanbyul Joo &nbsp;|&nbsp; Visual Computing Lab, Seoul National University &nbsp;|&nbsp; <a href="https://jhugestar.github.io/snu-vision-lecture/" target="_blank" style="color:#4da3ff;text-decoration:none;">More Demos ↗</a></p>
+  <p style="margin-top:6px;font-size:0.82em;color:var(--muted)">Hanbyul Joo &nbsp;|&nbsp; Visual Computing Lab, Seoul National University &nbsp;|&nbsp; <a href="https://jhugestar.github.io/snu-vision-lecture/" target="_blank" style="color:var(--ui);text-decoration:none;">More Demos ↗</a></p>
 </header>
 
 <div class="controls-bar">
@@ -223,12 +347,12 @@ let clickedPx = [];    // [{x,y,color}]
 let htHover   = null;  // {theta, rho, px, py}
 let animActive = false;
 
-const CPAL = ['#f87171','#fbbf24','#4ade80','#22d3ee','#a78bfa'];
+const CPAL = [cssVar('--red'),cssVar('--amber'),cssVar('--green'),cssVar('--cyan-2'),cssVar('--violet')];
 const LINE_COLORS = [
-  '#f87171','#fb923c','#facc15','#4ade80','#22d3ee',
-  '#60a5fa','#a78bfa','#f472b6','#e879f9','#34d399',
-  '#fbbf24','#818cf8','#f97316','#06b6d4','#84cc16',
-  '#ec4899','#10b981','#3b82f6','#d946ef','#ef4444'
+  cssVar('--red'),cssVar('--orange-2'),cssVar('--amber-2'),cssVar('--green'),cssVar('--cyan-2'),
+  cssVar('--blue'),cssVar('--violet'),cssVar('--pink'),cssVar('--purple'),cssVar('--teal-4'),
+  cssVar('--amber'),cssVar('--blue-5'),cssVar('--orange-3'),cssVar('--cyan'),cssVar('--lime'),
+  cssVar('--pink-2'),cssVar('--teal-5'),cssVar('--blue-6'),cssVar('--purple-2'),cssVar('--red-3')
 ];
 
 // Canvases
@@ -460,13 +584,27 @@ function runPipeline() {
 // ============================================================
 // DRAWING HELPERS
 // ============================================================
+const isLight = () => document.documentElement.getAttribute('data-theme') === 'light';
 function hotmap(t) {
   t = Math.max(0, Math.min(1, t));
+  if (isLight()) return hotmapLight(t);
   if (t < 0.2) return [0, 0, Math.round(t/0.2*200)];
   if (t < 0.4) return [0, Math.round((t-0.2)/0.2*255), 255];
   if (t < 0.6) return [Math.round((t-0.4)/0.2*255), 255, Math.round((1-(t-0.4)/0.2)*255)];
   if (t < 0.8) return [255, Math.round((1-(t-0.6)/0.2)*180), 0];
   return [255, 0, 0];
+}
+/* the same ramp read against white: pale blue -> teal -> amber -> deep red */
+function hotmapLight(t) {
+  const stops = [[0,[238,241,246]], [0.2,[150,200,235]], [0.4,[64,160,200]],
+                 [0.6,[230,170,40]], [0.8,[214,90,30]], [1,[150,20,20]]];
+  for (let i = 1; i < stops.length; i++) {
+    if (t <= stops[i][0]) {
+      const [a, ca] = stops[i-1], [b, cb] = stops[i], k = (t - a) / (b - a);
+      return [0,1,2].map(j => Math.round(ca[j] + (cb[j] - ca[j]) * k));
+    }
+  }
+  return stops[stops.length-1][1];
 }
 
 // rho_idx to canvas-y: top = +DIAG, bottom = -DIAG
@@ -521,7 +659,7 @@ function drawOrig() {
 
   // Clicked pixels
   clickedPx.forEach(({x,y,color})=>{
-    oCtx.fillStyle=color; oCtx.strokeStyle='#e4e8f0'; oCtx.lineWidth=1.5;
+    oCtx.fillStyle=color; oCtx.strokeStyle=cssVar('--text'); oCtx.lineWidth=1.5;
     oCtx.beginPath(); oCtx.arc(x,y,5,0,Math.PI*2); oCtx.fill(); oCtx.stroke();
   });
 }
@@ -529,7 +667,7 @@ function drawOrig() {
 function drawHough() {
   if (!accumData || !IW) return;
   const CW=houghC.width, CH=houghC.height;
-  hCtx.fillStyle='#0e1118'; hCtx.fillRect(0,0,CW,CH);
+  hCtx.fillStyle=cssVar('--bg'); hCtx.fillRect(0,0,CW,CH);
 
   // Heatmap: canvas pixel → accumulator cell
   // x-axis: θ (0 → π), y-axis: ρ (top=+DIAG, bottom=-DIAG)
@@ -589,7 +727,7 @@ function drawHough() {
     gr.addColorStop(0,'rgba(255,255,255,0.5)'); gr.addColorStop(1,'transparent');
     hCtx.fillStyle=gr; hCtx.beginPath(); hCtx.arc(px2,py2,13,0,Math.PI*2); hCtx.fill();
     // Dot
-    hCtx.fillStyle=col; hCtx.strokeStyle='#e4e8f0'; hCtx.lineWidth=1.5;
+    hCtx.fillStyle=col; hCtx.strokeStyle=cssVar('--text'); hCtx.lineWidth=1.5;
     hCtx.beginPath(); hCtx.arc(px2,py2,5,0,Math.PI*2); hCtx.fill(); hCtx.stroke();
     hCtx.fillStyle=col; hCtx.font='bold 10px monospace';
     hCtx.fillText(`L${i+1}`, Math.min(px2+6,CW-24), Math.max(py2-5,12));
@@ -616,14 +754,15 @@ function drawHough() {
 function drawEdge() {
   if (!edgeData || !IW) return;
   let maxE=0; for(let i=0;i<edgeData.length;i++) if(edgeData[i]>maxE) maxE=edgeData[i];
-  const imgD=eCtx.createImageData(IW,IH); const d=imgD.data;
+  const imgD=eCtx.createImageData(IW,IH); const d=imgD.data, light=isLight();
   for (let i=0;i<IW*IH;i++) {
     const norm=edgeData[i]/maxE;
     const v=edgeMask[i] ? Math.round(Math.min(255,norm*400)) : Math.round(norm*50);
-    d[i*4]  = edgeMask[i] ? v : Math.round(v*0.2);
-    d[i*4+1]= edgeMask[i] ? v : Math.round(v*0.2);
-    d[i*4+2]= edgeMask[i] ? v : Math.round(v*0.7);
-    d[i*4+3]= 255;
+    let r = edgeMask[i] ? v : Math.round(v*0.2);
+    let g = edgeMask[i] ? v : Math.round(v*0.2);
+    let b = edgeMask[i] ? v : Math.round(v*0.7);
+    if (light) { r = 255 - r; g = 255 - g; b = 255 - b; }   // ink on paper
+    d[i*4]=r; d[i*4+1]=g; d[i*4+2]=b; d[i*4+3]= 255;
   }
   eCtx.putImageData(imgD,0,0);
   // Clicked pixel markers
@@ -635,7 +774,7 @@ function drawEdge() {
 
 function drawSin() {
   const CW=sinC.width, CH=sinC.height;
-  sCtx.fillStyle='#0e1118'; sCtx.fillRect(0,0,CW,CH);
+  sCtx.fillStyle=cssVar('--bg'); sCtx.fillRect(0,0,CW,CH);
 
   if (!CW || !CH) return;
 
@@ -668,7 +807,7 @@ function drawSin() {
   sCtx.setLineDash([]);
 
   if (clickedPx.length===0) {
-    sCtx.fillStyle='#334155'; sCtx.font='13px sans-serif'; sCtx.textAlign='center';
+    sCtx.fillStyle=cssVar('--blue-7'); sCtx.font='13px sans-serif'; sCtx.textAlign='center';
     sCtx.fillText('← Click on a pixel in the edge map',CW/2,CH/2);
     sCtx.textAlign='left'; return;
   }
@@ -809,6 +948,26 @@ function setStatus(msg,type=''){
   addEventListener('keydown', give, { once: true });
   setTimeout(() => { if (!taken) { toggleAnim(); } }, 1400);
 })();
+</script>
+<script>
+/* The floating switch. Inside the site shell the parent page supplies one,
+   so a framed demo leaves it out. */
+(function () {
+  if (window.top !== window.self) return;
+  var b = document.createElement('button');
+  b.className = 'theme-toggle';
+  b.type = 'button';
+  b.title = 'Switch between the dark and the light theme';
+  var paint = function () { b.textContent = THEME.get() === 'light' ? '\u263e Dark' : '\u2600 Light'; };
+  b.addEventListener('click', function () { THEME.toggle(); });
+  addEventListener('themechange', paint);
+  paint();
+  document.body.appendChild(b);
+})();
+</script>
+<script>
+/* repaint the canvases when the theme changes */
+addEventListener('themechange', function () { drawAll(); });
 </script>
 </body>
 </html>
