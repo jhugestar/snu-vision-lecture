@@ -93,7 +93,7 @@ header .author a:hover { text-decoration: underline; }
 
 .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; min-width: 0; }
 .arch { grid-area: arch; position: relative; }
-#archCanvas { width: 100%; height: 300px; display: block; border-radius: 8px; cursor: pointer; }
+#archCanvas { width: 100%; height: 320px; display: block; border-radius: 8px; cursor: pointer; }
 .archhint { position: absolute; right: 16px; top: 10px; font-size: 13.5px; color: var(--muted); pointer-events: none; }
 .left { grid-area: left; display: grid; gap: 14px; align-content: start; }
 .mid { grid-area: mid; display: grid; gap: 14px; min-width: 0; align-content: start; }
@@ -101,7 +101,7 @@ header .author a:hover { text-decoration: underline; }
 
 .ptitle { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 10px 14px 0; }
 .ptitle h2 { font-size: 16.5px; margin: 0; font-weight: 600; }
-.ptitle span { font-size: 13.5px; color: var(--muted); font-family: var(--mono); text-align: right; }
+.ptitle span { font-size: 15px; color: var(--muted); font-family: var(--mono); text-align: right; }
 .pad { padding: 10px 14px 14px; }
 .hint { font-size: 14px; color: var(--muted); }
 .hint b { color: var(--fg); font-weight: 500; }
@@ -129,6 +129,9 @@ header .author a:hover { text-decoration: underline; }
 .unit .cap { font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
 .unit canvas { display: block; border-radius: 3px; image-rendering: pixelated; }
 .kern { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+#stageBody.bank { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 12px; }
+#stageBody.bank .kern { flex-wrap: nowrap; }
+.slices canvas { outline: 1px solid var(--border); }
 .arrow { color: var(--muted); font-size: 19px; }
 
 .sec { display: grid; gap: 7px; }
@@ -229,7 +232,7 @@ button.wide { flex: 1; }
 
     <div class="sec">
       <div class="lbl">Architecture</div>
-      <div class="hint" id="archLine" style="font-family:var(--mono); font-size:13px"></div>
+      <div class="hint" id="archLine" style="font-family:var(--mono); font-size:14.5px; color:var(--fg); line-height:1.65"></div>
       <label class="chk"><input type="checkbox" id="relu" checked> ReLU after every layer</label>
       <label class="chk"><input type="checkbox" id="showBox" checked> mark where C3 fires hardest</label>
       <div class="hint">C3 has only 4&times;4 positions left. The box is the one whose 16 filters add up to the most activity &mdash; the patch of the digit this layer reacts to most.</div>
@@ -682,9 +685,10 @@ function drawArch() {
       }
       box = { x: x - 7, y: y - 7, w: bw + 14, h: bh + 14 };
     } else {
-      const g = GEO[L.id], maps = mapsOf(L.id), count = Math.min(maps.length, 6);
+      const g = GEO[L.id], maps = mapsOf(L.id), count = maps.length;   // the whole stack, not a sample
       const side = Math.max(30, Math.min(72, 230 / Math.sqrt(g.size)));
-      const off = count > 1 ? 7 : 0;
+      /* the stack has to fit between its neighbours, however many maps it holds */
+      const off = count > 1 ? Math.max(2.5, Math.min(7, (gap - side - 26) / (count - 1))) : 0;
       const x0 = cx - side / 2 - off * (count - 1) / 2, y0 = midY - side / 2 - off * (count - 1) / 2;
       let max = 1e-6;
       for (const m of maps) for (const r of m) for (const v of r) max = Math.max(max, Math.abs(v));
@@ -701,15 +705,16 @@ function drawArch() {
     archHit.push({ id: L.id, ...box });
 
     c.textAlign = 'center';
-    c.font = '600 14.5px ' + css('--font');
+    c.font = '700 16px ' + css('--font');
     c.fillStyle = sel ? css('--accent') : css('--fg');
-    c.fillText(L.name, cx, h - 32);
-    c.font = '13px ' + css('--mono'); c.fillStyle = css('--muted');
+    c.fillText(L.name, cx, h - 34);
+    c.font = '600 17px ' + css('--mono');
+    c.fillStyle = sel ? css('--accent') : css('--fg');
     const g = GEO[L.id];
-    c.fillText(g ? `${g.f} @ ${g.size}×${g.size}` : `${L.n} units`, cx, h - 16);
+    c.fillText(g ? `${g.f} @ ${g.size}×${g.size}` : `${L.n} units`, cx, h - 14);
     if (i > 0) {
       const ax = cx - gap / 2, ay = midY - h * .28;
-      c.fillStyle = css('--muted'); c.font = '12.5px ' + css('--mono');
+      c.fillStyle = css('--muted'); c.font = '14px ' + css('--mono');
       c.fillText(L.op, ax, ay - 8);
       c.strokeStyle = css('--faint'); c.lineWidth = 1.4;
       c.beginPath(); c.moveTo(ax - 14, ay + 4); c.lineTo(ax + 14, ay + 4); c.stroke();
@@ -843,9 +848,11 @@ function drawStage() {
     return;
   }
 
+  host.classList.toggle('bank', (L.kind === 'conv' && L.f > 6));
+
   if (L.kind === 'conv') {
     const ci = L.id === 'c1' ? 0 : 1, maps = L.id === 'c1' ? S.fw.c1 : S.fw.c3;
-    const inC = ci === 0 ? 1 : LAYERS[1].f, shown = Math.min(L.f, 8), slices = Math.min(inC, 4);
+    const inC = ci === 0 ? 1 : LAYERS[1].f, shown = L.f, slices = inC;   // all of them
     let kmax = 1e-6;
     for (const f of net.K[ci]) for (const c of f) for (const r of c) for (const v of r) kmax = Math.max(kmax, Math.abs(v));
     let mmax = 1e-6;
@@ -853,27 +860,26 @@ function drawStage() {
     for (let f = 0; f < shown; f++) {
       const row = document.createElement('div');
       row.className = 'kern';
-      row.innerHTML = `<div class="unit kunit"><div class="slices" style="display:flex;gap:3px"></div>
-          <div class="cap">kernel ${f + 1}${f === 0 ? ` · ${L.k}×${L.k}` : ''}${inC > 1 ? ` · ${slices}/${inC} slices` : ''}</div></div>
+      row.innerHTML = `<div class="unit kunit"><div class="slices" style="display:grid;grid-template-columns:repeat(${Math.min(slices, 3)}, auto);gap:5px;justify-content:center"></div>
+          <div class="cap">kernel ${f + 1}${f === 0 ? ` · ${L.k}×${L.k}` : ''}${inC > 1 ? ` · ${inC} slices` : ''}</div></div>
         <span class="arrow">&rarr;</span>
         <div class="unit"><canvas class="map"></canvas><div class="cap">map ${f + 1}${f === 0 ? ` · ${g.size}×${g.size}` : ''}</div></div>`;
       host.append(row);
       const slot = row.querySelector('.slices');
       for (let c = 0; c < slices; c++) {
         const kcv = document.createElement('canvas'); slot.append(kcv);
-        drawGrid(kcv, net.K[ci][f][c], { px: inC > 1 ? 12 : 27, signed: true, max: kmax, grid: true, numbers: inC === 1 });
+        drawGrid(kcv, net.K[ci][f][c], { px: inC > 1 ? 10 : 27, signed: true, max: kmax, grid: true, numbers: inC === 1 });
       }
       if (S.scan && ci === 0 && S.scan.f === f) row.querySelector('.kunit').classList.add('active');
       const mcv = row.querySelector('.map');
       const shownMap = (S.scan && ci === 0 && S.scan.f === f)
         ? maps[f].map((r, y) => r.map((v, x) => (y * g.size + x) > (S.scan.y * g.size + S.scan.x) ? 0 : v))
         : maps[f];
-      drawGrid(mcv, shownMap, { px: Math.max(8, Math.round(140 / g.size)), max: mmax,
+      drawGrid(mcv, shownMap, { px: Math.max(8, Math.round((L.f > 6 ? 116 : 140) / g.size)), max: mmax,
         cursor: (S.scan && ci === 0 && S.scan.f === f) ? [S.scan.y, S.scan.x]
               : (S.pick && S.pick.id === L.id && S.pick.f === f ? [S.pick.y, S.pick.x] : null) });
       mapClicks(mcv, L.id, f, g.size);
     }
-    if (L.f > shown) host.insertAdjacentHTML('beforeend', `<div class="hint">…and ${L.f - shown} more filters</div>`);
     $('#stageNote').innerHTML = L.id === 'c1'
       ? 'Six kernels of 5×5 — 25 numbers each, and the <b>same 25 numbers at every position</b>. Train for a while and they become stroke detectors. Click a cell of a map to see the patch it came from.'
       : 'Each C3 kernel carries one 5×5 slice <b>per C1 map</b>, so it answers to combinations of the earlier parts. One C3 cell already covers a 14×14 window of the digit.';
@@ -885,7 +891,7 @@ function drawStage() {
     let mmax = 1e-6;
     for (const m of prev) for (const r of m) for (const v of r) mmax = Math.max(mmax, Math.abs(v));
     const wrap = document.createElement('div'); wrap.className = 'maps'; host.append(wrap);
-    for (let f = 0; f < Math.min(maps.length, 8); f++) {
+    for (let f = 0; f < maps.length; f++) {
       const u = document.createElement('div'); u.className = 'unit';
       u.innerHTML = `<canvas></canvas><div class="cap">map ${f + 1}${f === 0 ? ` · ${maps[0].length}×${maps[0].length}` : ''}</div>`;
       wrap.append(u);
@@ -894,7 +900,6 @@ function drawStage() {
         cursor: S.pick && S.pick.id === L.id && S.pick.f === f ? [S.pick.y, S.pick.x] : null });
       mapClicks(cv, L.id, f, maps[0].length);
     }
-    if (maps.length > 8) host.insertAdjacentHTML('beforeend', `<div class="hint">…and ${maps.length - 8} more maps</div>`);
     $('#stageNote').innerHTML = 'Averaging each 2×2 block halves the resolution, so the answer stops caring about a pixel here or there. Averaging is linear, which leaves ReLU as the only non-linearity in the network.';
     return;
   }
