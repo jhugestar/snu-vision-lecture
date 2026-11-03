@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>LeNet — a Convolutional Network, End to End</title>
+<style>
+/* Layout: architecture strip across the top -> [input + prediction | the stage you opened | controls] */
+:root {
+  --bg: #0e1118;
+  --panel: #161b25;
+  --panel2: #1d2331;
+  --border: #2a3243;
+  --fg: #e4e8f0;
+  --muted: #8b95a8;
+  --faint: #3b4457;
+  --c0: #3b8de8;      /* negative weights */
+  --c1: #e86a2c;      /* positive weights */
+  --accent: #f3c969;  /* kernel window, selection */
+  --ui: #4da3ff;
+  --loss: #2fbf8a;
+  --danger: #e66767;
+  --other: #c792ea;
+  --font: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1680px; margin: 0 auto; padding: 14px 18px 28px; display: grid; gap: 14px;
+  grid-template-columns: minmax(0, 350px) minmax(0, 1fr) 330px;
+  grid-template-areas: "hdr hdr hdr" "arch arch arch" "left mid ctrl"; align-items: start; }
+@media (max-width: 1250px) { .wrap { grid-template-columns: minmax(0, 1fr) 330px; grid-template-areas: "hdr hdr" "arch arch" "left ctrl" "mid mid"; } }
+@media (max-width: 1000px) { .wrap { grid-template-columns: 1fr; grid-template-areas: "hdr" "arch" "left" "ctrl" "mid"; } }
+
+header { grid-area: hdr; display: flex; align-items: baseline; gap: 14px 22px; flex-wrap: wrap; }
+header h1 { font-size: 24px; margin: 0; letter-spacing: .2px; }
+header .sub { color: var(--muted); }
+header .author { margin-left: auto; font-size: 12.5px; color: var(--muted); }
+header .author a { color: var(--ui); text-decoration: none; }
+header .author a:hover { text-decoration: underline; }
+.kbd { font-family: var(--mono); font-size: 12px; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; color: var(--muted); }
+
+.panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; min-width: 0; }
+.arch { grid-area: arch; position: relative; }
+#archCanvas { width: 100%; height: 300px; display: block; border-radius: 8px; cursor: pointer; }
+.archhint { position: absolute; right: 16px; top: 10px; font-size: 12.5px; color: var(--muted); pointer-events: none; }
+.left { grid-area: left; display: grid; gap: 14px; align-content: start; }
+.mid { grid-area: mid; display: grid; gap: 14px; min-width: 0; align-content: start; }
+.controls { grid-area: ctrl; padding: 14px; display: grid; gap: 14px; align-content: start; }
+
+.ptitle { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 10px 14px 0; }
+.ptitle h2 { font-size: 15px; margin: 0; font-weight: 600; }
+.ptitle span { font-size: 12.5px; color: var(--muted); font-family: var(--mono); text-align: right; }
+.pad { padding: 10px 14px 14px; }
+.hint { font-size: 13px; color: var(--muted); }
+.hint b { color: var(--fg); font-weight: 500; }
+
+#inputCanvas { width: 100%; aspect-ratio: 1; display: block; border-radius: 6px; cursor: crosshair; }
+.calc { font-family: var(--mono); font-size: 13px; line-height: 1.7; }
+.calc .k { color: var(--muted); } .calc .px { color: var(--fg); } .calc .w { color: var(--ui); }
+.calc .res { color: var(--loss); } .calc .relu { color: var(--accent); }
+.samples { display: flex; gap: 6px; flex-wrap: wrap; }
+.samples canvas { width: 30px; height: 30px; border-radius: 3px; border: 1px solid var(--border); cursor: pointer; image-rendering: pixelated; }
+.samples canvas.sel { border-color: var(--accent); }
+
+.bars { display: grid; gap: 4px; }
+.bar { display: grid; grid-template-columns: 18px 1fr 50px; gap: 8px; align-items: center; font-size: 13px; }
+.bar .name { color: var(--muted); font-family: var(--mono); text-align: right; }
+.bar .track { height: 11px; background: var(--panel2); border-radius: 6px; overflow: hidden; }
+.bar .fill { height: 100%; background: var(--ui); border-radius: 6px; transition: width .1s ease; }
+.bar .val { font-family: var(--mono); font-size: 12px; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bar.truth .name { color: var(--accent); font-weight: 600; }
+#lossCanvas { width: 100%; height: 118px; display: block; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; }
+
+.maps { display: flex; gap: 10px; flex-wrap: wrap; }
+.unit { background: var(--panel2); border: 1px solid var(--border); border-radius: 7px; padding: 6px; display: grid; gap: 5px; justify-items: center; }
+.unit.active { border-color: var(--accent); }
+.unit .cap { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.unit canvas { display: block; border-radius: 3px; image-rendering: pixelated; }
+.kern { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.arrow { color: var(--muted); font-size: 17px; }
+
+.sec { display: grid; gap: 7px; }
+.sec > .lbl { font-size: 12px; text-transform: uppercase; letter-spacing: .9px; color: var(--muted); font-weight: 600; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+select, button { font: inherit; color: var(--fg); background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; }
+select { flex: 1; min-width: 0; }
+button { cursor: pointer; transition: background .12s, border-color .12s; }
+button:hover { background: #253044; border-color: #3a4660; }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--ui); outline-offset: 1px; }
+button.primary { background: var(--ui); color: #0e1118; border-color: var(--ui); font-weight: 600; }
+button.primary:hover { background: #7fbcff; }
+button.wide { flex: 1; }
+.slider { display: grid; grid-template-columns: 1fr 58px; gap: 4px 10px; align-items: center; }
+.slider .name { font-size: 13px; color: var(--muted); }
+.slider .val { font-family: var(--mono); font-size: 13px; color: var(--fg); text-align: right; font-variant-numeric: tabular-nums; }
+.slider input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--ui); margin: 0; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.stat { background: var(--panel2); border-radius: 6px; padding: 7px 9px; }
+.stat .k { font-size: 10.5px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
+.stat .v { font-family: var(--mono); font-size: 15px; font-variant-numeric: tabular-nums; }
+.chk { display: flex; gap: 8px; align-items: center; font-size: 14px; cursor: pointer; color: var(--muted); }
+.chk input { accent-color: var(--ui); margin: 0; }
+.note { background: var(--panel2); border-left: 3px solid var(--accent); padding: 8px 11px; border-radius: 4px; font-size: 13px; color: var(--fg); }
+.note b { color: var(--accent); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>LeNet — a Convolutional Network, End to End</h1>
+    <div class="sub">Handwritten digits, one architecture, every stage visible</div>
+    <div class="hint"><span class="kbd">Space</span> train / pause &nbsp; <span class="kbd">S</span> scan a kernel &nbsp; <span class="kbd">N</span> next digit &nbsp; <span class="kbd">R</span> re-init</div>
+    <div class="author"><a href="https://jhugestar.github.io/" target="_blank" rel="noopener">Hanbyul Joo</a>
+      &nbsp;|&nbsp; Visual Computing Lab, Seoul National University &nbsp;|&nbsp;
+      <a href="https://jhugestar.github.io/snu-vision-lecture/" target="_blank" rel="noopener">More Demos &#8599;</a></div>
+  </header>
+
+  <div class="panel arch">
+    <canvas id="archCanvas"></canvas>
+    <div class="archhint">Every block shows this digit&rsquo;s real activations. Click a block to open it below.</div>
+  </div>
+
+  <div class="left">
+    <div class="panel">
+      <div class="ptitle"><h2>Input</h2><span id="inTitle"></span></div>
+      <div class="pad" style="padding-top:8px">
+        <canvas id="inputCanvas"></canvas>
+        <div class="calc" id="calc" style="margin-top:10px"></div>
+        <div class="samples" id="samples" style="margin-top:10px"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="ptitle"><h2>Output — ten digits</h2><span id="predSub"></span></div>
+      <div class="pad"><div class="bars" id="bars"></div></div>
+    </div>
+
+    <div class="panel">
+      <div class="ptitle"><h2>Training</h2><span id="lossSub"></span></div>
+      <div class="pad"><canvas id="lossCanvas"></canvas></div>
+    </div>
+  </div>
+
+  <div class="mid">
+    <div class="panel">
+      <div class="ptitle"><h2 id="stageTitle">Stage</h2><span id="stageSub"></span></div>
+      <div class="pad" id="stageBody"></div>
+      <div class="pad" style="padding-top:0"><div class="note" id="stageNote"></div></div>
+    </div>
+  </div>
+
+  <div class="panel controls">
+    <div class="sec">
+      <div class="lbl">Data</div>
+      <div class="hint">Handwritten-style digits drawn on the fly at 20&times;20 &mdash; random size, position, slant,
+        stroke width and noise, so no two are alike. The test digits are never trained on.</div>
+      <div class="row">
+        <button id="newData" class="wide">New digits</button>
+        <button id="nextSample">Next</button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="lbl">Architecture</div>
+      <div class="hint" id="archLine" style="font-family:var(--mono); font-size:12px"></div>
+      <label class="chk"><input type="checkbox" id="relu" checked> ReLU after every layer</label>
+      <label class="chk"><input type="checkbox" id="showBox" checked> mark the strongest C3 response</label>
+    </div>
+
+    <div class="sec">
+      <div class="lbl">Training &mdash; mini-batch SGD, momentum 0.9</div>
+      <div class="slider">
+        <span class="name">Learning rate &eta;</span><span class="val" id="lrv">0.03</span>
+        <input type="range" id="lr" min="1" max="30" step="1" value="3">
+      </div>
+      <div class="row">
+        <button id="train" class="primary wide">&#9654;&#9654; Train</button>
+        <button id="step1">1 epoch</button>
+        <button id="reset">Re-init</button>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="k">Epoch</div><div class="v" id="sEpoch">0</div></div>
+        <div class="stat"><div class="k">Loss</div><div class="v" id="sLoss">&ndash;</div></div>
+        <div class="stat"><div class="k">Test acc</div><div class="v" id="sAcc">&ndash;</div></div>
+      </div>
+      <div class="stats" style="grid-template-columns: repeat(2, 1fr)">
+        <div class="stat"><div class="k">Parameters</div><div class="v" id="sParams">&ndash;</div></div>
+        <div class="stat"><div class="k">Train / test</div><div class="v" id="sN">&ndash;</div></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="lbl">Watch one kernel slide</div>
+      <div class="row">
+        <button id="scan" class="wide">&#9654; Scan C1</button>
+        <select id="scanFilter"></select>
+      </div>
+      <div class="slider">
+        <span class="name">Scan speed</span><span class="val" id="scanv">70ms</span>
+        <input type="range" id="scanSpeed" min="20" max="300" step="10" value="70">
+      </div>
+      <div class="hint">The 5&times;5 window walks the digit, multiplies the 25 pixels under it by the 25 kernel
+        weights, adds the bias, and writes one number into the feature map.</div>
+    </div>
+
+    <div class="note" id="tip"></div>
+  </div>
+
+</div>
+
+<script>
+/* ============================================================
+   1. Tensors — everything is [channel][row][col]
+   ============================================================ */
+const zeros = (c, h, w) => Array.from({ length: c }, () => Array.from({ length: h }, () => new Float32Array(w)));
+const likeZero = t => ArrayBuffer.isView(t) ? new Float32Array(t.length) : t.map(likeZero);
+const walk2 = (a, b, fn) => { if (ArrayBuffer.isView(a)) fn(a, b); else a.forEach((x, i) => walk2(x, b[i], fn)); };
+const walk3 = (a, b, c, fn) => { if (ArrayBuffer.isView(a)) fn(a, b, c); else a.forEach((x, i) => walk3(x, b[i], c[i], fn)); };
+
+let seed = 20261103;
+function rnd() { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; }
+const gauss = s => (rnd() + rnd() + rnd() + rnd() - 2) * 1.1 * s;
+
+function conv(inp, K, b) {
+  const C = inp.length, H = inp[0].length, k = K[0][0].length;
+  const F = K.length, O = H - k + 1, out = zeros(F, O, O);
+  for (let f = 0; f < F; f++)
+    for (let oy = 0; oy < O; oy++)
+      for (let ox = 0; ox < O; ox++) {
+        let s = b[f];
+        for (let c = 0; c < C; c++)
+          for (let ky = 0; ky < k; ky++)
+            for (let kx = 0; kx < k; kx++) s += inp[c][oy + ky][ox + kx] * K[f][c][ky][kx];
+        out[f][oy][ox] = s;
+      }
+  return out;
+}
+function convBack(inp, K, dOut) {
+  const C = inp.length, F = K.length, k = K[0][0].length, O = dOut[0].length;
+  const dK = likeZero(K), db = new Float32Array(F), dIn = likeZero(inp);
+  for (let f = 0; f < F; f++)
+    for (let oy = 0; oy < O; oy++)
+      for (let ox = 0; ox < O; ox++) {
+        const g = dOut[f][oy][ox];
+        if (g === 0) continue;
+        db[f] += g;
+        for (let c = 0; c < C; c++)
+          for (let ky = 0; ky < k; ky++)
+            for (let kx = 0; kx < k; kx++) {
+              dK[f][c][ky][kx] += g * inp[c][oy + ky][ox + kx];
+              dIn[c][oy + ky][ox + kx] += g * K[f][c][ky][kx];
+            }
+      }
+  return { dK, db, dIn };
+}
+const relu = t => t.map(ch => ch.map(r => r.map(v => v > 0 ? v : 0)));
+const reluBack = (pre, d) => d.map((ch, c) => ch.map((r, y) => r.map((v, x) => pre[c][y][x] > 0 ? v : 0)));
+
+/* average pooling — linear on purpose, so ReLU is the only non-linearity in the stack */
+function pool2(t) {
+  const C = t.length, H = t[0].length, O = H >> 1, out = zeros(C, O, O);
+  for (let c = 0; c < C; c++)
+    for (let oy = 0; oy < O; oy++)
+      for (let ox = 0; ox < O; ox++) {
+        let s = 0;
+        for (let ky = 0; ky < 2; ky++) for (let kx = 0; kx < 2; kx++) s += t[c][oy * 2 + ky][ox * 2 + kx];
+        out[c][oy][ox] = s / 4;
+      }
+  return out;
+}
+function pool2Back(shape, dOut) {
+  const dIn = zeros(shape[0], shape[1], shape[2]);
+  for (let c = 0; c < dOut.length; c++)
+    for (let oy = 0; oy < dOut[0].length; oy++)
+      for (let ox = 0; ox < dOut[0][0].length; ox++) {
+        const g = dOut[c][oy][ox] / 4;
+        for (let ky = 0; ky < 2; ky++) for (let kx = 0; kx < 2; kx++) dIn[c][oy * 2 + ky][ox * 2 + kx] += g;
+      }
+  return dIn;
+}
+const flat = t => { const a = []; for (const ch of t) for (const r of ch) for (const v of r) a.push(v); return a; };
+function unflat(a, C, H, W) {
+  const t = zeros(C, H, W); let i = 0;
+  for (let c = 0; c < C; c++) for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) t[c][y][x] = a[i++];
+  return t;
+}
+const softmax = z => { const m = Math.max(...z), e = z.map(v => Math.exp(v - m)), s = e.reduce((a, b) => a + b, 0); return e.map(v => v / s); };
+const matvec = (M, b, v) => M.map((row, i) => { let s = b[i]; for (let j = 0; j < v.length; j++) s += row[j] * v[j]; return s; });
+
+/* ============================================================
+   2. Handwritten-ish digits, drawn from strokes
+   ============================================================ */
+const SIZE = 20, NCLASS = 10, PI = Math.PI;
+const arc = (cx, cy, rx, ry, a0, a1, steps = 16) =>
+  Array.from({ length: steps + 1 }, (_, i) => { const t = a0 + (a1 - a0) * i / steps; return [cx + rx * Math.cos(t), cy + ry * Math.sin(t)]; });
+const DIGITS = {
+  0: [arc(.5, .5, .25, .37, 0, 2 * PI)],
+  1: [[[.34, .27], [.5, .16], [.5, .84]], [[.33, .85], [.67, .85]]],
+  2: [[...arc(.5, .34, .22, .19, -0.95 * PI, 0.35 * PI), [.27, .84], [.75, .84]]],
+  3: [[...arc(.47, .33, .2, .18, -0.9 * PI, 0.45 * PI)], [...arc(.47, .67, .22, .19, -0.45 * PI, 0.9 * PI)]],
+  4: [[[.62, .86], [.62, .14], [.26, .63], [.78, .63]]],
+  5: [[[.72, .16], [.35, .16], [.33, .45]], [...arc(.5, .64, .23, .21, -0.55 * PI, 0.78 * PI)]],
+  6: [[...arc(.52, .63, .22, .21, 0, 2 * PI)], [[.72, .18], [.45, .33], [.33, .56]]],
+  7: [[[.26, .17], [.75, .17], [.44, .85]]],
+  8: [[...arc(.5, .32, .18, .16, 0, 2 * PI)], [...arc(.5, .68, .22, .18, 0, 2 * PI)]],
+  9: [[...arc(.49, .35, .21, .19, 0, 2 * PI)], [[.7, .35], [.66, .66], [.47, .85]]],
+};
+
+/* every sample gets its own size, position, slant, stroke width and noise */
+function makeImage(d) {
+  const img = zeros(1, SIZE, SIZE);
+  const scale = .78 + rnd() * .26, slant = (rnd() - .5) * .34;
+  const ox = (rnd() - .5) * 3, oy = (rnd() - .5) * 3, thick = .6 + rnd() * .7;
+  const put = (x, y, v) => {
+    const xi = Math.round(x), yi = Math.round(y);
+    if (xi >= 0 && yi >= 0 && xi < SIZE && yi < SIZE) img[0][yi][xi] = Math.min(1, img[0][yi][xi] + v);
+  };
+  const place = ([px, py]) => {
+    const cx = (px - .5) * scale, cy = (py - .5) * scale;
+    return [(cx - slant * cy + .5) * (SIZE - 1) + ox, (cy + .5) * (SIZE - 1) + oy];
+  };
+  for (const poly of DIGITS[d])
+    for (let i = 0; i + 1 < poly.length; i++) {
+      const [x0, y0] = place(poly[i]), [x1, y1] = place(poly[i + 1]);
+      const steps = Math.ceil(Math.hypot(x1 - x0, y1 - y0) * 2.5) + 1;
+      for (let s = 0; s <= steps; s++) {
+        const x = x0 + (x1 - x0) * s / steps, y = y0 + (y1 - y0) * s / steps;
+        for (let dy = -2; dy <= 2; dy++)
+          for (let dx = -2; dx <= 2; dx++) {
+            const dist = Math.hypot(dx, dy);
+            if (dist > thick + .6) continue;
+            put(x + dx, y + dy, Math.max(0, 1 - Math.max(0, dist - thick + .4)));
+          }
+      }
+    }
+  for (let y = 0; y < SIZE; y++)
+    for (let x = 0; x < SIZE; x++) img[0][y][x] = Math.max(-1, Math.min(1, (img[0][y][x] - .5) * 2 + gauss(.09)));
+  return img;                                     // ink ≈ +1, paper ≈ −1
+}
+function makeSet(perClass) {
+  const X = [], y = [];
+  for (let i = 0; i < perClass; i++)
+    for (let d = 0; d < NCLASS; d++) { X.push(makeImage(d)); y.push(d); }
+  return { X, y };
+}
+
+/* ============================================================
+   3. LeNet-5, scaled to a 20x20 input
+      20² → C1 conv5(6) → S2 pool → C3 conv5(16) → S4 pool → F5(120) → F6(84) → 10
+   ============================================================ */
+const LAYERS = [
+  { id: 'in',  kind: 'input', name: 'INPUT',  op: '' },
+  { id: 'c1',  kind: 'conv',  name: 'C1', f: 6,  k: 5, op: 'conv 5×5' },
+  { id: 's2',  kind: 'pool',  name: 'S2', f: 6,        op: 'avg-pool 2×2' },
+  { id: 'c3',  kind: 'conv',  name: 'C3', f: 16, k: 5, op: 'conv 5×5' },
+  { id: 's4',  kind: 'pool',  name: 'S4', f: 16,       op: 'avg-pool 2×2' },
+  { id: 'f5',  kind: 'fc',    name: 'F5', n: 120,      op: 'flatten + fc' },
+  { id: 'f6',  kind: 'fc',    name: 'F6', n: 84,       op: 'fc' },
+  { id: 'out', kind: 'out',   name: 'OUTPUT', n: 10,   op: 'fc + softmax' },
+];
+let net = null;
+
+/* size of every stage, and what one of its cells sees in input pixels */
+function geometry() {
+  const g = { in: { size: SIZE, rf: 1, stride: 1, f: 1 } };
+  let size = SIZE, rf = 1, stride = 1;
+  for (const L of LAYERS) {
+    if (L.kind === 'conv') { size = size - L.k + 1; rf += (L.k - 1) * stride; g[L.id] = { size, rf, stride, f: L.f }; }
+    else if (L.kind === 'pool') { size = size >> 1; rf += stride; stride *= 2; g[L.id] = { size, rf, stride, f: L.f }; }
+  }
+  return g;
+}
+const GEO = geometry();
+const FLAT_N = GEO.s4.f * GEO.s4.size * GEO.s4.size;
+const DIMS = [FLAT_N, 120, 84, NCLASS];
+
+function initNet() {
+  const K = [], b = [];
+  let C = 1;
+  for (const L of LAYERS.filter(l => l.kind === 'conv')) {
+    const fan = L.k * L.k * C;
+    K.push(Array.from({ length: L.f }, () => Array.from({ length: C }, () =>
+      Array.from({ length: L.k }, () => {
+        const r = new Float32Array(L.k);
+        for (let j = 0; j < L.k; j++) r[j] = gauss(Math.sqrt(2 / fan));
+        return r;
+      }))));
+    b.push(new Float32Array(L.f).fill(.05));        // a nudge so no unit starts dead
+    C = L.f;
+  }
+  const D = [], db = [];
+  for (let i = 0; i + 1 < DIMS.length; i++) {
+    const nIn = DIMS[i], nOut = DIMS[i + 1];
+    D.push(Array.from({ length: nOut }, () => {
+      const r = new Float32Array(nIn);
+      for (let j = 0; j < nIn; j++) r[j] = gauss(Math.sqrt(2 / nIn));
+      return r;
+    }));
+    db.push(new Float32Array(nOut).fill(i === DIMS.length - 2 ? 0 : .02));
+  }
+  return { K, b, D, db, vel: { K: likeZero(K), b: likeZero(b), D: likeZero(D), db: likeZero(db) } };
+}
+
+function forward(img) {
+  const z1 = conv(img, net.K[0], net.b[0]);
+  const c1 = S.relu ? relu(z1) : z1;
+  const s2 = pool2(c1);
+  const z3 = conv(s2, net.K[1], net.b[1]);
+  const c3 = S.relu ? relu(z3) : z3;
+  const s4 = pool2(c3);
+  const v0 = flat(s4);
+  const z5 = matvec(net.D[0], net.db[0], v0), f5 = S.relu ? z5.map(v => v > 0 ? v : 0) : z5;
+  const z6 = matvec(net.D[1], net.db[1], f5), f6 = S.relu ? z6.map(v => v > 0 ? v : 0) : z6;
+  const logits = matvec(net.D[2], net.db[2], f6);
+  return { in: img, z1, c1, s2, z3, c3, s4, v0, z5, f5, z6, f6, logits, out: softmax(logits) };
+}
+
+function backward(fw, label) {
+  const dLogit = fw.out.slice(); dLogit[label] -= 1;
+  const dense = (M, input, dOut) => {
+    const dM = likeZero(M), dB = new Float32Array(M.length), dIn = new Float32Array(input.length);
+    for (let r = 0; r < M.length; r++) {
+      dB[r] = dOut[r];
+      for (let j = 0; j < input.length; j++) { dM[r][j] = dOut[r] * input[j]; dIn[j] += dOut[r] * M[r][j]; }
+    }
+    return { dM, dB, dIn };
+  };
+  const dD = [], ddb = [];
+  let g = dense(net.D[2], fw.f6, dLogit); dD[2] = g.dM; ddb[2] = g.dB;
+  let d = S.relu ? g.dIn.map((v, i) => fw.z6[i] > 0 ? v : 0) : g.dIn;
+  g = dense(net.D[1], fw.f5, d); dD[1] = g.dM; ddb[1] = g.dB;
+  d = S.relu ? g.dIn.map((v, i) => fw.z5[i] > 0 ? v : 0) : g.dIn;
+  g = dense(net.D[0], fw.v0, d); dD[0] = g.dM; ddb[0] = g.dB;
+
+  let dT = unflat(g.dIn, GEO.s4.f, GEO.s4.size, GEO.s4.size);
+  dT = pool2Back([GEO.c3.f, GEO.c3.size, GEO.c3.size], dT);
+  if (S.relu) dT = reluBack(fw.z3, dT);
+  const g3 = convBack(fw.s2, net.K[1], dT);
+  dT = pool2Back([GEO.c1.f, GEO.c1.size, GEO.c1.size], g3.dIn);
+  if (S.relu) dT = reluBack(fw.z1, dT);
+  const g1 = convBack(fw.in, net.K[0], dT);
+  return { dK: [g1.dK, g3.dK], db: [g1.db, g3.db], dD, ddb };
+}
+
+const zeroGrads = () => ({ dK: likeZero(net.K), db: likeZero(net.b), dD: likeZero(net.D), ddb: likeZero(net.db) });
+function addGrads(acc, g) {
+  const add = (A, B) => { for (let i = 0; i < A.length; i++) A[i] += B[i]; };
+  walk2(acc.dK, g.dK, add); walk2(acc.db, g.db, add);
+  walk2(acc.dD, g.dD, add); walk2(acc.ddb, g.ddb, add);
+}
+function applyGrads(acc, n, lr) {
+  const m = .9, v = net.vel;
+  let sq = 0;
+  const scan = t => { if (ArrayBuffer.isView(t)) { for (const x of t) sq += (x / n) ** 2; } else t.forEach(scan); };
+  [acc.dK, acc.db, acc.dD, acc.ddb].forEach(scan);
+  const norm = Math.sqrt(sq), clip = norm > 8 ? 8 / norm : 1;   // keep one wild batch from wrecking the net
+  const step = (W, V, G) => { for (let i = 0; i < W.length; i++) { V[i] = m * V[i] - lr * clip * G[i] / n; W[i] += V[i]; } };
+  walk3(net.K, v.K, acc.dK, step); walk3(net.b, v.b, acc.db, step);
+  walk3(net.D, v.D, acc.dD, step); walk3(net.db, v.db, acc.ddb, step);
+}
+
+/* one pass over the training set, in shuffled mini-batches */
+function epoch() {
+  const N = S.train.X.length, order = Array.from({ length: N }, (_, i) => i);
+  for (let i = N - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
+  let loss = 0, right = 0;
+  for (let b = 0; b < N; b += S.batch) {
+    const idx = order.slice(b, b + S.batch), acc = zeroGrads();
+    for (const i of idx) {
+      const fw = forward(S.train.X[i]), lab = S.train.y[i];
+      loss += -Math.log(fw.out[lab] + 1e-9);
+      if (fw.out.indexOf(Math.max(...fw.out)) === lab) right++;
+      addGrads(acc, backward(fw, lab));
+    }
+    applyGrads(acc, idx.length, S.lr);
+  }
+  S.epochN++;
+  S.loss = loss / N; S.trainAcc = right / N; S.testAcc = evaluate(S.test);
+  S.hist.push({ loss: S.loss, acc: S.testAcc });
+  if (S.hist.length > 400) S.hist = S.hist.filter((_, i) => i % 2 === 0);
+}
+function evaluate(set) {
+  let right = 0;
+  for (let i = 0; i < set.X.length; i++) {
+    const p = forward(set.X[i]).out;
+    if (p.indexOf(Math.max(...p)) === set.y[i]) right++;
+  }
+  return right / set.X.length;
+}
+function paramCount() {
+  let p = 0, C = 1;
+  for (const L of LAYERS.filter(l => l.kind === 'conv')) { p += L.f * C * L.k * L.k + L.f; C = L.f; }
+  for (let i = 0; i + 1 < DIMS.length; i++) p += DIMS[i] * DIMS[i + 1] + DIMS[i + 1];
+  return p;
+}
+
+/* ============================================================
+   4. State
+   ============================================================ */
+const $ = s => document.querySelector(s);
+const S = {
+  train: null, test: null, sample: 0, relu: true, lr: .1, batch: 16,
+  training: false, epochN: 0, loss: NaN, trainAcc: NaN, testAcc: NaN, hist: [],
+  fw: null, sel: 'c1', scan: null, pick: null, scanTimer: null,
+};
+function rebuild(newData) {
+  stopScan();
+  if (newData || !S.train) { S.train = makeSet(20); S.test = makeSet(10); }
+  net = initNet();
+  S.epochN = 0; S.loss = NaN; S.trainAcc = NaN; S.testAcc = NaN; S.hist = []; S.pick = null;
+  recompute(); buildSamples(); buildFilterPicker(); drawAll();
+}
+const recompute = () => S.fw = forward(S.train.X[S.sample]);
+
+/* ============================================================
+   5. Canvas helpers
+   ============================================================ */
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function setup(canvas, w, h) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  if (w) { canvas.style.width = w + 'px'; canvas.style.height = h + 'px'; }
+  const r = canvas.getBoundingClientRect();
+  canvas.width = Math.max(1, Math.round(r.width * dpr));
+  canvas.height = Math.max(1, Math.round(r.height * dpr));
+  const c = canvas.getContext('2d');
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.imageSmoothingEnabled = false;
+  return { c, w: r.width, h: r.height };
+}
+function cellColor(v, max, signed) {
+  if (signed) {
+    const t = Math.min(1, Math.abs(v) / (max || 1));
+    const rgb = v >= 0 ? [232, 106, 44] : [59, 141, 232];
+    return `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${.1 + .9 * t})`;
+  }
+  const t = Math.max(0, Math.min(1, v / (max || 1)));
+  const g = Math.round(20 + 215 * t);
+  return `rgb(${g},${g + 3},${g})`;
+}
+/* paint a matrix into a context at (X, Y) with size W x H */
+function paint(c, m, X, Y, W, H, opts = {}) {
+  const rows = m.length, cols = m[0].length, cw = W / cols, ch = H / rows;
+  let max = opts.max;
+  if (max === undefined) { max = 1e-6; for (const r of m) for (const v of r) max = Math.max(max, Math.abs(v)); }
+  for (let y = 0; y < rows; y++)
+    for (let x = 0; x < cols; x++) {
+      c.fillStyle = cellColor(m[y][x], max, opts.signed);
+      c.fillRect(X + x * cw, Y + y * ch, Math.ceil(cw), Math.ceil(ch));
+    }
+  if (opts.grid && cw > 6) {
+    c.strokeStyle = 'rgba(139,149,168,.22)'; c.lineWidth = 1;
+    for (let x = 1; x < cols; x++) { c.beginPath(); c.moveTo(X + x * cw, Y); c.lineTo(X + x * cw, Y + H); c.stroke(); }
+    for (let y = 1; y < rows; y++) { c.beginPath(); c.moveTo(X, Y + y * ch); c.lineTo(X + W, Y + y * ch); c.stroke(); }
+  }
+  if (opts.numbers && cw > 19) {
+    c.font = '10px ' + css('--mono'); c.textAlign = 'center';
+    for (let y = 0; y < rows; y++)
+      for (let x = 0; x < cols; x++) {
+        const v = +m[y][x] || 0;
+        c.fillStyle = Math.abs(v) / max > .55 ? '#0e1118' : css('--muted');
+        c.fillText(v.toFixed(1), X + (x + .5) * cw, Y + (y + .62) * ch);
+      }
+    c.textAlign = 'left';
+  }
+  return { cw, ch };
+}
+function drawGrid(canvas, m, opts = {}) {
+  const px = opts.px || 10;
+  const { c, w, h } = setup(canvas, m[0].length * px, m.length * px);
+  c.fillStyle = css('--bg'); c.fillRect(0, 0, w, h);
+  const g = paint(c, m, 0, 0, w, h, opts);
+  if (opts.cursor) {
+    const [cy, cx] = opts.cursor;
+    c.strokeStyle = css('--loss'); c.lineWidth = 2;
+    c.strokeRect(cx * g.cw, cy * g.ch, g.cw, g.ch);
+  }
+  return { c, ...g };
+}
+
+/* ============================================================
+   6. The architecture strip — the main picture
+   ============================================================ */
+const mapsOf = id => ({ in: [S.fw.in[0]], c1: S.fw.c1, s2: S.fw.s2, c3: S.fw.c3, s4: S.fw.s4 }[id]);
+const unitsOf = id => ({ f5: S.fw.f5, f6: S.fw.f6, out: S.fw.out }[id]);
+let archHit = [];
+
+function drawArch() {
+  const cv = $('#archCanvas'), { c, w, h } = setup(cv);
+  c.fillStyle = css('--panel'); c.fillRect(0, 0, w, h);
+  archHit = [];
+  const pad = 18, gap = (w - pad * 2) / LAYERS.length, midY = h * .46;
+
+  LAYERS.forEach((L, i) => {
+    const cx = pad + gap * (i + .5), sel = S.sel === L.id;
+    let box;
+    if (L.kind === 'fc' || L.kind === 'out') {
+      const vals = unitsOf(L.id), n = L.n;
+      const bw = L.kind === 'out' ? 30 : 22, bh = Math.min(h * .5, 140);
+      const x = cx - bw / 2, y = midY - bh / 2;
+      const rows = Math.min(n, 42), max = Math.max(1e-6, ...vals.map(Math.abs));
+      const best = L.kind === 'out' ? S.fw.out.indexOf(Math.max(...S.fw.out)) : -1;
+      for (let r = 0; r < rows; r++) {
+        const idx = Math.floor(r * n / rows), v = vals[idx];
+        c.fillStyle = (L.kind === 'out' && idx === best) ? css('--loss') : cellColor(v, max, false);
+        c.fillRect(x, y + r * bh / rows, bw, Math.ceil(bh / rows) - 1);
+      }
+      c.strokeStyle = sel ? css('--accent') : css('--border'); c.lineWidth = sel ? 2 : 1;
+      c.strokeRect(x - 1, y - 1, bw + 2, bh + 2);
+      if (L.kind === 'out') {                       // label the winning digit
+        c.fillStyle = css('--loss'); c.font = '600 13px ' + css('--mono'); c.textAlign = 'left';
+        c.fillText(String(best), x + bw + 6, y + (best + .5) * bh / n + 5);
+      }
+      box = { x: x - 7, y: y - 7, w: bw + 14, h: bh + 14 };
+    } else {
+      const g = GEO[L.id], maps = mapsOf(L.id), count = Math.min(maps.length, 6);
+      const side = Math.max(30, Math.min(72, 230 / Math.sqrt(g.size)));
+      const off = count > 1 ? 7 : 0;
+      const x0 = cx - side / 2 - off * (count - 1) / 2, y0 = midY - side / 2 - off * (count - 1) / 2;
+      let max = 1e-6;
+      for (const m of maps) for (const r of m) for (const v of r) max = Math.max(max, Math.abs(v));
+      for (let k = count - 1; k >= 0; k--) {
+        const x = x0 + off * k, y = y0 + off * k;
+        c.fillStyle = css('--bg'); c.fillRect(x, y, side, side);
+        paint(c, L.id === 'in' ? maps[k].map(r => r.map(v => v * .5 + .5)) : maps[k], x, y, side, side, { max: L.id === 'in' ? 1 : max });
+        c.strokeStyle = (sel && k === 0) ? css('--accent') : css('--border');
+        c.lineWidth = (sel && k === 0) ? 2 : 1;
+        c.strokeRect(x, y, side, side);
+      }
+      box = { x: x0 - 7, y: y0 - 7, w: side + off * (count - 1) + 14, h: side + off * (count - 1) + 14 };
+    }
+    archHit.push({ id: L.id, ...box });
+
+    c.textAlign = 'center';
+    c.font = '600 13px ' + css('--font');
+    c.fillStyle = sel ? css('--accent') : css('--fg');
+    c.fillText(L.name, cx, h - 32);
+    c.font = '11.5px ' + css('--mono'); c.fillStyle = css('--muted');
+    const g = GEO[L.id];
+    c.fillText(g ? `${g.f} @ ${g.size}×${g.size}` : `${L.n} units`, cx, h - 16);
+    if (i > 0) {
+      const ax = cx - gap / 2, ay = midY - h * .28;
+      c.fillStyle = css('--muted'); c.font = '11px ' + css('--mono');
+      c.fillText(L.op, ax, ay - 8);
+      c.strokeStyle = css('--faint'); c.lineWidth = 1.4;
+      c.beginPath(); c.moveTo(ax - 14, ay + 4); c.lineTo(ax + 14, ay + 4); c.stroke();
+      c.beginPath(); c.moveTo(ax + 8, ay); c.lineTo(ax + 14, ay + 4); c.lineTo(ax + 8, ay + 8); c.stroke();
+    }
+    c.textAlign = 'left';
+  });
+}
+
+/* ============================================================
+   7. Input, prediction, loss
+   ============================================================ */
+const forDisplay = m => m.map(r => r.map(v => v * .5 + .5));
+const rfOf = (id, y, x) => { const g = GEO[id]; return { y: y * g.stride, x: x * g.stride, size: g.rf }; };
+function strongestC3() {
+  const maps = S.fw.c3, G = maps[0].length;
+  let best = -Infinity, by = 0, bx = 0;
+  for (let y = 0; y < G; y++)
+    for (let x = 0; x < G; x++) {
+      let s = 0;
+      for (let f = 0; f < maps.length; f++) s += Math.abs(maps[f][y][x]);
+      if (s > best) { best = s; by = y; bx = x; }
+    }
+  return rfOf('c3', by, bx);
+}
+function drawInput() {
+  const cv = $('#inputCanvas');
+  cv.style.width = ''; cv.style.height = '';
+  const { c, w, h } = setup(cv);
+  c.fillStyle = css('--bg'); c.fillRect(0, 0, w, h);
+  const g = paint(c, forDisplay(S.fw.in[0]), 0, 0, w, h, { max: 1, grid: true });
+  const mark = (b, color, label, fill) => {
+    if (fill) { c.fillStyle = fill; c.fillRect(b.x * g.cw, b.y * g.ch, b.size * g.cw, b.size * g.ch); }
+    c.strokeStyle = color; c.lineWidth = 2.5;
+    c.strokeRect(b.x * g.cw, b.y * g.ch, b.size * g.cw, b.size * g.ch);
+    c.fillStyle = color; c.font = '11px ' + css('--mono'); c.fillText(label, 5, 14);
+  };
+  if (S.scan) mark({ x: S.scan.x, y: S.scan.y, size: LAYERS[1].k }, css('--accent'), 'kernel window · 5×5', 'rgba(243,201,105,.16)');
+  else if (S.pick) { const b = rfOf(S.pick.id, S.pick.y, S.pick.x); mark(b, css('--accent'), `receptive field · ${b.size}×${b.size} px`, 'rgba(243,201,105,.16)'); }
+  else if ($('#showBox').checked && S.epochN > 0) mark(strongestC3(), css('--loss'), 'strongest C3 response');
+  $('#inTitle').textContent = `20 × 20 · label ${S.train.y[S.sample]}`;
+}
+function buildSamples() {
+  const host = $('#samples'); host.innerHTML = '';
+  for (let i = 0; i < 20; i++) {
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = SIZE; cv.dataset.i = i;
+    const c = cv.getContext('2d'), im = c.createImageData(SIZE, SIZE), px = S.train.X[i][0];
+    for (let y = 0; y < SIZE; y++)
+      for (let x = 0; x < SIZE; x++) {
+        const g = Math.round(20 + 215 * Math.max(0, Math.min(1, px[y][x] * .5 + .5))), k = (y * SIZE + x) * 4;
+        im.data[k] = g; im.data[k + 1] = g + 3; im.data[k + 2] = g; im.data[k + 3] = 255;
+      }
+    c.putImageData(im, 0, 0);
+    cv.onclick = () => { S.sample = i; S.pick = null; stopScan(); recompute(); drawAll(); };
+    host.append(cv);
+  }
+}
+const markSample = () => document.querySelectorAll('#samples canvas').forEach(cv => cv.classList.toggle('sel', +cv.dataset.i === S.sample));
+
+function drawBars() {
+  const host = $('#bars');
+  if (!host.dataset.built) {
+    host.innerHTML = Array.from({ length: NCLASS }, (_, i) =>
+      `<div class="bar" data-i="${i}"><span class="name">${i}</span><span class="track"><span class="fill"></span></span><span class="val"></span></div>`).join('');
+    host.dataset.built = '1';
+  }
+  const truth = S.train.y[S.sample], pred = S.fw.out.indexOf(Math.max(...S.fw.out));
+  for (let i = 0; i < NCLASS; i++) {
+    const row = host.querySelector(`[data-i="${i}"]`);
+    row.classList.toggle('truth', i === truth);
+    const fill = row.querySelector('.fill');
+    fill.style.width = (S.fw.out[i] * 100).toFixed(1) + '%';
+    fill.style.background = i === truth ? css('--loss') : css('--ui');
+    row.querySelector('.val').textContent = S.fw.out[i].toFixed(3);
+  }
+  $('#predSub').textContent = pred === truth ? 'correct' : `wrong — says ${pred}`;
+}
+function drawLoss() {
+  const { c, w, h } = setup($('#lossCanvas'));
+  c.fillStyle = css('--panel2'); c.fillRect(0, 0, w, h);
+  c.strokeStyle = css('--border'); c.lineWidth = 1;
+  c.beginPath(); c.moveTo(28, 8); c.lineTo(28, h - 16); c.lineTo(w - 8, h - 16); c.stroke();
+  c.fillStyle = css('--muted'); c.font = '10.5px ' + css('--mono');
+  if (S.hist.length < 2) { c.fillText('press Train', 36, h / 2); return; }
+  const hi = Math.max(...S.hist.map(d => d.loss));
+  const X = i => 28 + i / (S.hist.length - 1) * (w - 36);
+  const YL = v => h - 16 - v / hi * (h - 26), YA = v => h - 16 - v * (h - 26);
+  c.strokeStyle = css('--other'); c.lineWidth = 1.5; c.beginPath();
+  S.hist.forEach((d, i) => i ? c.lineTo(X(i), YA(d.acc)) : c.moveTo(X(i), YA(d.acc))); c.stroke();
+  c.strokeStyle = css('--loss'); c.lineWidth = 1.8; c.beginPath();
+  S.hist.forEach((d, i) => i ? c.lineTo(X(i), YL(d.loss)) : c.moveTo(X(i), YL(d.loss))); c.stroke();
+  c.fillStyle = css('--loss'); c.fillText('loss', w - 104, 14);
+  c.fillStyle = css('--other'); c.fillText('test acc', w - 62, 14);
+  $('#lossSub').textContent = `epoch ${S.epochN}`;
+}
+
+/* ============================================================
+   8. The stage opened under the strip
+   ============================================================ */
+function mapClicks(canvas, id, f, cells) {
+  canvas.style.cursor = 'crosshair';
+  canvas.onclick = e => {
+    const r = canvas.getBoundingClientRect();
+    const x = Math.min(cells - 1, Math.max(0, Math.floor((e.clientX - r.left) / r.width * cells)));
+    const y = Math.min(cells - 1, Math.max(0, Math.floor((e.clientY - r.top) / r.height * cells)));
+    stopScan();
+    S.pick = (S.pick && S.pick.id === id && S.pick.f === f && S.pick.y === y && S.pick.x === x) ? null : { id, f, y, x };
+    drawAll();
+  };
+}
+const KIND_TITLE = { input: 'the digit as it arrives', conv: 'convolution', pool: 'average pooling', fc: 'fully connected', out: 'class scores' };
+
+function drawStage() {
+  const L = LAYERS.find(l => l.id === S.sel), host = $('#stageBody'), g = GEO[L.id];
+  host.innerHTML = '';
+  $('#stageTitle').textContent = `${L.name} — ${KIND_TITLE[L.kind]}`;
+  $('#stageSub').textContent = g ? `${g.f} map${g.f > 1 ? 's' : ''} of ${g.size}×${g.size} · one cell sees ${g.rf}×${g.rf} px`
+                                 : `${L.n} units · ${(L.id === 'f5' ? DIMS[0] * DIMS[1] : L.id === 'f6' ? DIMS[1] * DIMS[2] : DIMS[2] * DIMS[3]).toLocaleString()} weights`;
+
+  if (L.kind === 'input') {
+    const u = document.createElement('div'); u.className = 'unit';
+    u.innerHTML = '<canvas></canvas><div class="cap">20×20 · ink +1, paper −1</div>';
+    const wrap = document.createElement('div'); wrap.className = 'maps'; wrap.append(u); host.append(wrap);
+    drawGrid(u.querySelector('canvas'), forDisplay(S.fw.in[0]), { px: 14, max: 1, grid: true });
+    $('#stageNote').innerHTML = 'Each digit is drawn from strokes with a random size, slant, position and pen width, then noise is added — so the network never sees the same one twice.';
+    return;
+  }
+
+  if (L.kind === 'conv') {
+    const ci = L.id === 'c1' ? 0 : 1, maps = L.id === 'c1' ? S.fw.c1 : S.fw.c3;
+    const inC = ci === 0 ? 1 : LAYERS[1].f, shown = Math.min(L.f, 8), slices = Math.min(inC, 4);
+    let kmax = 1e-6;
+    for (const f of net.K[ci]) for (const c of f) for (const r of c) for (const v of r) kmax = Math.max(kmax, Math.abs(v));
+    let mmax = 1e-6;
+    for (const m of maps) for (const r of m) for (const v of r) mmax = Math.max(mmax, Math.abs(v));
+    for (let f = 0; f < shown; f++) {
+      const row = document.createElement('div');
+      row.className = 'kern';
+      row.innerHTML = `<div class="unit kunit"><div class="slices" style="display:flex;gap:3px"></div>
+          <div class="cap">kernel ${f + 1}${inC > 1 ? ` · ${slices}/${inC} slices` : ''}</div></div>
+        <span class="arrow">&rarr;</span>
+        <div class="unit"><canvas class="map"></canvas><div class="cap">map ${f + 1}</div></div>`;
+      host.append(row);
+      const slot = row.querySelector('.slices');
+      for (let c = 0; c < slices; c++) {
+        const kcv = document.createElement('canvas'); slot.append(kcv);
+        drawGrid(kcv, net.K[ci][f][c], { px: inC > 1 ? 11 : 22, signed: true, max: kmax, grid: true, numbers: inC === 1 });
+      }
+      if (S.scan && ci === 0 && S.scan.f === f) row.querySelector('.kunit').classList.add('active');
+      const mcv = row.querySelector('.map');
+      const shownMap = (S.scan && ci === 0 && S.scan.f === f)
+        ? maps[f].map((r, y) => r.map((v, x) => (y * g.size + x) > (S.scan.y * g.size + S.scan.x) ? 0 : v))
+        : maps[f];
+      drawGrid(mcv, shownMap, { px: Math.max(8, Math.round(140 / g.size)), max: mmax,
+        cursor: (S.scan && ci === 0 && S.scan.f === f) ? [S.scan.y, S.scan.x]
+              : (S.pick && S.pick.id === L.id && S.pick.f === f ? [S.pick.y, S.pick.x] : null) });
+      mapClicks(mcv, L.id, f, g.size);
+    }
+    if (L.f > shown) host.insertAdjacentHTML('beforeend', `<div class="hint">…and ${L.f - shown} more filters</div>`);
+    $('#stageNote').innerHTML = L.id === 'c1'
+      ? 'Six kernels of 5×5 — 25 numbers each, and the <b>same 25 numbers at every position</b>. Train for a while and they become stroke detectors. Click a cell of a map to see the patch it came from.'
+      : 'Each C3 kernel carries one 5×5 slice <b>per C1 map</b>, so it answers to combinations of the earlier parts. One C3 cell already covers a 14×14 window of the digit.';
+    return;
+  }
+
+  if (L.kind === 'pool') {
+    const maps = L.id === 's2' ? S.fw.s2 : S.fw.s4, prev = L.id === 's2' ? S.fw.c1 : S.fw.c3;
+    let mmax = 1e-6;
+    for (const m of prev) for (const r of m) for (const v of r) mmax = Math.max(mmax, Math.abs(v));
+    const wrap = document.createElement('div'); wrap.className = 'maps'; host.append(wrap);
+    for (let f = 0; f < Math.min(maps.length, 8); f++) {
+      const u = document.createElement('div'); u.className = 'unit';
+      u.innerHTML = `<canvas></canvas><div class="cap">map ${f + 1}</div>`;
+      wrap.append(u);
+      const cv = u.querySelector('canvas');
+      drawGrid(cv, maps[f], { px: Math.max(12, Math.round(110 / maps[0].length)), max: mmax,
+        cursor: S.pick && S.pick.id === L.id && S.pick.f === f ? [S.pick.y, S.pick.x] : null });
+      mapClicks(cv, L.id, f, maps[0].length);
+    }
+    if (maps.length > 8) host.insertAdjacentHTML('beforeend', `<div class="hint">…and ${maps.length - 8} more maps</div>`);
+    $('#stageNote').innerHTML = 'Averaging each 2×2 block halves the resolution, so the answer stops caring about a pixel here or there. Averaging is linear, which leaves ReLU as the only non-linearity in the network.';
+    return;
+  }
+
+  const vals = unitsOf(L.id);
+  const wrap = document.createElement('div'); wrap.className = 'maps'; host.append(wrap);
+  const u = document.createElement('div'); u.className = 'unit';
+  u.innerHTML = `<canvas></canvas><div class="cap">${L.n} units${L.kind === 'fc' ? ` · ${vals.filter(v => v > 0).length} active` : ''}</div>`;
+  wrap.append(u);
+  const cols = Math.ceil(Math.sqrt(L.n * 2)), rows = Math.ceil(L.n / cols);
+  const m = Array.from({ length: rows }, (_, r) => Float32Array.from({ length: cols }, (_, c) => vals[r * cols + c] ?? 0));
+  drawGrid(u.querySelector('canvas'), m, { px: 16, max: Math.max(1e-6, ...vals.map(Math.abs)) });
+  $('#stageNote').innerHTML = L.kind === 'out'
+    ? 'Ten numbers, one per digit, squashed into probabilities by softmax — the bars on the left are this layer.'
+    : 'Every unit here looks at <b>all</b> of the previous layer. Most of the parameters live in these two layers, and this is where the spatial picture finally disappears.';
+}
+
+/* ============================================================
+   9. Scanning one C1 kernel across the digit
+   ============================================================ */
+function buildFilterPicker() {
+  $('#scanFilter').innerHTML = Array.from({ length: LAYERS[1].f }, (_, f) => `<option value="${f}">kernel ${f + 1}</option>`).join('');
+}
+function startScan() {
+  stopTrain(); S.pick = null; S.sel = 'c1';
+  S.scan = { f: +$('#scanFilter').value, y: 0, x: 0 };
+  $('#scan').innerHTML = '&#10073;&#10073; Stop';
+  drawAll(); tickScan();
+}
+function tickScan() {
+  clearTimeout(S.scanTimer);
+  S.scanTimer = setTimeout(() => {
+    if (!S.scan) return;
+    const n = GEO.c1.size;
+    S.scan.x++;
+    if (S.scan.x > n - 1) { S.scan.x = 0; S.scan.y++; }
+    if (S.scan.y > n - 1) { stopScan(); drawAll(); return; }
+    drawInput(); drawStage(); drawCalc();
+    tickScan();
+  }, +$('#scanSpeed').value);
+}
+function stopScan() {
+  clearTimeout(S.scanTimer); S.scan = null;
+  const b = $('#scan'); if (b) b.innerHTML = '&#9654; Scan C1';
+}
+
+function drawCalc() {
+  const el = $('#calc');
+  if (S.scan) {
+    const { f, y, x } = S.scan, img = S.fw.in[0], K = net.K[0][f][0], k = K.length;
+    let sum = net.b[0][f]; const terms = [];
+    for (let ky = 0; ky < k; ky++)
+      for (let kx = 0; kx < k; kx++) {
+        const p = img[y + ky][x + kx], w = K[ky][kx];
+        sum += p * w;
+        terms.push(`<span class="px">${p.toFixed(2)}</span><span class="k">·</span><span class="w">${w.toFixed(2)}</span>`);
+      }
+    const out = S.relu ? Math.max(0, sum) : sum;
+    el.innerHTML = `<div><span class="k">C1 kernel ${f + 1} at row ${y}, col ${x}</span></div>` +
+      `<div>${terms.slice(0, 4).join(' <span class="k">+</span> ')} <span class="k">+ … (25 terms)</span></div>` +
+      `<div><span class="k">+ bias =</span> <span class="res">${sum.toFixed(3)}</span>` +
+      (S.relu ? ` <span class="k">→ ReLU →</span> <span class="relu">${out.toFixed(3)}</span>` : '') + '</div>';
+    return;
+  }
+  if (S.pick) {
+    const { id, f, y, x } = S.pick, r = rfOf(id, y, x);
+    const maps = { c1: S.fw.c1, s2: S.fw.s2, c3: S.fw.c3, s4: S.fw.s4 }[id];
+    el.innerHTML = `<div><span class="k">${id.toUpperCase()} map ${f + 1}, cell (${y}, ${x}) = </span><span class="res">${maps[f][y][x].toFixed(3)}</span></div>` +
+      `<div><span class="k">sees input</span> <span class="px">rows ${r.y}–${r.y + r.size - 1}, cols ${r.x}–${r.x + r.size - 1}</span> <span class="k">(${r.size}×${r.size})</span></div>` +
+      `<div class="k">C1 5×5 → S2 6×6 → C3 14×14 → S4 16×16. Click the cell again to clear.</div>`;
+    return;
+  }
+  el.innerHTML = '<span class="k">Click a block in the strip to open it, click a map cell to see the pixels behind it, or press <b>Scan C1</b>.</span>';
+}
+
+/* ============================================================
+   10. Training loop and controls
+   ============================================================ */
+let trainTimer = null;
+function startTrain() {
+  stopScan();
+  S.training = true; $('#train').innerHTML = '&#10073;&#10073; Pause';
+  clearInterval(trainTimer);
+  trainTimer = setInterval(() => { epoch(); recompute(); drawAll(); }, 30);
+}
+function stopTrain() { S.training = false; clearInterval(trainTimer); $('#train').innerHTML = '&#9654;&#9654; Train'; }
+
+function notes() {
+  $('#archLine').textContent = '20² → C1 6 @ 16² → S2 6 @ 8² → C3 16 @ 4² → S4 16 @ 2² → F5 120 → F6 84 → 10';
+  $('#tip').innerHTML = S.epochN === 0
+    ? 'Nothing is trained yet, so the ten outputs are a coin toss. Press <b>Train</b> and watch the C1 kernels turn into stroke detectors.'
+    : (S.testAcc > .95 ? 'It generalises — those test digits were never trained on. Open <b>C1</b> and <b>C3</b> in the strip to see what it learned.'
+      : (S.relu ? 'Keep training. The purple curve is test accuracy, measured on digits the network has never seen.'
+        : 'With ReLU off the whole stack collapses into a single linear map, and this is about as far as it can get.'));
+}
+function drawAll() {
+  drawArch(); drawInput(); drawBars(); drawLoss(); drawStage(); drawCalc(); notes(); markSample();
+  $('#sEpoch').textContent = S.epochN;
+  $('#sLoss').textContent = isFinite(S.loss) ? S.loss.toFixed(4) : '–';
+  $('#sAcc').textContent = isFinite(S.testAcc) ? (S.testAcc * 100).toFixed(1) + '%' : '–';
+  $('#sParams').textContent = paramCount().toLocaleString();
+  $('#sN').textContent = `${S.train.X.length} / ${S.test.X.length}`;
+}
+
+$('#archCanvas').addEventListener('click', e => {
+  const r = $('#archCanvas').getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  const hit = archHit.find(b => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h);
+  if (hit) { S.sel = hit.id; S.pick = null; drawAll(); }
+});
+$('#train').onclick = () => S.training ? stopTrain() : startTrain();
+$('#step1').onclick = () => { stopTrain(); epoch(); recompute(); drawAll(); };
+$('#reset').onclick = () => { stopTrain(); rebuild(false); };
+$('#newData').onclick = () => { stopTrain(); seed = (Date.now() % 1000000) | 0; rebuild(true); };
+$('#nextSample').onclick = () => { S.sample = (S.sample + 1) % 20; S.pick = null; stopScan(); recompute(); drawAll(); };
+$('#inputCanvas').onclick = () => { if (S.pick) { S.pick = null; drawAll(); return; } $('#nextSample').onclick(); };
+$('#relu').onchange = e => { S.relu = e.target.checked; stopTrain(); rebuild(false); };
+$('#showBox').onchange = drawInput;
+$('#lr').oninput = e => { S.lr = +e.target.value / 100; $('#lrv').textContent = S.lr.toFixed(2); };
+$('#scanSpeed').oninput = e => $('#scanv').textContent = e.target.value + 'ms';
+$('#scan').onclick = () => S.scan ? (stopScan(), drawAll()) : startScan();
+$('#scanFilter').onchange = () => { if (S.scan) startScan(); };
+addEventListener('keydown', e => {
+  if (e.target.matches('input, select, button')) return;
+  if (e.code === 'Space') { e.preventDefault(); S.training ? stopTrain() : startTrain(); }
+  if (e.key === 's' || e.key === 'S') { S.scan ? (stopScan(), drawAll()) : startScan(); }
+  if (e.key === 'n' || e.key === 'N') $('#nextSample').onclick();
+  if (e.key === 'r' || e.key === 'R') { stopTrain(); rebuild(false); }
+});
+addEventListener('resize', () => drawAll());
+
+S.relu = $('#relu').checked;
+S.lr = +$('#lr').value / 100;
+$('#lrv').textContent = S.lr.toFixed(2);
+$('#scanv').textContent = $('#scanSpeed').value + 'ms';
+rebuild(true);
+
+/* ---- plays by itself on arrival ----------------------------------------
+   Most visitors never press a button, so the network starts training on its own.
+   The first click, tap or key press hands control back. */
+(function autoStart() {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  let taken = false;
+  const give = () => taken = true;
+  addEventListener('pointerdown', give, { once: true });
+  addEventListener('keydown', give, { once: true });
+  setTimeout(() => { if (!taken) startTrain(); }, 900);
+  setTimeout(() => { if (!taken && S.training) stopTrain(); }, 30000);
+})();
+</script>
+</body>
+</html>

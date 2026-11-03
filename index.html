@@ -246,6 +246,13 @@ const ICONS = {
     <circle class="fdim" cx="4.6" cy="9.2" r="1.7"/><circle class="fdim" cx="4.6" cy="14.8" r="1.7"/>
     <circle class="fill" cx="12" cy="5.2" r="1.8"/><circle class="fill" cx="12" cy="12" r="1.8"/><circle class="fill" cx="12" cy="18.8" r="1.8"/>
     <circle cx="19.4" cy="12" r="2"/>`,
+  /* a 3x3 window sliding over a grid, feeding one cell of a smaller map */
+  cnn: `<rect class="dim" x="2.4" y="5" width="10.6" height="10.6" rx="1.2"/>
+    <path class="dim" d="M5.9 5v10.6M9.5 5v10.6M2.4 8.5h10.6M2.4 12.1h10.6"/>
+    <rect x="2.9" y="5.5" width="6.6" height="6.6" rx="1"/>
+    <path d="M14.8 10.3h2.9"/><path d="M16.7 9.3 17.9 10.3 16.7 11.3"/>
+    <rect class="soft" x="18.7" y="8.4" width="3.6" height="3.6" rx=".8"/>
+    <rect x="18.7" y="8.4" width="3.6" height="3.6" rx=".8"/>`,
   /* a chain of gates with the gradient flowing back over the top */
   backprop: `<path class="dim" d="M6.8 16.5 10.2 16.5M13.8 16.5 17.2 16.5"/>
     <circle class="fdim" cx="5" cy="16.5" r="1.9"/><circle class="fdim" cx="12" cy="16.5" r="1.9"/><circle class="fdim" cx="19" cy="16.5" r="1.9"/>
@@ -299,6 +306,9 @@ const DEMOS = [
   { id:'mlp', group:'Learning & Representation', tab:'MLP', title:'Multi-Layer Perceptron',
     path:'ml-mlp/mlp_demo.html',
     desc:'Why XOR defeats a straight line, and what a hidden layer does about it — trained live.' },
+  { id:'cnn', group:'Learning & Representation', tab:'CNN', title:'LeNet — a CNN End to End',
+    path:'ml-cnn/cnn_demo.html',
+    desc:'Handwritten digits through C1 → S2 → C3 → S4 → F5 → F6, with every stage showing its own activations.' },
   { id:'backprop', group:'Learning & Representation', tab:'Backprop', title:'Backpropagation, Step by Step',
     path:'ml-backprop/backprop_demo.html',
     desc:'A computational graph, one gate at a time: local derivative × upstream gradient, flowing back.' },
