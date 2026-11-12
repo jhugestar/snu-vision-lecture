@@ -23,6 +23,7 @@ Interactive web-based demos for computer vision courses at Seoul National Univer
 | Multi-Layer Perceptron (XOR, hidden layers) | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/ml-mlp/mlp_demo.html) |
 | CNN — LeNet on handwritten digits (kernels, ReLU, pooling, receptive fields) | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/ml-cnn/cnn_demo.html) |
 | Backpropagation (computational graph, step by step) | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/ml-backprop/backprop_demo.html) |
+| Optimizer Race (SGD, momentum, RMSProp, Adam) | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/ml-optimizer/optimizer_demo.html) |
 | Clustering & Segmentation | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/clustering/clustering.html) |
 | RANSAC (Line Fitting & Homography) | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/3dvision-ransac/ransac_demo.html) |
 | Visual Hull Reconstruction | [Live Demo](https://jhugestar.github.io/snu-vision-lecture/3dvision-visualhull/visual_hull.html) |

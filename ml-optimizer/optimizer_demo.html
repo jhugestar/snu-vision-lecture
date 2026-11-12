@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script>
+/* Theme — one shared choice for every page on the site. Runs before the body
+   is parsed so a light visitor never sees a dark flash. */
+(function () {
+  var KEY = 'snu-vision-theme', t = null;
+  try { t = localStorage.getItem(KEY); } catch (e) {}
+  if (t !== 'light') t = 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+  window.THEME = {
+    get: function () { return document.documentElement.getAttribute('data-theme'); },
+    set: function (v) {
+      if (v === this.get()) return;
+      document.documentElement.setAttribute('data-theme', v);
+      try { localStorage.setItem(KEY, v); } catch (e) {}
+      dispatchEvent(new CustomEvent('themechange', { detail: v }));
+    },
+    toggle: function () { this.set(this.get() === 'dark' ? 'light' : 'dark'); }
+  };
+})();
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Optimizer Race — SGD, Momentum, RMSProp, Adam</title>
+<style>
+/* Layout: header -> [loss surface + update rules | loss curves + readout + notes | controls] */
+:root {
+  --bg: #0e1118;
+  --panel: #161b25;
+  --panel2: #1d2331;
+  --border: #2a3243;
+  --fg: #e4e8f0;
+  --muted: #8b95a8;
+  --faint: #3b4457;
+  --sgd: #f0766a;      /* one colour per optimizer, used for trail, curve and label */
+  --mom: #4da3ff;
+  --rms: #3ddc97;
+  --adam: #f3c969;
+  --map-lo: #0b0e15;   /* contour fill: low loss ... */
+  --map-hi: #40507a;   /* ... high loss */
+  --map-line: #8b95a8;
+  --accent: #f3c969;
+  --ui: #4da3ff;
+  --danger: #e66767;
+  --ok: #2fbf8a;
+  --ui-text: #0e1118;  /* text on a filled --ui button */
+  --ui-hover: #7fbcff;
+  --hover: #253044; --hover-line: #3a4660;
+  --font: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  color-scheme: dark;
+}
+/* The light theme redefines the same tokens; everything below reads them. */
+:root[data-theme="light"] {
+  --bg: #eef1f6;
+  --panel: #ffffff;
+  --panel2: #f4f6fa;
+  --border: #d4dae4;
+  --fg: #161b22;
+  --muted: #5d6675;
+  --faint: #c3cad6;
+  --sgd: #c43b3b;
+  --mom: #2563eb;
+  --rms: #0f8f66;
+  --adam: #a2740a;
+  --map-lo: #ffffff;
+  --map-hi: #aebbd4;
+  --map-line: #5d6675;
+  --accent: #a2740a;
+  --ui: #2563eb;
+  --danger: #c43b3b;
+  --ok: #0f8f66;
+  --ui-text: #ffffff;
+  --ui-hover: #1d4fd0;
+  --hover: #e8edf6; --hover-line: #b9c2d2;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 14px; line-height: 1.45; }
+.wrap { max-width: 1640px; margin: 0 auto; padding: 14px 18px 28px; display: grid; gap: 14px;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) 340px;
+  grid-template-areas: "hdr hdr hdr" "left mid ctrl"; align-items: start; }
+header { grid-area: hdr; display: flex; align-items: baseline; gap: 14px 22px; flex-wrap: wrap; }
+.left { grid-area: left; display: grid; gap: 14px; min-width: 0; align-content: start; }
+.map { position: relative; }
+.mid { grid-area: mid; display: grid; gap: 14px; min-width: 0; align-content: start; }
+.controls { grid-area: ctrl; }
+@media (max-width: 1250px) { .wrap { grid-template-columns: minmax(0, 1fr) 340px; grid-template-areas: "hdr hdr" "left ctrl" "mid ctrl"; } }
+@media (max-width: 900px) { .wrap { grid-template-columns: 1fr; grid-template-areas: "hdr" "left" "ctrl" "mid"; } }
+
+header h1 { font-size: 21px; margin: 0; letter-spacing: .2px; }
+header .sub { color: var(--muted); }
+header .author { margin-left: auto; font-size: 12px; color: var(--muted); }
+header .author a { color: var(--ui); text-decoration: none; }
+header .author a:hover { text-decoration: underline; }
+.kbd { font-family: var(--mono); font-size: 11px; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; color: var(--muted); }
+
+.panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; min-width: 0; }
+#mapCanvas { width: 100%; aspect-ratio: 1.5; display: block; cursor: crosshair; border-radius: 8px; touch-action: manipulation; }
+.overlay { position: absolute; pointer-events: none; font-family: var(--mono); font-size: 12px; color: var(--muted);
+  background: var(--panel); border: 1px solid var(--border); border-radius: 5px; padding: 2px 7px; opacity: .92; }
+#hoverInfo { top: 10px; left: 12px; }
+#status { top: 10px; right: 12px; }
+.legend { position: absolute; bottom: 10px; left: 12px; display: flex; gap: 6px 12px; font-size: 12px; flex-wrap: wrap;
+  pointer-events: none; background: var(--panel); border: 1px solid var(--border); border-radius: 5px; padding: 3px 8px; opacity: .92; }
+.legend span { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); }
+.sw { display: inline-block; width: 14px; height: 3px; border-radius: 2px; }
+
+.ptitle { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 10px 14px 0; }
+.ptitle h2 { font-size: 13px; margin: 0; font-weight: 600; }
+.ptitle span { font-size: 11.5px; color: var(--muted); font-family: var(--mono); text-align: right; }
+.pad { padding: 8px 14px 12px; }
+#lossCanvas { width: 100%; height: 210px; display: block; }
+
+table.g { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+table.g th, table.g td { text-align: right; padding: 5px 6px; border-top: 1px solid var(--border); white-space: nowrap; }
+table.g th { font-family: var(--font); font-size: 10.5px; letter-spacing: .7px; text-transform: uppercase; color: var(--muted); border-top: none; font-weight: 600; }
+table.g td:first-child, table.g th:first-child { text-align: left; }
+table.g tr.off td { opacity: .35; }
+.name { display: inline-flex; align-items: center; gap: 7px; font-family: var(--font); font-weight: 600; }
+.name i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.badge { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-family: var(--font); font-weight: 600; letter-spacing: .3px;
+  background: rgba(139,149,168,.15); color: var(--muted); }
+.badge.run { background: rgba(77,163,255,.15); color: var(--ui); }
+.badge.conv { background: rgba(47,191,138,.15); color: var(--ok); }
+.badge.div { background: rgba(230,103,103,.18); color: var(--danger); }
+
+.notice { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.notice li { background: var(--panel2); border-left: 3px solid var(--accent); padding: 6px 10px; border-radius: 4px; font-size: 12.5px; }
+.notice li.try { border-left-color: var(--ui); color: var(--muted); }
+.notice b { font-weight: 600; }
+
+/* controls */
+.controls { padding: 14px; display: grid; gap: 14px; align-content: start; }
+.sec { display: grid; gap: 7px; }
+.sec > .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .9px; color: var(--muted); font-weight: 600; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+select, button { font: inherit; color: var(--fg); background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; }
+select { flex: 1; min-width: 0; }
+button { cursor: pointer; transition: background .12s, border-color .12s; }
+button:hover { background: var(--hover); border-color: var(--hover-line); }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--ui); outline-offset: 1px; }
+button.primary { background: var(--ui); color: var(--ui-text); border-color: var(--ui); font-weight: 600; }
+button.primary:hover { background: var(--ui-hover); }
+button.wide { flex: 1; }
+.slider { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; }
+.slider .nm { font-size: 13px; color: var(--muted); }
+.slider .val { font-family: var(--mono); font-size: 12px; color: var(--fg); font-variant-numeric: tabular-nums; min-width: 54px; text-align: right; }
+.slider input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--ui); margin: 0; }
+.slider.off { opacity: .4; pointer-events: none; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.hint { font-size: 12px; color: var(--muted); }
+.chk { display: flex; gap: 8px; align-items: center; font-size: 13px; cursor: pointer; color: var(--fg); }
+.chk input { accent-color: var(--ui); margin: 0; }
+.chk i { width: 16px; height: 4px; border-radius: 2px; display: inline-block; }
+.opts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; }
+
+/* update rules */
+.rulegrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 600px) { .rulegrid { grid-template-columns: 1fr; } }
+.rule { background: var(--panel2); border-radius: 6px; padding: 8px 11px; border-top: 3px solid var(--faint); }
+.rule h3 { margin: 0 0 4px; font-size: 13px; font-weight: 600; }
+.rule .eq { font-family: var(--mono); font-size: 12.5px; line-height: 1.75; overflow-wrap: anywhere; }
+.rule .why { font-size: 12px; color: var(--muted); margin-top: 4px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+/* ---- dark / light switch ---------------------------------------------- */
+.theme-toggle {
+  position: fixed; right: 16px; bottom: 16px; z-index: 99;
+  font: inherit; font-size: 13px; line-height: 1; padding: 8px 14px;
+  border-radius: 999px; cursor: pointer;
+  background: var(--panel); color: var(--fg); border: 1px solid var(--border);
+  box-shadow: 0 2px 12px rgba(0,0,0,.28);
+}
+.theme-toggle:hover { border-color: var(--ui); color: var(--ui); }
+@media print { .theme-toggle { display: none; } }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Optimizer Race</h1>
+    <div class="sub">Same start, same gradient &mdash; four ways to take the step</div>
+    <div class="hint"><span class="kbd">Space</span> run / pause &nbsp; <span class="kbd">S</span> one step &nbsp; <span class="kbd">R</span> reset</div>
+    <div class="author"><a href="https://jhugestar.github.io/" target="_blank" rel="noopener">Hanbyul Joo</a>
+      &nbsp;|&nbsp; Visual Computing Lab, Seoul National University &nbsp;|&nbsp;
+      <a href="https://jhugestar.github.io/snu-vision-lecture/" target="_blank" rel="noopener">More Demos &#8599;</a></div>
+  </header>
+
+  <div class="left">
+  <div class="panel map">
+    <canvas id="mapCanvas"></canvas>
+    <div class="overlay" id="hoverInfo">click the map to move the start point</div>
+    <div class="overlay" id="status"></div>
+    <div class="legend" id="legend"></div>
+  </div>
+
+  <div class="panel rules">
+    <div class="ptitle"><h2>Update rules</h2><span>g = &nabla;L(&theta;) &nbsp;&middot;&nbsp; &eta; = learning rate &nbsp;&middot;&nbsp; &epsilon; = 1e-8</span></div>
+    <div class="pad">
+      <div class="rulegrid">
+        <div class="rule" style="border-top-color:var(--sgd)">
+          <h3>SGD</h3>
+          <div class="eq">&theta; &larr; &theta; &minus; &eta;&middot;g</div>
+          <div class="why">Step size follows the raw gradient: too big where it is steep, too small where it is flat.</div>
+        </div>
+        <div class="rule" style="border-top-color:var(--mom)">
+          <h3>SGD + Momentum</h3>
+          <div class="eq">v &larr; &beta;&middot;v + g<br>&theta; &larr; &theta; &minus; &eta;&middot;v</div>
+          <div class="why">A running sum of gradients: opposite signs cancel, the same sign builds speed.</div>
+        </div>
+        <div class="rule" style="border-top-color:var(--rms)">
+          <h3>RMSProp</h3>
+          <div class="eq">s &larr; &rho;&middot;s + (1&minus;&rho;)&middot;g&sup2;<br>&theta; &larr; &theta; &minus; &eta;&middot;g / (&radic;s + &epsilon;)</div>
+          <div class="why">Divides each coordinate by its recent gradient size, so every axis moves about &eta; per step.</div>
+        </div>
+        <div class="rule" style="border-top-color:var(--adam)">
+          <h3>Adam</h3>
+          <div class="eq">m &larr; &beta;&#8321;&middot;m + (1&minus;&beta;&#8321;)&middot;g<br>s &larr; &beta;&#8322;&middot;s + (1&minus;&beta;&#8322;)&middot;g&sup2;<br>&theta; &larr; &theta; &minus; &eta;&middot;m&#770; / (&radic;s&#770; + &epsilon;)</div>
+          <div class="why">Momentum and RMSProp together. m&#770; = m/(1&minus;&beta;&#8321;&#7511;), s&#770; = s/(1&minus;&beta;&#8322;&#7511;) undo the zero start.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <div class="mid">
+    <div class="panel">
+      <div class="ptitle"><h2>Loss vs. iteration</h2><span>log scale</span></div>
+      <canvas id="lossCanvas"></canvas>
+    </div>
+
+    <div class="panel">
+      <div class="ptitle"><h2>Readout</h2><span id="stepNote"></span></div>
+      <div class="pad"><table class="g" id="readout"></table></div>
+    </div>
+
+    <div class="panel">
+      <div class="ptitle"><h2>What to notice</h2><span id="noticeSub"></span></div>
+      <div class="pad"><ul class="notice" id="notice"></ul></div>
+    </div>
+  </div>
+
+  <div class="panel controls">
+    <div class="sec">
+      <div class="lbl">Loss surface</div>
+      <select id="surface"></select>
+      <div class="hint" id="surfNote"></div>
+    </div>
+
+    <div class="sec">
+      <div class="lbl">Optimizers</div>
+      <div class="opts" id="opts"></div>
+    </div>
+
+    <div class="sec">
+      <div class="lbl">Run</div>
+      <div class="row">
+        <button id="run" class="primary wide">&#9654; Run</button>
+        <button id="step">Step</button>
+        <button id="reset">Reset</button>
+      </div>
+      <div class="slider">
+        <span class="nm">Speed</span><span class="val" id="speedv"></span>
+        <input type="range" id="speed" min="0" max="2.6" step="0.05">
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="lbl">Hyperparameters</div>
+      <div class="slider">
+        <span class="nm">Learning rate &eta; (all four)</span><span class="val" id="lrv"></span>
+        <input type="range" id="lr" min="-3" max="0" step="0.01">
+      </div>
+      <div class="two">
+        <div class="slider">
+          <span class="nm">Momentum &beta;</span><span class="val" id="betav"></span>
+          <input type="range" id="beta" min="0" max="0.99" step="0.01">
+        </div>
+        <div class="slider">
+          <span class="nm">RMSProp &rho;</span><span class="val" id="rhov"></span>
+          <input type="range" id="rho" min="0.5" max="0.99" step="0.01">
+        </div>
+      </div>
+      <div class="two">
+        <div class="slider">
+          <span class="nm">Adam &beta;&#8321;</span><span class="val" id="b1v"></span>
+          <input type="range" id="b1" min="0" max="0.99" step="0.01">
+        </div>
+        <div class="slider">
+          <span class="nm">Adam &beta;&#8322;</span><span class="val" id="b2v"></span>
+          <input type="range" id="b2" min="-4" max="-1" step="0.1">
+        </div>
+      </div>
+      <div class="row"><button id="defaults" class="wide">Restore defaults for this surface</button></div>
+    </div>
+
+    <div class="sec">
+      <div class="lbl">Minibatch noise</div>
+      <label class="chk"><input type="checkbox" id="noise"> add noise to every gradient</label>
+      <div class="slider off" id="sigmaRow">
+        <span class="nm">Noise size &sigma;</span><span class="val" id="sigmav"></span>
+        <input type="range" id="sigma" min="0.05" max="3" step="0.05">
+      </div>
+      <div class="hint">A minibatch gradient is the true gradient plus noise. All four optimizers see the same noisy gradient direction.</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* <core> — everything down to </core> is plain math with no DOM, so it can be tested on its own */
+
+/* ============================================================
+   1. Loss surfaces — value f(x, y) and gradient g(x, y)
+   ============================================================ */
+const VIEW = { x0: -4.5, x1: 4.5, y0: -3, y1: 3 };     // the part of the plane the map shows (3 : 2)
+
+function twoWells(x, y) {                               // a wide bowl with a shallow dip and a deep well
+  const a = Math.exp(-((x + 1) * (x + 1) + y * y) / 0.3);
+  const b = Math.exp(-((x - 2) * (x - 2) + y * y) / 1.0);
+  return { a, b };
+}
+
+const SURFACES = {
+  ravine: {
+    label: 'Ravine — steep one way, flat the other',
+    note: 'L = ½(0.1·x² + 20·y²). The y direction is 200× steeper than x.',
+    f: (x, y) => 0.5 * (0.1 * x * x + 20 * y * y),
+    g: (x, y) => [0.1 * x, 20 * y],
+    start: [-4, 1.5], lr: 0.08,
+    marks: [{ x: 0, y: 0, kind: 'min', text: 'minimum' }],
+    notice: [
+      '<b>SGD</b> zig-zags across the steep direction and crawls along the flat one.',
+      '<b>Momentum</b> swings wide across the valley, but it keeps its speed along the floor and arrives far sooner than SGD.',
+      '<b>RMSProp</b> and <b>Adam</b> rescale each axis, so both head almost straight for the minimum.',
+      '<b>RMSProp</b> ends up hopping around the minimum, about η away. <b>Adam</b> settles.',
+    ],
+    tryIt: 'Try η above 0.10: SGD blows up first, because the steep axis sets its limit. Try β = 0.5: the momentum swings shrink.',
+  },
+  saddle: {
+    label: 'Saddle — flat ridge between two minima',
+    note: 'L = ½x² + 0.2·(¼y⁴ − 1.125·y²). The start sits almost exactly on the ridge y = 0.',
+    f: (x, y) => 0.5 * x * x + 0.2 * (0.25 * y * y * y * y - 1.125 * y * y),
+    g: (x, y) => [x, 0.2 * (y * y * y - 2.25 * y)],
+    start: [-3.5, 0.01], lr: 0.05,
+    marks: [{ x: 0, y: 1.5, kind: 'min', text: 'minimum' }, { x: 0, y: -1.5, kind: 'min', text: 'minimum' },
+            { x: 0, y: 0, kind: 'saddle', text: 'saddle' }],
+    notice: [
+      'On the ridge the gradient toward either minimum is almost zero.',
+      '<b>SGD</b> slides into the saddle point and sits there for well over 100 steps.',
+      '<b>RMSProp</b> and <b>Adam</b> divide by the gradient size, so a tiny gradient still gives a full step. They leave the ridge at once.',
+      '<b>Momentum</b> gets out sooner than SGD: the small pushes add up. SGD still leads early, while the slope along x is large.',
+    ],
+    tryIt: 'Try turning on noise: now even SGD is knocked off the ridge.',
+  },
+  wells: {
+    label: 'Local + global minimum',
+    note: 'A wide bowl with a shallow dip on the way to the deep well on the right.',
+    f: (x, y) => { const { a, b } = twoWells(x, y); return 0.08 * ((x - 2) * (x - 2) + 2 * y * y) - 0.35 * a - 1.5 * b; },
+    g: (x, y) => {
+      const { a, b } = twoWells(x, y);
+      return [0.16 * (x - 2) + 0.35 * a * 2 * (x + 1) / 0.3 + 1.5 * b * 2 * (x - 2),
+              0.32 * y + 0.35 * a * 2 * y / 0.3 + 1.5 * b * 2 * y];
+    },
+    start: [-3.5, 0.8], lr: 0.05,
+    marks: [{ x: 2, y: 0, kind: 'min', text: 'global min' }, { x: -0.8, y: 0, kind: 'min', text: 'local min' }],
+    notice: [
+      '<b>SGD</b>, <b>RMSProp</b> and <b>Adam</b> stop in the shallow dip. The gradient there is zero, so nothing moves them.',
+      '<b>Momentum</b> arrives with speed, rolls through the dip and reaches the deep minimum.',
+      'The loss curves show it: three flatten out high, one keeps dropping.',
+      'Where you start matters. Click to the right of the dip and all four find the global minimum.',
+    ],
+    tryIt: 'Try η = 0.10: Adam now carries enough speed to get out too.',
+  },
+};
+
+/* Polish each minimum with a little gradient descent, then shift every surface so that
+   its lowest point is exactly 0 — "loss" then reads the same on every surface. */
+for (const s of Object.values(SURFACES)) {
+  let lowest = Infinity;
+  for (const m of s.marks) {
+    if (m.kind !== 'min') continue;
+    for (let i = 0; i < 3000; i++) { const [gx, gy] = s.g(m.x, m.y); m.x -= 0.02 * gx; m.y -= 0.02 * gy; }
+    lowest = Math.min(lowest, s.f(m.x, m.y));
+  }
+  const raw = s.f;
+  s.f = (x, y) => raw(x, y) - lowest;
+  s.fmax = 0;                                           // highest value on the map, for the colour scale
+  for (let i = 0; i <= 60; i++) for (let j = 0; j <= 40; j++)
+    s.fmax = Math.max(s.fmax, s.f(VIEW.x0 + i / 60 * (VIEW.x1 - VIEW.x0), VIEW.y0 + j / 40 * (VIEW.y1 - VIEW.y0)));
+}
+
+/* ============================================================
+   2. The four optimizers
+   ============================================================ */
+const OPTS = [
+  { key: 'sgd',  name: 'SGD',        tok: '--sgd' },
+  { key: 'mom',  name: 'Momentum',   tok: '--mom' },
+  { key: 'rms',  name: 'RMSProp',    tok: '--rms' },
+  { key: 'adam', name: 'Adam',       tok: '--adam' },
+];
+const EPS = 1e-8;
+const DEFAULTS = { beta: 0.9, rho: 0.9, b1: 0.9, b2: 0.999, sigma: 0.5, speed: 40 };
+const MAX_STEPS = 2000;
+const FAR = 100;                    // further than this from the map counts as diverged
+
+function newRunner(key, surf, start) {
+  return { key, x: start[0], y: start[1], ax: 0, ay: 0, sx: 0, sy: 0, t: 0,
+           status: 'ready', gnorm: NaN, path: [[start[0], start[1]]], loss: [surf.f(start[0], start[1])] };
+}
+
+/* one update of one optimizer; (gx, gy) is the gradient it is given */
+function update(r, gx, gy, P) {
+  const lr = P.lr;
+  r.t++;
+  if (r.key === 'sgd') {
+    r.x -= lr * gx; r.y -= lr * gy;
+  } else if (r.key === 'mom') {
+    r.ax = P.beta * r.ax + gx; r.ay = P.beta * r.ay + gy;
+    r.x -= lr * r.ax; r.y -= lr * r.ay;
+  } else if (r.key === 'rms') {
+    r.sx = P.rho * r.sx + (1 - P.rho) * gx * gx; r.sy = P.rho * r.sy + (1 - P.rho) * gy * gy;
+    r.x -= lr * gx / (Math.sqrt(r.sx) + EPS); r.y -= lr * gy / (Math.sqrt(r.sy) + EPS);
+  } else {
+    r.ax = P.b1 * r.ax + (1 - P.b1) * gx; r.ay = P.b1 * r.ay + (1 - P.b1) * gy;
+    r.sx = P.b2 * r.sx + (1 - P.b2) * gx * gx; r.sy = P.b2 * r.sy + (1 - P.b2) * gy * gy;
+    const c1 = 1 - Math.pow(P.b1, r.t), c2 = 1 - Math.pow(P.b2, r.t);
+    r.x -= lr * (r.ax / c1) / (Math.sqrt(r.sx / c2) + EPS);
+    r.y -= lr * (r.ay / c1) / (Math.sqrt(r.sy / c2) + EPS);
+  }
+}
+
+/* small seeded generator so a run with noise can be replayed */
+function makeRng(seed) {
+  let a = seed >>> 0;
+  const uni = () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  return () => Math.sqrt(-2 * Math.log(uni() + 1e-12)) * Math.cos(2 * Math.PI * uni());   // standard normal
+}
+
+/* advance every live optimizer by one step; `noise` is null or [nx, ny] added to each gradient */
+function stepAll(runners, surf, P, noise) {
+  for (const r of runners) {
+    if (r.status === 'diverged') continue;
+    const [tx, ty] = surf.g(r.x, r.y);
+    update(r, tx + (noise ? noise[0] : 0), ty + (noise ? noise[1] : 0), P);
+    const L = surf.f(r.x, r.y);
+    if (!isFinite(r.x) || !isFinite(r.y) || !isFinite(L) || Math.abs(r.x) > FAR || Math.abs(r.y) > FAR) {
+      r.status = 'diverged'; r.gnorm = NaN;
+      continue;                                    // the bad point is never stored, so nothing draws NaN
+    }
+    r.path.push([r.x, r.y]); r.loss.push(L);
+    const [qx, qy] = surf.g(r.x, r.y);
+    r.gnorm = Math.hypot(qx, qy);
+    r.status = (!noise && r.gnorm < 1e-5) ? 'converged' : 'running';
+  }
+}
+/* </core> */
+
+/* ============================================================
+   3. State and small helpers
+   ============================================================ */
+const $ = s => document.querySelector(s);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const S = {
+  key: 'ravine', surf: SURFACES.ravine, start: SURFACES.ravine.start.slice(),
+  P: { lr: 0.08, beta: DEFAULTS.beta, rho: DEFAULTS.rho, b1: DEFAULTS.b1, b2: DEFAULTS.b2 },
+  noise: false, sigma: DEFAULTS.sigma, speed: DEFAULTS.speed,
+  show: { sgd: true, mom: true, rms: true, adam: true },
+  runners: [], steps: 0, running: false, rng: null, field: null,
+};
+
+function setup(canvas) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const r = canvas.getBoundingClientRect();
+  canvas.width = Math.max(1, Math.round(r.width * dpr));
+  canvas.height = Math.max(1, Math.round(r.height * dpr));
+  const c = canvas.getContext('2d');
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { c, w: r.width, h: r.height };
+}
+function rgbOf(tok) { const v = parseInt(css(tok).slice(1), 16); return [v >> 16 & 255, v >> 8 & 255, v & 255]; }
+function fmtLoss(v) {
+  if (!isFinite(v)) return '–';
+  if (v === 0) return '0';
+  return (v < 1e-3 || v >= 1e4) ? v.toExponential(1) : v.toPrecision(3);
+}
+function fmtLr(v) { return v < 0.01 ? v.toFixed(4) : v < 0.1 ? v.toFixed(3) : v.toFixed(2); }
+
+/* ============================================================
+   4. The contour map
+   ============================================================ */
+const BANDS = 22;
+/* loss -> 0..1, stretched near the bottom so shallow features still get their own bands */
+function level(surf, v) { const s = surf.fmax / 40; return Math.log1p(Math.max(0, v) / s) / Math.log1p(surf.fmax / s); }
+
+/* The filled contours are painted once into an off-screen canvas and reused every frame. */
+function buildField(w, h) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const W = Math.max(2, Math.min(900, Math.round(w * dpr))), H = Math.max(2, Math.round(W * h / w));
+  const off = document.createElement('canvas'); off.width = W; off.height = H;
+  const c = off.getContext('2d'), img = c.createImageData(W, H), d = img.data;
+  const lo = rgbOf('--map-lo'), hi = rgbOf('--map-hi'), ln = rgbOf('--map-line');
+  const band = new Uint8Array(W * H), f = S.surf.f;
+  for (let j = 0; j < H; j++) {
+    const y = VIEW.y1 - (j + .5) / H * (VIEW.y1 - VIEW.y0);
+    for (let i = 0; i < W; i++) {
+      const x = VIEW.x0 + (i + .5) / W * (VIEW.x1 - VIEW.x0);
+      band[j * W + i] = Math.min(BANDS - 1, Math.floor(level(S.surf, f(x, y)) * BANDS));
+    }
+  }
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+    const k = j * W + i, b = band[k], t = b / (BANDS - 1);
+    const edge = (i + 1 < W && band[k + 1] !== b) || (j + 1 < H && band[k + W] !== b);   // a contour line
+    const m = edge ? .28 : 0;
+    for (let q = 0; q < 3; q++) {
+      const base = lo[q] + (hi[q] - lo[q]) * t;
+      d[k * 4 + q] = base + (ln[q] - base) * m;
+    }
+    d[k * 4 + 3] = 255;
+  }
+  c.putImageData(img, 0, 0);
+  S.field = { canvas: off, w, h, key: S.key, theme: THEME.get() };
+}
+
+function drawMap() {
+  const cv = $('#mapCanvas');
+  const { c, w, h } = setup(cv);
+  const F = S.field;
+  if (!F || F.w !== w || F.h !== h || F.key !== S.key || F.theme !== THEME.get()) buildField(w, h);
+  c.drawImage(S.field.canvas, 0, 0, w, h);
+  const X = x => (x - VIEW.x0) / (VIEW.x1 - VIEW.x0) * w;
+  const Y = y => (VIEW.y1 - y) / (VIEW.y1 - VIEW.y0) * h;
+  const fg = css('--fg'), panel = css('--panel');
+
+  /* minima and the saddle point */
+  c.font = '11px ' + css('--mono'); c.textAlign = 'center';
+  for (const m of S.surf.marks) {
+    const px = X(m.x), py = Y(m.y);
+    c.strokeStyle = fg; c.lineWidth = 1.6; c.beginPath();
+    if (m.kind === 'min') { c.moveTo(px - 5, py - 5); c.lineTo(px + 5, py + 5); c.moveTo(px - 5, py + 5); c.lineTo(px + 5, py - 5); }
+    else { c.arc(px, py, 4.5, 0, 7); }
+    c.stroke();
+    c.fillStyle = fg; c.fillText(m.text, px, py + 19);
+  }
+
+  /* the start point */
+  const sx = X(S.start[0]), sy = Y(S.start[1]);
+  c.beginPath(); c.arc(sx, sy, 6.5, 0, 7); c.fillStyle = panel; c.fill();
+  c.strokeStyle = fg; c.lineWidth = 2; c.stroke();
+  c.fillStyle = fg; c.textAlign = 'left'; c.fillText('start', sx + 11, sy - 8);
+
+  /* trails — points far outside the map are clamped so the line just runs off the edge */
+  const clampX = x => Math.max(-w, Math.min(2 * w, X(x))), clampY = y => Math.max(-h, Math.min(2 * h, Y(y)));
+  c.save(); c.beginPath(); c.rect(0, 0, w, h); c.clip();
+  c.lineJoin = 'round'; c.lineCap = 'round';
+  for (const r of S.runners) {
+    if (!S.show[r.key]) continue;
+    const col = css(OPTS.find(o => o.key === r.key).tok), p = r.path;
+    c.strokeStyle = col; c.lineWidth = 2; c.globalAlpha = .95; c.beginPath();
+    for (let i = 0; i < p.length; i++) i ? c.lineTo(clampX(p[i][0]), clampY(p[i][1])) : c.moveTo(clampX(p[i][0]), clampY(p[i][1]));
+    c.stroke();
+    if (p.length <= 120) {                              // early on, show the individual steps
+      c.fillStyle = col;
+      for (let i = 1; i < p.length; i++) { c.beginPath(); c.arc(clampX(p[i][0]), clampY(p[i][1]), 2, 0, 7); c.fill(); }
+    }
+    c.globalAlpha = 1;
+  }
+  for (const r of S.runners) {                          // heads on top of every trail
+    if (!S.show[r.key]) continue;
+    const col = css(OPTS.find(o => o.key === r.key).tok), q = r.path[r.path.length - 1];
+    const hx = clampX(q[0]), hy = clampY(q[1]);
+    if (r.status === 'diverged') {
+      c.strokeStyle = col; c.lineWidth = 2.5; c.beginPath();
+      c.moveTo(hx - 6, hy - 6); c.lineTo(hx + 6, hy + 6); c.moveTo(hx - 6, hy + 6); c.lineTo(hx + 6, hy - 6); c.stroke();
+    } else {
+      c.beginPath(); c.arc(hx, hy, 5.5, 0, 7); c.fillStyle = col; c.fill();
+      c.strokeStyle = panel; c.lineWidth = 1.5; c.stroke();
+    }
+  }
+  c.restore();
+
+  const done = S.steps >= MAX_STEPS || finished();
+  $('#status').textContent = 'step ' + S.steps + (S.running ? ' · running' : done && S.steps ? ' · done' : ' · paused');
+}
+
+/* ============================================================
+   5. Loss curves (log y)
+   ============================================================ */
+function drawLoss() {
+  const { c, w, h } = setup($('#lossCanvas'));
+  c.clearRect(0, 0, w, h);
+  const L = 46, R = 10, T = 10, B = 24;
+  const shown = S.runners.filter(r => S.show[r.key]);
+  const FLOOR = 1e-12;
+  let hi = -Infinity, lo = Infinity, n = 1;
+  for (const r of shown) {
+    hi = Math.max(hi, r.loss[0]);
+    n = Math.max(n, r.loss.length - 1);
+    for (const v of r.loss) { if (r.status !== 'diverged') hi = Math.max(hi, v); lo = Math.min(lo, Math.max(v, FLOOR)); }
+  }
+  if (!isFinite(hi)) { hi = 1; lo = 1e-3; }
+  let d1 = Math.ceil(Math.log10(Math.max(hi, FLOOR)) + 1e-9), d0 = Math.floor(Math.log10(lo));
+  d0 = Math.min(d0, d1 - 3);                              // always at least three decades tall
+  const nMax = Math.max(50, n);
+  const X = i => L + i / nMax * (w - L - R);
+  const Y = v => T + (d1 - Math.log10(Math.max(v, FLOOR))) / (d1 - d0) * (h - T - B);
+
+  c.font = '10.5px ' + css('--mono'); c.fillStyle = css('--muted'); c.strokeStyle = css('--border'); c.lineWidth = 1;
+  const every = Math.ceil((d1 - d0) / 6);
+  c.textAlign = 'right';
+  for (let d = d1; d >= d0; d--) {
+    if ((d1 - d) % every) continue;
+    const y = Math.round(Y(Math.pow(10, d))) + .5;
+    c.beginPath(); c.moveTo(L, y); c.lineTo(w - R, y); c.stroke();
+    c.fillText('1e' + d, L - 6, y + 3.5);
+  }
+  c.textAlign = 'center';
+  c.fillText('0', L, h - 8); c.fillText(String(nMax), w - R - 8, h - 8); c.fillText('iteration', (L + w - R) / 2, h - 8);
+
+  c.save(); c.beginPath(); c.rect(L, T - 2, w - L - R, h - T - B + 4); c.clip();
+  c.lineJoin = 'round'; c.lineWidth = 1.8;
+  for (const r of shown) {
+    const col = css(OPTS.find(o => o.key === r.key).tok);
+    c.strokeStyle = col; c.beginPath();
+    r.loss.forEach((v, i) => i ? c.lineTo(X(i), Y(v)) : c.moveTo(X(i), Y(v)));
+    c.stroke();
+    const i = r.loss.length - 1, ex = X(i), ey = Math.max(T + 5, Y(r.loss[i]));
+    if (r.status === 'diverged') {                        // the curve ends in a cross
+      c.lineWidth = 2.2; c.beginPath();
+      c.moveTo(ex - 4, ey - 4); c.lineTo(ex + 4, ey + 4); c.moveTo(ex - 4, ey + 4); c.lineTo(ex + 4, ey - 4); c.stroke();
+      c.lineWidth = 1.8;
+    } else { c.fillStyle = col; c.beginPath(); c.arc(ex, ey, 2.8, 0, 7); c.fill(); }
+  }
+  c.restore();
+}
+
+/* ============================================================
+   6. Readout table, legend and notes
+   ============================================================ */
+function drawTable() {
+  let html = '<tr><th>optimizer</th><th>loss</th><th>‖∇L‖</th><th>steps</th><th>state</th></tr>';
+  for (const r of S.runners) {
+    const o = OPTS.find(q => q.key === r.key);
+    const st = r.status === 'diverged' ? ['div', 'diverged'] : r.status === 'converged' ? ['conv', 'converged']
+             : r.status === 'running' ? ['run', S.running ? 'running' : 'paused'] : ['', 'ready'];
+    html += `<tr class="${S.show[r.key] ? '' : 'off'}">` +
+      `<td><span class="name"><i style="background:var(${o.tok})"></i>${o.name}</span></td>` +
+      `<td>${r.status === 'diverged' ? '–' : fmtLoss(r.loss[r.loss.length - 1])}</td>` +
+      `<td>${isFinite(r.gnorm) ? fmtLoss(r.gnorm) : '–'}</td>` +
+      `<td>${r.t}</td>` +
+      `<td><span class="badge ${st[0]}">${st[1]}</span></td></tr>`;
+  }
+  $('#readout').innerHTML = html;
+  $('#stepNote').textContent = 'η = ' + fmtLr(S.P.lr) + (S.noise ? ' · noise σ = ' + S.sigma.toFixed(2) : '');
+}
+
+function drawNotes() {
+  const s = S.surf;
+  let html = s.notice.map(t => `<li>${t}</li>`).join('');
+  html += S.noise
+    ? '<li class="try">Noise is on: nobody settles exactly. Each one hovers near a minimum, and a smaller η makes the hover smaller.</li>'
+    : `<li class="try">${s.tryIt}</li>`;
+  $('#notice').innerHTML = html;
+  $('#noticeSub').textContent = 'with the default settings';
+  $('#surfNote').textContent = s.note;
+}
+
+function drawAll() { drawMap(); drawLoss(); drawTable(); }
+
+/* ============================================================
+   7. Running
+   ============================================================ */
+function reset() {
+  S.runners = OPTS.map(o => newRunner(o.key, S.surf, S.start));
+  S.steps = 0;
+  S.rng = makeRng(20261112);
+  drawAll();
+}
+function finished() {                                     // nothing left that could still move
+  return S.runners.every(r => r.status === 'diverged' || r.status === 'converged');
+}
+function stepOnce() {
+  if (S.steps >= MAX_STEPS || finished()) return false;
+  const noise = S.noise ? [S.sigma * S.rng(), S.sigma * S.rng()] : null;
+  stepAll(S.runners, S.surf, S.P, noise);
+  S.steps++;
+  return true;
+}
+function setRunning(on) {
+  if (on && (S.steps >= MAX_STEPS || finished())) reset();    // Run after the end starts over
+  S.running = on; S.acc = 0; S.last = 0;
+  $('#run').innerHTML = on ? '&#10073;&#10073; Pause' : '&#9654; Run';
+  drawAll();
+}
+
+function loop(now) {
+  if (S.running) {
+    const dt = S.last ? Math.min(.1, (now - S.last) / 1000) : 0;
+    S.last = now;
+    S.acc += dt * S.speed;
+    let moved = false;
+    while (S.acc >= 1) {
+      S.acc -= 1;
+      if (!stepOnce()) { setRunning(false); break; }
+      moved = true;
+    }
+    if (moved && S.running) drawAll();
+  }
+  requestAnimationFrame(loop);
+}
+
+/* ============================================================
+   8. Wiring
+   ============================================================ */
+function buildControls() {
+  $('#surface').innerHTML = Object.entries(SURFACES).map(([k, s]) => `<option value="${k}">${s.label}</option>`).join('');
+  $('#opts').innerHTML = OPTS.map(o =>
+    `<label class="chk"><input type="checkbox" data-k="${o.key}" checked><i style="background:var(${o.tok})"></i>${o.name}</label>`).join('');
+  $('#legend').innerHTML = OPTS.map(o => `<span><i class="sw" style="background:var(${o.tok})"></i>${o.name}</span>`).join('');
+  document.querySelectorAll('#opts input').forEach(b => b.onchange = () => { S.show[b.dataset.k] = b.checked; drawAll(); });
+}
+
+/* write the state into the controls (the browser may have restored old form values) */
+function syncControls() {
+  $('#surface').value = S.key;
+  $('#lr').value = Math.log10(S.P.lr);          $('#lrv').textContent = fmtLr(S.P.lr);
+  $('#beta').value = S.P.beta;                  $('#betav').textContent = S.P.beta.toFixed(2);
+  $('#rho').value = S.P.rho;                    $('#rhov').textContent = S.P.rho.toFixed(2);
+  $('#b1').value = S.P.b1;                      $('#b1v').textContent = S.P.b1.toFixed(2);
+  $('#b2').value = Math.log10(1 - S.P.b2);      $('#b2v').textContent = String(+S.P.b2.toFixed(4));
+  $('#speed').value = Math.log10(S.speed);      $('#speedv').textContent = Math.round(S.speed) + ' steps/s';
+  $('#noise').checked = S.noise;
+  $('#sigma').value = S.sigma;                  $('#sigmav').textContent = S.sigma.toFixed(2);
+  $('#sigmaRow').classList.toggle('off', !S.noise);
+  document.querySelectorAll('#opts input').forEach(b => b.checked = S.show[b.dataset.k]);
+}
+
+function loadSurface(key, run) {
+  S.key = key; S.surf = SURFACES[key];
+  S.start = S.surf.start.slice();
+  S.P = { lr: S.surf.lr, beta: DEFAULTS.beta, rho: DEFAULTS.rho, b1: DEFAULTS.b1, b2: DEFAULTS.b2 };
+  syncControls(); drawNotes(); reset();
+  if (run) setRunning(true);
+}
+
+/* a hyperparameter changed: restart from the same point so the four stay comparable */
+function paramChanged() {
+  syncControls();
+  const was = S.running;
+  reset();
+  if (was) setRunning(true);
+}
+
+$('#surface').onchange = e => loadSurface(e.target.value, S.running);
+$('#run').onclick = () => setRunning(!S.running);
+$('#step').onclick = () => { if (S.running) setRunning(false); stepOnce(); drawAll(); };
+$('#reset').onclick = () => { setRunning(false); reset(); };
+$('#defaults').onclick = () => { const was = S.running; S.noise = false; S.sigma = DEFAULTS.sigma; loadSurface(S.key, was); drawNotes(); };
+$('#lr').oninput = e => { S.P.lr = Math.pow(10, +e.target.value); paramChanged(); };
+$('#beta').oninput = e => { S.P.beta = +e.target.value; paramChanged(); };
+$('#rho').oninput = e => { S.P.rho = +e.target.value; paramChanged(); };
+$('#b1').oninput = e => { S.P.b1 = +e.target.value; paramChanged(); };
+$('#b2').oninput = e => { S.P.b2 = 1 - Math.pow(10, +e.target.value); paramChanged(); };
+$('#speed').oninput = e => { S.speed = Math.pow(10, +e.target.value); syncControls(); };
+$('#noise').onchange = e => { S.noise = e.target.checked; drawNotes(); paramChanged(); };
+$('#sigma').oninput = e => { S.sigma = +e.target.value; paramChanged(); };
+
+/* the map: click to move the start, hover to read the loss */
+function mapPoint(e) {
+  const r = $('#mapCanvas').getBoundingClientRect();
+  return [VIEW.x0 + (e.clientX - r.left) / r.width * (VIEW.x1 - VIEW.x0),
+          VIEW.y1 - (e.clientY - r.top) / r.height * (VIEW.y1 - VIEW.y0)];
+}
+$('#mapCanvas').addEventListener('click', e => {
+  S.start = mapPoint(e);
+  reset();
+  setRunning(true);
+});
+$('#mapCanvas').addEventListener('mousemove', e => {
+  const [x, y] = mapPoint(e);
+  $('#hoverInfo').textContent = `x = ${x.toFixed(2)}  y = ${y.toFixed(2)}  loss = ${fmtLoss(S.surf.f(x, y))}`;
+});
+$('#mapCanvas').addEventListener('mouseleave', () => { $('#hoverInfo').textContent = 'click the map to move the start point'; });
+
+addEventListener('keydown', e => {
+  if (e.target.matches('input, select, button')) return;
+  if (e.code === 'Space') { e.preventDefault(); setRunning(!S.running); }
+  if (e.key === 's' || e.key === 'S') { if (S.running) setRunning(false); stepOnce(); drawAll(); }
+  if (e.key === 'r' || e.key === 'R') { setRunning(false); reset(); }
+});
+addEventListener('resize', () => drawAll());
+
+buildControls();
+loadSurface('ravine', false);
+requestAnimationFrame(loop);
+
+/* repaint the canvases when the theme changes (the contour fill is rebuilt in drawMap) */
+addEventListener('themechange', () => drawAll());
+
+/* ---- plays by itself on arrival ----------------------------------------
+   Most visitors never press a button, so the race starts on its own.
+   The first click, tap or key press hands control back. */
+(function autoStart() {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  let taken = false;
+  const give = () => taken = true;
+  addEventListener('pointerdown', give, { once: true });
+  addEventListener('keydown', give, { once: true });
+  setTimeout(() => { if (!taken && !S.running && S.steps === 0) setRunning(true); }, 900);
+})();
+</script>
+<script>
+/* The floating switch. Inside the site shell the parent page supplies one,
+   so a framed demo leaves it out. */
+(function () {
+  if (window.top !== window.self) return;
+  var b = document.createElement('button');
+  b.className = 'theme-toggle';
+  b.type = 'button';
+  b.title = 'Switch between the dark and the light theme';
+  var paint = function () { b.textContent = THEME.get() === 'light' ? '☾ Dark' : '☀ Light'; };
+  b.addEventListener('click', function () { THEME.toggle(); });
+  addEventListener('themechange', paint);
+  paint();
+  document.body.appendChild(b);
+})();
+</script>
+</body>
+</html>
