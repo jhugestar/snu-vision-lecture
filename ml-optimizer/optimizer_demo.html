@@ -380,6 +380,97 @@ const SURFACES = {
     ],
     tryIt: 'Try η = 0.10: Adam now carries enough speed to get out too.',
   },
+  scaled: {
+    label: 'Age vs. income — badly scaled features',
+    note: 'L = ½(0.002·x² + 20·y²). x weighs age (about 40), y weighs income (about 4000). Inputs 100× larger make that axis 10,000× steeper.',
+    f: (x, y) => 0.5 * (0.002 * x * x + 20 * y * y),
+    g: (x, y) => [0.002 * x, 20 * y],
+    start: [-4, 1.5], lr: 0.09,
+    marks: [{ x: 0, y: 0, kind: 'min', text: 'minimum' }],
+    notice: [
+      'One η has to serve both weights. The income axis caps it at 0.10, and that is far too small for the age axis.',
+      '<b>SGD</b> fixes y within a few steps, then barely moves: after 2000 steps x has only gone from −4 to −2.8.',
+      '<b>Momentum</b> is about 10× faster along the floor and still has not converged after 2000 steps.',
+      '<b>Adam</b> gives each weight its own step size and converges in about 240 steps. <b>RMSProp</b> arrives as fast, then hops.',
+    ],
+    tryIt: 'Try any η: above 0.10 SGD blows up, below it SGD crawls. The real cure is to normalize the inputs, which turns this surface into the round bowl.',
+  },
+  plateau: {
+    label: 'Plateau — almost no gradient',
+    note: 'L = 1.5·(1 − exp(−r²/2)), r = distance to the minimum. Far out the surface is almost level, like a saturated sigmoid.',
+    f: (x, y) => 1.5 * (1 - Math.exp(-((x - 1.5) * (x - 1.5) + y * y) / 2)),
+    g: (x, y) => { const e = 1.5 * Math.exp(-((x - 1.5) * (x - 1.5) + y * y) / 2); return [e * (x - 1.5), e * y]; },
+    start: [-2.6, 1.2], lr: 0.1,
+    marks: [{ x: 1.5, y: 0, kind: 'min', text: 'minimum' }],
+    notice: [
+      'At the start the gradient is below 0.001. It points the right way, it is just tiny.',
+      '<b>SGD</b> multiplies that by η and goes nowhere: 2000 steps move it a distance of 0.2.',
+      '<b>RMSProp</b> and <b>Adam</b> divide by the gradient size, so they walk about η per step and reach the well within 70 steps.',
+      '<b>Momentum</b> builds speed slowly and arrives after about 480 steps.',
+    ],
+    tryIt: 'Try η = 1.0: SGD now makes it in about 400 steps, but Adam and RMSProp overshoot and bounce. Adam likes nearly the same η on every surface; SGD does not.',
+  },
+  rare: {
+    label: 'Rare word — a gradient once in 20 steps',
+    note: 'x is a weight every minibatch updates. y belongs to a rare word: its gradient is 0.2·y on every 20th step, zero otherwise. The map shows the average loss, ½(20·x² + 0.01·y²).',
+    f: (x, y) => 0.5 * (20 * x * x + 0.01 * y * y),
+    g: (x, y) => [20 * x, 0.01 * y],
+    batch: (x, y, t) => [20 * x, t % 20 === 19 ? 0.2 * y : 0],     // the gradient one minibatch reports at step t
+    start: [-3, 2], lr: 0.09,
+    marks: [{ x: 0, y: 0, kind: 'min', text: 'minimum' }],
+    notice: [
+      'Watch y. It only moves on every 20th step, when the rare word shows up in the minibatch.',
+      '<b>SGD</b> takes one small step per sighting: after 2000 steps (100 sightings) y has only gone from 2 to 0.3.',
+      '<b>Adam</b> and <b>RMSProp</b> know this gradient is small on average, so each sighting gets a large step. Adam converges in about 300 steps.',
+      '<b>Momentum</b> keeps coasting between sightings and takes about 2.5 times as long as Adam.',
+    ],
+    tryIt: 'Most words are rare, which is why embeddings are trained with Adam or AdaGrad. Try η above 0.10: the frequent weight x sets the limit for SGD.',
+  },
+  canyon: {
+    label: 'Canyon — steep walls, flat floor',
+    note: 'L = 0.02·(x − 3)² + y⁴ + ½y². The wall gradient grows like y³; the floor is almost level.',
+    f: (x, y) => 0.02 * (x - 3) * (x - 3) + y * y * y * y + 0.5 * y * y,
+    g: (x, y) => [0.04 * (x - 3), 4 * y * y * y + y],
+    start: [-3.5, 2], lr: 0.11,
+    marks: [{ x: 3, y: 0, kind: 'min', text: 'minimum' }],
+    notice: [
+      'η is about the largest value plain SGD survives from this start. The wall sets that limit, not the floor.',
+      '<b>Momentum</b> piles up the huge wall gradients and is thrown off the map within 5 steps.',
+      '<b>SGD</b> survives the wall, then crawls along the floor: still not converged after 2000 steps.',
+      '<b>Adam</b> and <b>RMSProp</b> never step much further than η, however large the gradient. Adam converges in about 290 steps.',
+    ],
+    tryIt: 'Try η = 0.13: SGD explodes too, and Adam does not care. Try η = 0.05: Momentum survives and is the fastest of the four. Gradient clipping is the other common fix.',
+  },
+  banana: {
+    label: 'Banana valley — a ravine that bends',
+    note: 'L = 0.05·(x − 2)² + 5·(y − ¼x² + 1.5)². A Rosenbrock-style valley: narrow, curved, nearly flat along its floor.',
+    f: (x, y) => { const c = y - 0.25 * x * x + 1.5; return 0.05 * (x - 2) * (x - 2) + 5 * c * c; },
+    g: (x, y) => { const c = y - 0.25 * x * x + 1.5; return [0.1 * (x - 2) - 5 * c * x, 10 * c]; },
+    start: [-3.4, 1.9], lr: 0.05,
+    marks: [{ x: 2, y: -0.5, kind: 'min', text: 'minimum' }],
+    notice: [
+      'A counter-example: here <b>Momentum</b> wins clearly. It converges in about 250 steps.',
+      '<b>Adam</b> rescales x and y separately. That fixes a ravine lined up with an axis, not one that keeps turning.',
+      '<b>Adam</b> drops to the valley floor fast, then creeps along it: about 1500 steps to converge, six times as long as Momentum.',
+      '<b>SGD</b> crawls as usual. <b>RMSProp</b> rattles between the walls and stalls short of the minimum.',
+    ],
+    tryIt: 'Try η = 0.10: Momentum is thrown out of the valley, and Adam is still slow (about 950 steps). No optimizer wins everywhere.',
+  },
+  bowl: {
+    label: 'Round bowl — nothing to fix',
+    note: 'L = ½(x² + y²). Equally steep in every direction, so the gradient points straight at the minimum.',
+    f: (x, y) => 0.5 * (x * x + y * y),
+    g: (x, y) => [x, y],
+    start: [-3.5, 2], lr: 0.5,
+    marks: [{ x: 0, y: 0, kind: 'min', text: 'minimum' }],
+    notice: [
+      'A counter-example: plain <b>SGD</b> halves its distance on every step and converges in 19 steps.',
+      '<b>Momentum</b> overshoots and swings through the minimum for about 180 steps.',
+      '<b>Adam</b> marches η per step, overshoots, and needs about 230 steps to settle. <b>RMSProp</b> never settles.',
+      'Momentum and adaptive steps repair bad conditioning. With nothing to repair they only add overshoot.',
+    ],
+    tryIt: 'Try η = 1.0: SGD lands on the minimum in a single step. This is the surface that input normalization and BatchNorm are trying to give you.',
+  },
 };
 
 /* Polish each minimum with a little gradient descent, then shift every surface so that
@@ -450,7 +541,7 @@ function makeRng(seed) {
 function stepAll(runners, surf, P, noise) {
   for (const r of runners) {
     if (r.status === 'diverged') continue;
-    const [tx, ty] = surf.g(r.x, r.y);
+    const [tx, ty] = surf.batch ? surf.batch(r.x, r.y, r.t) : surf.g(r.x, r.y);   // what this step's minibatch reports
     update(r, tx + (noise ? noise[0] : 0), ty + (noise ? noise[1] : 0), P);
     const L = surf.f(r.x, r.y);
     if (!isFinite(r.x) || !isFinite(r.y) || !isFinite(L) || Math.abs(r.x) > FAR || Math.abs(r.y) > FAR) {

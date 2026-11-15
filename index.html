@@ -2,6 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<!-- Google Analytics — the same property as jhugestar.github.io.
+     send_page_view is off: show() reports each view itself, one per demo. -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3H1937VV3Q"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-3H1937VV3Q', { send_page_view: false });
+</script>
 <script>
 /* Theme — one shared choice for every page on the site. Runs before the body
    is parsed so a light visitor never sees a dark flash. */
@@ -68,7 +77,10 @@
     font:inherit; color:var(--text); cursor:pointer; text-align:left;
   }
   .home-btn b{font-size:16px; letter-spacing:-.01em}
-  .home-btn span{font-size:12px; color:var(--muted)}
+  .brand{display:flex; align-items:baseline; gap:9px; min-width:0}
+  .brand .by{font-size:12px; color:var(--muted)}
+  .brand .by a{color:inherit; text-decoration:none}
+  .brand .by a:hover{color:var(--accent); text-decoration:underline}
   .bar .right{margin-left:auto; display:flex; align-items:center; gap:14px; font-size:12.5px}
   .bar .right a{color:var(--muted); text-decoration:none; white-space:nowrap}
   .bar .right a:hover{color:var(--accent)}
@@ -161,9 +173,10 @@
 
 <header>
   <div class="bar">
-    <button class="home-btn" id="homeBtn" type="button">
-      <b>Vision &amp; Learning Demos</b><span>SNU Visual Computing Lab &nbsp;·&nbsp; Prof. Hanbyul Joo</span>
-    </button>
+    <div class="brand">
+      <button class="home-btn" id="homeBtn" type="button"><b>Vision &amp; Learning Demos</b></button>
+      <span class="by">SNU Visual Computing Lab &nbsp;·&nbsp; <a href="https://jhugestar.github.io/" target="_blank" rel="noopener">Prof. Hanbyul Joo</a></span>
+    </div>
     <div class="right">
       <a id="openNew" href="#" target="_blank" rel="noopener" hidden>Open in new tab ↗</a>
       <a href="https://github.com/jhugestar/snu-vision-lecture" target="_blank" rel="noopener">GitHub ↗</a>
@@ -209,12 +222,14 @@ const GROUP_HUES = {
     'Image Features':             '#4da3ff',
     '3D Vision':                  '#f3c969',
     'Learning & Representation':  '#3ddc97',
+    'Training in Practice':       '#ff8f6b',
     'Detection & Evaluation':     '#c792ea',
   },
   light: {
     'Image Features':             '#2563eb',
     '3D Vision':                  '#a2740a',
     'Learning & Representation':  '#0f8f66',
+    'Training in Practice':       '#c2410c',
     'Detection & Evaluation':     '#7c3aed',
   },
 };
@@ -302,6 +317,12 @@ const ICONS = {
     <circle class="fdim" cx="5" cy="16.5" r="1.9"/><circle class="fdim" cx="12" cy="16.5" r="1.9"/><circle class="fdim" cx="19" cy="16.5" r="1.9"/>
     <path d="M19 12.4C19 6.6 13.4 4.6 9.2 6.6 7.2 7.6 6 9.4 5.6 11.6"/>
     <path d="M7.6 10.6 5.4 12.4 3.9 10.1"/>`,
+  /* contours of a ravine, and a path zig-zagging down to the minimum */
+  optimizer: `<ellipse class="dim" cx="13" cy="13" rx="9.2" ry="5.6" transform="rotate(-24 13 13)"/>
+    <ellipse class="dim" cx="13" cy="13" rx="5.2" ry="2.9" transform="rotate(-24 13 13)"/>
+    <path d="M3.6 5.2 7.4 10.6 9 7.6 11.4 11.6 12.2 10.2 13 13"/>
+    <circle cx="3.6" cy="5.2" r="1.3"/>
+    <circle class="fill" cx="13" cy="13" r="1.8"/>`,
   /* a 3D point, through the center, onto the image plane */
   pinhole: `<path class="dim" d="M5.5 12 10.8 7.4M5.5 12 10.8 16.6"/>
     <path d="M10.8 7.4V16.6"/>
@@ -359,7 +380,7 @@ const DEMOS = [
 
   { id:'optimizer', group:'Training in Practice', tab:'Optimizers', title:'Optimizer Race',
     path:'ml-optimizer/optimizer_demo.html',
-    desc:'SGD, momentum, RMSProp and Adam from the same start on a ravine, a saddle and a surface with a local minimum.' },
+    desc:'SGD, momentum, RMSProp and Adam racing from the same start across a variety of loss surfaces.' },
 
   { id:'map', group:'Detection & Evaluation', tab:'mAP', title:'Detection Evaluation & mAP',
     path:'detection-eval-map/pascal_voc_map.html',
@@ -446,7 +467,18 @@ function show(id) {
     document.title = 'Vision & Learning Demos';
     window.scrollTo(0, 0);
   }
+  /* one page view per demo, so the report shows which demos are opened */
+  const view = d ? d.id : 'home';
+  if (view !== lastView && typeof gtag === 'function') {
+    lastView = view;
+    gtag('event', 'page_view', {
+      page_title: document.title,
+      page_location: location.href,
+      page_path: location.pathname + (d ? '#' + d.id : ''),
+    });
+  }
 }
+let lastView = null;
 
 function go(id) {
   const next = id ? '#' + id : '#';
