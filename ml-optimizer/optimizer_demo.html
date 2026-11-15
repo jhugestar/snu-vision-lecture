@@ -87,6 +87,8 @@ body { background: var(--bg); color: var(--fg); font-family: var(--font); font-s
 header { grid-area: hdr; display: flex; align-items: baseline; gap: 14px 22px; flex-wrap: wrap; }
 .left { grid-area: left; display: grid; gap: 14px; min-width: 0; align-content: start; }
 .map { position: relative; }
+.maptitle { padding-bottom: 8px; }
+.ptitle .clickhint { font-family: inherit; font-size: 12.5px; font-weight: 600; color: var(--fg); }
 .mid { grid-area: mid; display: grid; gap: 14px; min-width: 0; align-content: start; }
 .controls { grid-area: ctrl; }
 @media (max-width: 1250px) { .wrap { grid-template-columns: minmax(0, 1fr) 340px; grid-template-areas: "hdr hdr" "left ctrl" "mid ctrl"; } }
@@ -100,7 +102,7 @@ header .author a:hover { text-decoration: underline; }
 .kbd { font-family: var(--mono); font-size: 11px; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; color: var(--muted); }
 
 .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; min-width: 0; }
-#mapCanvas { width: 100%; aspect-ratio: 1.5; display: block; cursor: crosshair; border-radius: 8px; touch-action: manipulation; }
+#mapCanvas { width: 100%; aspect-ratio: 1.5; display: block; cursor: crosshair; border-radius: 0 0 8px 8px; touch-action: manipulation; }
 .overlay { position: absolute; pointer-events: none; font-family: var(--mono); font-size: 12px; color: var(--muted);
   background: var(--panel); border: 1px solid var(--border); border-radius: 5px; padding: 2px 7px; opacity: .92; }
 #hoverInfo { top: 10px; left: 12px; }
@@ -195,11 +197,14 @@ button.wide { flex: 1; }
   </header>
 
   <div class="left">
-  <div class="panel map">
-    <canvas id="mapCanvas"></canvas>
-    <div class="overlay" id="hoverInfo">click the map to move the start point</div>
-    <div class="overlay" id="status"></div>
-    <div class="legend" id="legend"></div>
+  <div class="panel">
+    <div class="ptitle maptitle"><h2>Loss surface</h2><span class="clickhint">&#128070; Click anywhere on the map to change the starting point</span></div>
+    <div class="map">
+      <canvas id="mapCanvas"></canvas>
+      <div class="overlay" id="hoverInfo">hover to read the loss</div>
+      <div class="overlay" id="status"></div>
+      <div class="legend" id="legend"></div>
+    </div>
   </div>
 
   <div class="panel rules">
@@ -880,7 +885,7 @@ $('#mapCanvas').addEventListener('mousemove', e => {
   const [x, y] = mapPoint(e);
   $('#hoverInfo').textContent = `x = ${x.toFixed(2)}  y = ${y.toFixed(2)}  loss = ${fmtLoss(S.surf.f(x, y))}`;
 });
-$('#mapCanvas').addEventListener('mouseleave', () => { $('#hoverInfo').textContent = 'click the map to move the start point'; });
+$('#mapCanvas').addEventListener('mouseleave', () => { $('#hoverInfo').textContent = 'hover to read the loss'; });
 
 addEventListener('keydown', e => {
   if (e.target.matches('input, select, button')) return;
